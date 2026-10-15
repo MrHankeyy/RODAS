@@ -1,0 +1,1 @@
+"""RAMS desktop application package."""

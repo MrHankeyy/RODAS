@@ -23,19 +23,19 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import pyqtSignal
 
-import doe_engine as engine
-import optimizer_engine as oe
-import design_analysis as da
-from pages.design_results import DesignResultsPanel
-from pages.workbench_diagnostics import WorkbenchDiagnostics
-from pages.qt_tasks import OptimizationWorker
-from pages.optimization_controller import OptimizationController
-from pages import optimization_panels, optimization_plots, result_text
-import workbench_analysis as wa
-import report_engine as reports
-from models import ProjectData
-from services import analysis_service, model_service
-from services.project_service import ProjectService
+from rams.engines import doe as engine
+from rams.engines import optimizer as oe
+from rams.engines import design_analysis as da
+from rams.ui.pages.design_results import DesignResultsPanel
+from rams.ui.pages.workbench_diagnostics import WorkbenchDiagnostics
+from rams.ui.pages.qt_tasks import OptimizationWorker
+from rams.ui.pages.optimization_controller import OptimizationController
+from rams.ui.pages import optimization_panels, optimization_plots, result_text
+from rams.engines import workbench as wa
+from rams.reporting import report_engine as reports
+from rams.domain.models import ProjectData
+from rams.services import analysis_service, model_service
+from rams.services.project_service import ProjectService
 
 import matplotlib
 matplotlib.use('Qt5Agg')
@@ -381,4 +381,4 @@ class OptimizationPage(QWidget):
     def _run_tool(self):
         return self.controller._run_tool()
 
-from notifications import Notice
+from rams.ui.notifications import Notice

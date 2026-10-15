@@ -48,13 +48,13 @@ class ProjectData:
     report_history: list[dict] = field(default_factory=list)
 
     def record_operation(self, stage, status="完成", payload=None, message=""):
-        from services.project_service import ProjectService
+        from rams.services.project_service import ProjectService
         ProjectService.for_project(self).record_operation(stage, status, payload, message)
 
     def analysis_signature(self):
-        from services.project_service import signature
+        from rams.services.project_service import signature
         return signature(self)
 
     def ensure_results_current(self):
-        from services.project_service import ProjectService
+        from rams.services.project_service import ProjectService
         return ProjectService.for_project(self).ensure_current()

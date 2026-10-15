@@ -5,12 +5,12 @@ from PyQt6.QtWidgets import (
     QDoubleSpinBox, QMessageBox, QStackedWidget, QSizePolicy
 )
 
-import doe_engine as engine
-from models import ProjectData
-from services import design_service
-from services.project_service import ProjectService
-from pages.surrogate_dialogs import SurrogateDialog, MODEL_TITLES
-from pages import configuration_panels
+from rams.engines import doe as engine
+from rams.domain.models import ProjectData
+from rams.services import design_service
+from rams.services.project_service import ProjectService
+from rams.ui.pages.surrogate_dialogs import SurrogateDialog, MODEL_TITLES
+from rams.ui.pages import configuration_panels
 
 
 class ConfigurationPage(QWidget):
@@ -98,7 +98,7 @@ class ConfigurationPage(QWidget):
         self.refresh_btn.clicked.connect(self.update_info_display)
         self.gen_btn = QPushButton("生成试验方案")
         self.gen_btn.setMinimumWidth(150)
-        from ui_theme import primary
+        from rams.ui.theme import primary
         primary(self.gen_btn)
         self.gen_btn.clicked.connect(self.on_generate_clicked)
         btn_layout.addWidget(self.refresh_btn)
@@ -433,4 +433,4 @@ class ConfigurationPage(QWidget):
         return plan
 
     # ------------------------------------------------------------- 后端结果
-from notifications import Notice
+from rams.ui.notifications import Notice

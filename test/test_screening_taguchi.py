@@ -9,9 +9,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from models import FactorItem, ProjectData, ResponseItem
-import doe_engine as doe
-from pages.optimization_page import OptimizationPage
+from rams.domain.models import FactorItem, ProjectData, ResponseItem
+from rams.engines import doe as doe
+from rams.ui.pages.optimization_page import OptimizationPage
 from PyQt6.QtWidgets import QApplication
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")

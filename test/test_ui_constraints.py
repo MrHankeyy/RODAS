@@ -7,12 +7,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
 import numpy as np
 from PyQt6.QtWidgets import QApplication
-from models import ProjectData, FactorItem, ResponseItem
-import optimizer_engine as oe
-import workbench_analysis as wa
-from notifications import Notice, bus
-from main_window import MainWindow
-from pages.optimization_page import OptimizationPage
+from rams.domain.models import ProjectData, FactorItem, ResponseItem
+from rams.engines import optimizer as oe
+from rams.engines import workbench as wa
+from rams.ui.notifications import Notice, bus
+from rams.ui.main_window import MainWindow
+from rams.ui.pages.optimization_page import OptimizationPage
 
 APP = QApplication.instance() or QApplication([])
 

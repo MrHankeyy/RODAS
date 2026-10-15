@@ -8,8 +8,8 @@ from PyQt6.QtWidgets import (
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 
-from pages.design_results import DesignResultsPanel
-from pages.workbench_diagnostics import WorkbenchDiagnostics
+from rams.ui.pages.design_results import DesignResultsPanel
+from rams.ui.pages.workbench_diagnostics import WorkbenchDiagnostics
 
 
 def build(owner):
@@ -33,7 +33,7 @@ def build(owner):
         top.addWidget(owner.run_all_btn)
         main_layout.addLayout(top)
 
-        from ui_theme import ResultTabs
+        from rams.ui.theme import ResultTabs
         owner.tabs = ResultTabs()
         owner.tabs.setUsesScrollButtons(True)
         owner.tab_overview = QWidget(); owner._build_overview_tab()
@@ -60,7 +60,7 @@ def build(owner):
         owner.tabs.addTab(owner.taguchi_panel, "田口稳健分析")
         owner.diagnostics_panel = WorkbenchDiagnostics()
         owner.tabs.addTab(owner.diagnostics_panel, "统计诊断与导出")
-        from ui_theme import ResultsWorkspace, primary
+        from rams.ui.theme import ResultsWorkspace, primary
         owner.results_workspace = ResultsWorkspace(owner.tabs)
         main_layout.addWidget(owner.results_workspace, 1)
         primary(owner.run_all_btn)

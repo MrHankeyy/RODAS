@@ -10,10 +10,10 @@ os.environ.setdefault('QT_QPA_PLATFORM','offscreen')
 import numpy as np
 from scipy import stats
 from PyQt6.QtWidgets import QApplication,QMessageBox,QFileDialog
-import optimizer_engine as oe
-import workbench_analysis as wa
-from models import ProjectData,FactorItem,ResponseItem
-from pages.optimization_page import OptimizationPage
+from rams.engines import optimizer as oe
+from rams.engines import workbench as wa
+from rams.domain.models import ProjectData,FactorItem,ResponseItem
+from rams.ui.pages.optimization_page import OptimizationPage
 
 APP=QApplication.instance() or QApplication([])
 

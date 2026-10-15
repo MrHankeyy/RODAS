@@ -9,7 +9,7 @@ import math
 import uuid
 from datetime import datetime, timezone
 from dataclasses import asdict
-import file_io
+from rams.infrastructure import file_io
 
 
 def serializable(value):

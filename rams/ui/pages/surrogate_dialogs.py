@@ -12,7 +12,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt
 
-from doe_engine import factor_limits
+from rams.engines.doe import factor_limits
 
 
 MODEL_TITLES = {
@@ -47,7 +47,7 @@ class SurrogateDialog(QDialog):
         cancel_btn = QPushButton("取消")
         cancel_btn.clicked.connect(self.reject)
         ok_btn = QPushButton("保存设置")
-        from ui_theme import primary, polish_tables
+        from rams.ui.theme import primary, polish_tables
         primary(ok_btn)
         polish_tables(self)
         ok_btn.clicked.connect(self._on_ok)
@@ -375,4 +375,4 @@ class SurrogateDialog(QDialog):
             return
         self.accept()
 
-from notifications import Notice
+from rams.ui.notifications import Notice

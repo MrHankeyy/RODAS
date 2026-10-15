@@ -5,9 +5,9 @@ import json
 import math
 import statistics
 
-import design_analysis as design
-import doe_engine as engine
-import optimizer_engine as optimizer
+from rams.engines import design_analysis as design
+from rams.engines import doe as engine
+from rams.engines import optimizer as optimizer
 
 
 def active_factors(project):

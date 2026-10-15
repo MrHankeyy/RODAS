@@ -3,13 +3,13 @@ from PyQt6.QtWidgets import (QWidget, QPushButton, QVBoxLayout, QHBoxLayout,
     QApplication, QScrollArea)
 from PyQt6.QtGui import QIcon
 from PyQt6.QtCore import Qt
-from pages.modeling_page import ModelingPage
-from pages.configuration_page import ConfigurationPage
-from pages.data_management_page import DataManagementPage
-from pages.optimization_page import OptimizationPage
-from pages.analysis_page import AnalysisPage
-from models import ProjectData
-from ui_theme import install_theme, polish_tables
+from rams.ui.pages.modeling_page import ModelingPage
+from rams.ui.pages.configuration_page import ConfigurationPage
+from rams.ui.pages.data_management_page import DataManagementPage
+from rams.ui.pages.optimization_page import OptimizationPage
+from rams.ui.pages.analysis_page import AnalysisPage
+from rams.domain.models import ProjectData
+from rams.ui.theme import install_theme, polish_tables
 
 
 class MainWindow(QMainWindow):
@@ -108,7 +108,7 @@ class MainWindow(QMainWindow):
         return self.stacked_widget
 
     def _build_message_panel(self):
-        from notifications import bus
+        from rams.ui.notifications import bus
         widget = QWidget()
         layout = QVBoxLayout(widget)
         layout.setContentsMargins(16, 6, 16, 8)
@@ -193,7 +193,7 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event):
         if getattr(self.page_OPT, "_worker", None) is not None:
-            from notifications import Notice
+            from rams.ui.notifications import Notice
             Notice.warning(self, "计算进行中", "请等待当前计算结束后关闭窗口。")
             event.ignore()
             return

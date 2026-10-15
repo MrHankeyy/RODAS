@@ -5,9 +5,9 @@ from PyQt6.QtWidgets import (
         QTableWidget, QComboBox, QLineEdit, QHeaderView, QGroupBox,
     QCheckBox, QMessageBox, QTabWidget, QSplitter
 )
-from models import ResponseItem, FactorItem, ProjectData
-from services.project_service import ProjectService
-from pages.table_widgets import MultiLevelHeader
+from rams.domain.models import ResponseItem, FactorItem, ProjectData
+from rams.services.project_service import ProjectService
+from rams.ui.pages.table_widgets import MultiLevelHeader
 
 
 class ModelingPage(QWidget):
@@ -94,7 +94,7 @@ class ModelingPage(QWidget):
         main_layout.addLayout(btn_layout)
 
         self.setLayout(main_layout)
-        from ui_theme import primary, polish_tables
+        from rams.ui.theme import primary, polish_tables
         primary(self.save_btn)
         polish_tables(self)
         self.response_table.setMinimumHeight(95)
@@ -435,4 +435,4 @@ class ModelingPage(QWidget):
             factors=factors, responses=responses)
 
 
-from notifications import Notice
+from rams.ui.notifications import Notice

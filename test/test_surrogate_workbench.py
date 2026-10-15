@@ -10,10 +10,10 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from PyQt6.QtWidgets import QApplication
-from models import ProjectData, FactorItem, ResponseItem
-from pages.optimization_page import OptimizationPage
-import optimizer_engine as oe
-import doe_engine as de
+from rams.domain.models import ProjectData, FactorItem, ResponseItem
+from rams.ui.pages.optimization_page import OptimizationPage
+from rams.engines import optimizer as oe
+from rams.engines import doe as de
 import numpy as np
 
 APP = QApplication.instance() or QApplication([])
@@ -41,8 +41,8 @@ class SurrogateWorkbenchTest(unittest.TestCase):
                 trained = page.project_data.surrogate_result["responses"]["Y"]["predict_fn"]
                 with patch.object(page, "_run_surrogate", side_effect=AssertionError("unexpected retraining")), \
                      patch.object(oe, "build_models", side_effect=AssertionError("quadratic fallback")), \
-                     patch("pages.optimization_page.Notice.information"), \
-                     patch("pages.optimization_page.Notice.warning") as warning:
+                     patch("rams.ui.pages.optimization_page.Notice.information"), \
+                     patch("rams.ui.pages.optimization_page.Notice.warning") as warning:
                     page.run_all_btn.click()
                     deadline = time.monotonic() + 30
                     while getattr(page, '_worker', None) is not None and time.monotonic() < deadline:
@@ -62,7 +62,7 @@ class SurrogateWorkbenchTest(unittest.TestCase):
         page._run_surrogate()
         page.project_data.doe_matrix[0]["Y"] += 1
         with patch.object(page, "_run_surrogate", wraps=page._run_surrogate) as train, \
-             patch("pages.optimization_page.Notice.information"):
+             patch("rams.ui.pages.optimization_page.Notice.information"):
             page._execute_workbench()
             train.assert_called_once()
         page.close()
@@ -70,7 +70,7 @@ class SurrogateWorkbenchTest(unittest.TestCase):
     def test_exception_does_not_escape_button(self):
         page = self.make_page()
         with patch.object(page, "_prepare_context", side_effect=ValueError("invalid data")), \
-             patch("pages.optimization_page.Notice.warning") as warning:
+             patch("rams.ui.pages.optimization_page.Notice.warning") as warning:
             page.run_all_btn.click()
             warning.assert_called_once()
         self.assertIn("优化失败", page.status_label.text())

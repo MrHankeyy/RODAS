@@ -11,14 +11,14 @@ import itertools
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
 import numpy as np
-import doe_engine as de
-import design_analysis as da
-import optimizer_engine as oe
-from models import ProjectData, FactorItem, ResponseItem
+from rams.engines import doe as de
+from rams.engines import design_analysis as da
+from rams.engines import optimizer as oe
+from rams.domain.models import ProjectData, FactorItem, ResponseItem
 from PyQt6.QtWidgets import QApplication, QMessageBox
-from pages.optimization_page import OptimizationPage
-from pages.configuration_page import ConfigurationPage
-from pages.analysis_page import AnalysisPage
+from rams.ui.pages.optimization_page import OptimizationPage
+from rams.ui.pages.configuration_page import ConfigurationPage
+from rams.ui.pages.analysis_page import AnalysisPage
 
 APP = QApplication.instance() or QApplication([])
 

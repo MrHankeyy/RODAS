@@ -3,8 +3,8 @@ from dataclasses import asdict
 from datetime import datetime, timezone
 import hashlib
 
-import optimizer_engine as optimizer
-import workbench_analysis as statistics
+from rams.engines import optimizer as optimizer
+from rams.engines import workbench as statistics
 
 
 def build_snapshot(context, k_design=6, k_constraint=6):

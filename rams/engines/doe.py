@@ -1,7 +1,7 @@
 """Compatibility imports for existing scripts; implementation lives in core/."""
-from core.factors import HAS_NUMPY, _np
-from core.doe import SCREENING_KINDS
-from core.doe import (
+from rams.core.factors import HAS_NUMPY, _np
+from rams.core.doe import SCREENING_KINDS
+from rams.core.doe import (
     _gf_oa_columns,
     _oa_levels,
     _pb_matrix,
@@ -15,27 +15,27 @@ from core.doe import (
     _levels_of_factor,
     build_taguchi,
 )
-from core.factors import (
+from rams.core.factors import (
     _num,
     factor_limits,
     simple_factors,
     to_actual,
     _round_row,
 )
-from core.response_models import (
+from rams.core.response_models import (
     _design_matrix,
     fit_response_surface,
     quadratic_optimum,
     screening_from_responses,
 )
-from core.sampling import (
+from rams.core.sampling import (
     _latin_hypercube,
     _maximin_lhs,
     _van_der_corput,
     _sobol_like,
     build_samples,
 )
-from core.surrogate import (
+from rams.core.surrogate import (
     _kernel_rbf,
     _ann_forward,
     train_kriging,

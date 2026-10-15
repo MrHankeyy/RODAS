@@ -1,9 +1,9 @@
 """Single current-result report; no operation archive UI."""
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QTextBrowser, QLineEdit, QFileDialog
-import report_engine as reports
-import file_io
-from notifications import Notice
-from services.project_service import ProjectService
+from rams.reporting import report_engine as reports
+from rams.infrastructure import file_io
+from rams.ui.notifications import Notice
+from rams.services.project_service import ProjectService
 
 class AnalysisPage(QWidget):
     def __init__(self, project_data):
@@ -30,7 +30,7 @@ class AnalysisPage(QWidget):
             button = QPushButton(label)
             button.clicked.connect(slot)
             if label == "导出 PDF":
-                from ui_theme import primary
+                from rams.ui.theme import primary
                 primary(button)
             bar.addWidget(button)
         layout.addLayout(bar)

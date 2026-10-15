@@ -1,8 +1,8 @@
 """DOE workflow without Qt dependencies."""
 from dataclasses import dataclass, field
 
-from core import doe, factors as factor_tools, sampling
-from services.project_service import ProjectService
+from rams.core import doe, factors as factor_tools, sampling
+from rams.services.project_service import ProjectService
 
 
 @dataclass

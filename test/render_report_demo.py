@@ -6,10 +6,10 @@ sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from test_workbench_analysis import APP,make_context
 from PyQt6.QtWidgets import QMessageBox
 from PyQt6.QtGui import QFont,QFontDatabase
-from pages.optimization_page import OptimizationPage
-from pages.analysis_page import AnalysisPage
-import report_engine as reports
-import workbench_analysis as wa
+from rams.ui.pages.optimization_page import OptimizationPage
+from rams.ui.pages.analysis_page import AnalysisPage
+from rams.reporting import report_engine as reports
+from rams.engines import workbench as wa
 
 font=QFontDatabase.addApplicationFont('C:/Windows/Fonts/msyh.ttc')
 if font>=0:APP.setFont(QFont(QFontDatabase.applicationFontFamilies(font)[0],10))

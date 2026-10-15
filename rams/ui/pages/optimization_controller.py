@@ -1,17 +1,17 @@
 """UI workflow coordinator for the optimization page."""
 from PyQt6.QtWidgets import QMessageBox
 
-import design_analysis as da
-import doe_engine as engine
-import optimizer_engine as oe
-import report_engine as reports
+from rams.engines import design_analysis as da
+from rams.engines import doe as engine
+from rams.engines import optimizer as oe
+from rams.reporting import report_engine as reports
 import logging
 
-from notifications import Notice
-from pages.qt_tasks import OptimizationWorker
-from pages.workbench_diagnostics import WorkbenchDiagnostics
-from services import analysis_service, model_service
-from services.project_service import ProjectService
+from rams.ui.notifications import Notice
+from rams.ui.pages.qt_tasks import OptimizationWorker
+from rams.ui.pages.workbench_diagnostics import WorkbenchDiagnostics
+from rams.services import analysis_service, model_service
+from rams.services.project_service import ProjectService
 
 
 class OptimizationController:
@@ -92,7 +92,7 @@ class OptimizationController:
         if any(x in page._method() for x in ("筛选", "田口")):
             page.run_optimization()
             return
-        from notifications import bus
+        from rams.ui.notifications import bus
         try:
             page._check_inputs()
             bus.post("进度", "模型准备", "检查数据与当前模型配置")

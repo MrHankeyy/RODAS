@@ -10,10 +10,10 @@ sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 os.environ.setdefault('QT_QPA_PLATFORM','offscreen')
 from PyQt6.QtWidgets import QApplication,QMessageBox,QFileDialog
 from PyQt6.QtCore import Qt
-from models import ProjectData,FactorItem,ResponseItem
-from pages.optimization_page import OptimizationPage
-from pages.analysis_page import AnalysisPage
-import report_engine as re
+from rams.domain.models import ProjectData,FactorItem,ResponseItem
+from rams.ui.pages.optimization_page import OptimizationPage
+from rams.ui.pages.analysis_page import AnalysisPage
+from rams.reporting import report_engine as re
 from test_workbench_analysis import make_context
 
 APP=QApplication.instance() or QApplication([])
@@ -21,7 +21,7 @@ APP=QApplication.instance() or QApplication([])
 
 class ReportTests(unittest.TestCase):
     def test_operations_emit_messages_without_history(self):
-        from notifications import bus
+        from rams.ui.notifications import bus
         p,_=make_context();messages=[]
         def receive(*args):messages.append(args)
         bus.posted.connect(receive)
@@ -36,7 +36,7 @@ class ReportTests(unittest.TestCase):
         p,_=make_context();page=OptimizationPage(p)
         page.run_statistics()
         self.assertTrue(p.workbench_result)
-        with patch('optimizer_engine.build_models',side_effect=AssertionError('report refitted')):
+        with patch('rams.engines.optimizer.build_models',side_effect=AssertionError('report refitted')):
             report=re.build_current_report(re.bundle(p))
         self.assertEqual([s['id'] for s in report['sections']],['summary','purpose','materials','methods','results','settings','risks'])
         self.assertTrue(any(b['type']=='chart' for s in report['sections'] for b in s['blocks']))
@@ -93,7 +93,7 @@ class ReportTests(unittest.TestCase):
         page.close()
 
     def test_optimization_failure_is_message_and_invalidates_old_result(self):
-        from notifications import Notice
+        from rams.ui.notifications import Notice
         p,_=make_context();page=OptimizationPage(p)
         p.workbench_result={'old':True}
         with patch.object(page,'_prepare_context',side_effect=ValueError('模型不可识别')),patch.object(Notice,'warning') as warning:
