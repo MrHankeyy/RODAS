@@ -5,9 +5,10 @@ import unittest
 from pathlib import Path
 os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from PyQt6.QtWidgets import QApplication
+from PyQt6.QtWidgets import QApplication, QLabel
 from PyQt6.QtCore import Qt
 from frontend.main_window import MainWindow
+from frontend.pages.modeling_page import FIXED_VALUE_HELP
 
 APP = QApplication.instance() or QApplication([])
 
@@ -54,6 +55,18 @@ class DesktopLayoutTests(unittest.TestCase):
         self.assertEqual(page.factor_tabs.tabText(1), '环境因子  1')
         page.factor_tabs.setCurrentIndex(0)
         self.assertEqual(page.environment_factor_table.cellWidget(0, 0).text(), '温度')
+        self.assertEqual(
+            page.design_factor_table.horizontalHeader().section_tooltip(5),
+            FIXED_VALUE_HELP,
+        )
+        self.assertEqual(
+            page.design_factor_table.cellWidget(0, 5).toolTip(),
+            FIXED_VALUE_HELP,
+        )
+        self.assertNotIn(
+            FIXED_VALUE_HELP,
+            [label.text() for label in page.findChildren(QLabel)],
+        )
 
     def test_message_collapse_preserves_content(self):
         self.window.fold_messages.click()

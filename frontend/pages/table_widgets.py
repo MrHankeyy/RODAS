@@ -1,8 +1,8 @@
 """Reusable table widgets shared by workflow pages."""
 from PyQt6 import QtGui
-from PyQt6.QtCore import Qt, QRect, QSize
+from PyQt6.QtCore import Qt, QRect, QSize, QEvent
 from PyQt6.QtGui import QPainter, QPen, QColor, QPalette
-from PyQt6.QtWidgets import QApplication, QHeaderView, QTableWidget
+from PyQt6.QtWidgets import QApplication, QHeaderView, QTableWidget, QToolTip
 
 
 class MultiLevelHeader(QHeaderView):
@@ -13,6 +13,7 @@ class MultiLevelHeader(QHeaderView):
         self._leaves = []
         self._group_bands = []
         self._leaf_count = 0
+        self._section_tooltips = {}
         for node in levels:
             self._build(node, 0)
         self._band_height = 28
@@ -27,6 +28,25 @@ class MultiLevelHeader(QHeaderView):
 
     def sizeHint(self):
         return QSize(super().sizeHint().width(), self._header_height)
+
+    def set_section_tooltip(self, section, text):
+        """Set help text shown only while hovering a specific leaf section."""
+        if text:
+            self._section_tooltips[section] = text
+        else:
+            self._section_tooltips.pop(section, None)
+
+    def section_tooltip(self, section):
+        return self._section_tooltips.get(section, "")
+
+    def viewportEvent(self, event):
+        if event.type() == QEvent.Type.ToolTip:
+            text = self.section_tooltip(self.logicalIndexAt(event.pos()))
+            if text:
+                QToolTip.showText(event.globalPos(), text, self.viewport())
+                return True
+            QToolTip.hideText()
+        return super().viewportEvent(event)
 
     def _build(self, node, depth):
         if isinstance(node, str):

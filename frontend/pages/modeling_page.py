@@ -10,6 +10,12 @@ from backend.services.project_service import ProjectService
 from frontend.pages.table_widgets import MultiLevelHeader
 
 
+FIXED_VALUE_HELP = (
+    "填写不确定性参数；点击‘固定值’后，该因子将按均值或区间中点"
+    "作为确定值使用。"
+)
+
+
 class ModelingPage(QWidget):
     model_saved = pyqtSignal()
 
@@ -62,10 +68,6 @@ class ModelingPage(QWidget):
         factor_group.setObjectName("factor_group")
         factor_layout = QVBoxLayout()
         factor_layout.setContentsMargins(10, 12, 10, 10)
-
-        factor_hint = QLabel("填写不确定性参数；点击“固定值”后，该因子将按均值或区间中点作为确定值使用。")
-        factor_hint.setStyleSheet("color: #888888;")
-        factor_layout.addWidget(factor_hint)
 
         self.design_factor_table = self._create_factor_table("设计因子")
         self.environment_factor_table = self._create_factor_table("环境因子")
@@ -245,11 +247,13 @@ class ModelingPage(QWidget):
     # =========================
     def _create_factor_table(self, title):
         table = QTableWidget(0, 8)
-        table.setHorizontalHeader(MultiLevelHeader([
+        header = MultiLevelHeader([
             "名称", "不确定类型", "分布类型", "P1(下限/均值)",
             "P2(上限/方差)", "固定值（均值/中值）", "单位", "操作",
-        ]))
-        table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        ])
+        header.set_section_tooltip(5, FIXED_VALUE_HELP)
+        table.setHorizontalHeader(header)
+        header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         table.verticalHeader().setVisible(False)
         return table
 
@@ -283,6 +287,7 @@ class ModelingPage(QWidget):
         self._create_continuous_block(table, row, 1, 2, 3, 4)
 
         fixed_btn = QPushButton("固定值")
+        fixed_btn.setToolTip(FIXED_VALUE_HELP)
         fixed_btn.setCheckable(True)
         fixed_btn.clicked.connect(lambda _, t=table, r=row: self._fix_factor_value(t, r))
         table.setCellWidget(row, 5, fixed_btn)
