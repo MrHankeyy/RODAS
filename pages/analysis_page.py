@@ -1,7 +1,7 @@
 """Single current-result report; no operation archive UI."""
-from pathlib import Path
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QTextBrowser, QLineEdit, QFileDialog
 import report_engine as reports
+import file_io
 from notifications import Notice
 from services.project_service import ProjectService
 
@@ -75,14 +75,16 @@ class AnalysisPage(QWidget):
         if not self.report_html:
             Notice.warning(self, "暂无报告", "请先完成当前输入的分析或优化。")
             return
-        path, _ = QFileDialog.getSaveFileName(self, "导出当前结果", "设计结果报告." + kind, kind.upper() + " (*." + kind + ")")
+        path, _ = QFileDialog.getSaveFileName(
+            self, "导出当前结果", "设计结果报告." + kind,
+            kind.upper() + " (*." + kind + ")")
         if not path:
             return
         try:
             if kind == "pdf":
-                reports.export_pdf(self.report_html, path)
+                file_io.export_pdf(self.report_html, path)
             else:
-                Path(path).write_text(self.report_html, encoding="utf-8")
+                file_io.write_text(path, self.report_html)
             Notice.information(self, "报告已导出", path)
         except Exception as exc:
             Notice.warning(self, "导出失败", str(exc))

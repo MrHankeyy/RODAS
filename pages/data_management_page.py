@@ -5,7 +5,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6 import QtGui
 from PyQt6.QtCore import Qt
-import csv
+import file_io
 from models import ProjectData
 from services.project_service import ProjectService
 from pages.table_widgets import ExcelLikeTableWidget
@@ -156,17 +156,18 @@ class DataManagementPage(QWidget):
         if not self.project_data.doe_matrix:
             Notice.warning(self, "警告", "没有可导出的数据！")
             return
-            
-        file_path, _ = QFileDialog.getSaveFileName(self, "导出CSV", "", "CSV Files (*.csv)")
-        if file_path:
-            try:
-                with open(file_path, mode='w', newline='', encoding='utf-8') as f:
-                    writer = csv.DictWriter(f, fieldnames=self.project_data.doe_matrix[0].keys())
-                    writer.writeheader()
-                    writer.writerows(self.project_data.doe_matrix)
-                Notice.information(self, "成功", "DOE表导出成功！你可以将该表发给仿真脚本加载执行。")
-            except Exception as e:
-                Notice.critical(self, "错误", f"导出失败: {str(e)}")
+        file_path, _ = QFileDialog.getSaveFileName(
+            self, "导出CSV", "", "CSV Files (*.csv)")
+        if not file_path:
+            return
+        try:
+            file_io.write_csv_records(
+                file_path, self.project_data.doe_matrix)
+            Notice.information(
+                self, "成功",
+                "DOE表导出成功！你可以将该表发给仿真脚本加载执行。")
+        except Exception as exc:
+            Notice.critical(self, "错误", f"导出失败: {exc}")
 
     def import_from_csv(self):
         """导入外部算好的 CSV (如流体仿真自动生成的带结果列的文件)"""
@@ -175,8 +176,7 @@ class DataManagementPage(QWidget):
         if not file_path:
             return
         try:
-            with open(file_path, mode="r", encoding="utf-8") as handle:
-                imported_data = list(csv.DictReader(handle))
+            imported_data = file_io.read_csv_records(file_path)
             service = ProjectService.for_project(self.project_data)
             service.replace_dataset(imported_data)
             service.record_operation(

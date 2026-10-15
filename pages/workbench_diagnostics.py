@@ -1,10 +1,4 @@
 """Response-level diagnostic tables, plots and interactive design evaluation."""
-import csv
-import hashlib
-from datetime import datetime, timezone
-from dataclasses import asdict
-import json
-from pathlib import Path
 import numpy as np
 from scipy import stats
 from PyQt6.QtWidgets import (QWidget,QVBoxLayout,QHBoxLayout,QLabel,QComboBox,QPushButton,
@@ -13,6 +7,7 @@ from PyQt6.QtWidgets import (QWidget,QVBoxLayout,QHBoxLayout,QLabel,QComboBox,QP
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
 import workbench_analysis as wa
+import file_io
 import optimizer_engine as oe
 from services import analysis_service
 from services.project_service import ProjectService
@@ -161,26 +156,45 @@ class WorkbenchDiagnostics(QWidget):
             service.record_operation("设计点核验", "失败", message=str(exc))
 
     def export_csv(self):
-        table=self.tabs.currentWidget()
-        if table is self.point_tab:table=self.point_table
-        if not isinstance(table,QTableWidget) or not table.rowCount():
-            Notice.information(self,'暂无表格','请切换到有结果的统计表后导出。');return
-        path,_=QFileDialog.getSaveFileName(self,'导出当前统计表','','CSV (*.csv)')
-        if not path:return
+        table = self.tabs.currentWidget()
+        if table is self.point_tab:
+            table = self.point_table
+        if not isinstance(table, QTableWidget) or not table.rowCount():
+            Notice.information(
+                self, "暂无表格", "请切换到有结果的统计表后导出。")
+            return
+        path, _ = QFileDialog.getSaveFileName(
+            self, "导出当前统计表", "", "CSV (*.csv)")
+        if not path:
+            return
+        headers = [
+            table.horizontalHeaderItem(index).text()
+            for index in range(table.columnCount())]
+        rows = [
+            [table.item(row, column).text()
+             if table.item(row, column) else ""
+             for column in range(table.columnCount())]
+            for row in range(table.rowCount())]
         try:
-            with open(path,'w',encoding='utf-8-sig',newline='') as f:
-                writer=csv.writer(f);writer.writerow([table.horizontalHeaderItem(i).text() for i in range(table.columnCount())])
-                writer.writerows([[table.item(i,j).text() if table.item(i,j) else '' for j in range(table.columnCount())] for i in range(table.rowCount())])
-        except OSError as exc:Notice.warning(self,'导出失败',str(exc))
-        else:Notice.information(self,'导出成功',path)
+            file_io.write_csv_table(path, headers, rows)
+        except OSError as exc:
+            Notice.warning(self, "导出失败", str(exc))
+        else:
+            Notice.information(self, "导出成功", path)
 
     def export_json(self):
-        if not self.context:return
-        path,_=QFileDialog.getSaveFileName(self,'导出完整统计','','JSON (*.json)')
-        if not path:return
-        try:Path(path).write_text(json.dumps(wa.clean_json(self.snapshot),ensure_ascii=False,indent=2,allow_nan=False),encoding='utf-8')
-        except OSError as exc:Notice.warning(self,'导出失败',str(exc))
-        else:Notice.information(self,'导出成功',path)
+        if not self.context:
+            return
+        path, _ = QFileDialog.getSaveFileName(
+            self, "导出完整统计", "", "JSON (*.json)")
+        if not path:
+            return
+        try:
+            file_io.write_json(path, wa.clean_json(self.snapshot))
+        except OSError as exc:
+            Notice.warning(self, "导出失败", str(exc))
+        else:
+            Notice.information(self, "导出成功", path)
 
     def export_plot(self):
         if not self.context:return

@@ -6,12 +6,10 @@ import html
 import io
 import json
 import math
-import os
-import tempfile
 import uuid
 from datetime import datetime, timezone
 from dataclasses import asdict
-from pathlib import Path
+import file_io
 
 
 def serializable(value):
@@ -58,35 +56,41 @@ def bundle(project):
         'results':results(project),'history':copy.deepcopy(project.report_history)}
 
 
-def save_archive(data,path):
+def save_archive(data, path):
     """Atomic write; an interrupted export leaves the previous archive intact."""
-    path=Path(path)
-    fd,tmp=tempfile.mkstemp(prefix='.rams-report-',suffix='.tmp',dir=path.parent)
-    try:
-        with os.fdopen(fd,'w',encoding='utf-8') as f:
-            json.dump(serializable(data),f,ensure_ascii=False,indent=2,allow_nan=False)
-        os.replace(tmp,path)
-    finally:
-        if os.path.exists(tmp):os.unlink(tmp)
+    file_io.atomic_write_json(path, serializable(data))
 
 
 def load_archive(path):
-    data=json.loads(Path(path).read_text(encoding='utf-8-sig'))
-    if not isinstance(data,dict) or data.get('format')!='RAMS-report-archive' or data.get('version')!=1:
-        raise ValueError('不是支持的 RAMS 报告档案（版本 1）')
-    if not isinstance(data.get('input'),dict) or not isinstance(data.get('history'),list) or not isinstance(data.get('results'),dict):
-        raise ValueError('报告档案缺少输入、结果或操作记录')
-    seen=set()
-    for rec in data['history']:
-        if not isinstance(rec,dict) or not all(k in rec for k in ('id','time','stage','status','input','input_sha256','payload','record_sha256')):
-            raise ValueError('操作记录不完整')
-        if rec['id'] in seen or fingerprint(rec['input'])!=rec['input_sha256']:
-            raise ValueError('操作记录编号重复或输入校验不一致')
-        if fingerprint({k:v for k,v in rec.items() if k!='record_sha256'})!=rec['record_sha256']:
-            raise ValueError('操作记录内容校验不一致')
-        if not isinstance(rec['input'],dict) or not isinstance(rec['payload'],dict):
-            raise ValueError('操作记录的输入或结果格式无效')
-        seen.add(rec['id'])
+    data = file_io.read_json(path)
+    if (not isinstance(data, dict)
+            or data.get("format") != "RAMS-report-archive"
+            or data.get("version") != 1):
+        raise ValueError("不是支持的 RAMS 报告档案（版本 1）")
+    if (not isinstance(data.get("input"), dict)
+            or not isinstance(data.get("history"), list)
+            or not isinstance(data.get("results"), dict)):
+        raise ValueError("报告档案缺少输入、结果或操作记录")
+    seen = set()
+    required = (
+        "id", "time", "stage", "status", "input", "input_sha256",
+        "payload", "record_sha256")
+    for record in data["history"]:
+        if (not isinstance(record, dict)
+                or not all(key in record for key in required)):
+            raise ValueError("操作记录不完整")
+        if (record["id"] in seen
+                or fingerprint(record["input"]) != record["input_sha256"]):
+            raise ValueError("操作记录编号重复或输入校验不一致")
+        content = {
+            key: value for key, value in record.items()
+            if key != "record_sha256"}
+        if fingerprint(content) != record["record_sha256"]:
+            raise ValueError("操作记录内容校验不一致")
+        if (not isinstance(record["input"], dict)
+                or not isinstance(record["payload"], dict)):
+            raise ValueError("操作记录的输入或结果格式无效")
+        seen.add(record["id"])
     return data
 
 
@@ -292,27 +296,9 @@ def render_html(report,section_ids=None):
     return ''.join(chunks)
 
 
-def export_pdf(html_text,path):
-    """Use the application's existing Qt dependency; text remains selectable."""
-    from PyQt6.QtCore import QRectF,QMarginsF,Qt
-    from PyQt6.QtGui import QPdfWriter,QPageSize,QTextDocument,QPainter,QFont,QAbstractTextDocumentLayout
-    writer=QPdfWriter(str(path));writer.setResolution(96);writer.setPageSize(QPageSize(QPageSize.PageSizeId.A4))
-    writer.setPageMargins(QMarginsF(15,15,15,15));writer.setTitle('RAMS 稳定性设计分析报告')
-    doc=QTextDocument();doc.setDefaultFont(QFont('Microsoft YaHei',10));doc.documentLayout().setPaintDevice(writer)
-    doc.setHtml(html_text);width=writer.width();height=writer.height()-38
-    from PyQt6.QtCore import QSizeF
-    doc.setPageSize(QSizeF(width,height))
-    painter=QPainter(writer)
-    if not painter.isActive():raise OSError('PDF 文件无法写入，请检查路径和文件占用')
-    try:
-        count=doc.pageCount()
-        for i in range(count):
-            if i and not writer.newPage():raise OSError('PDF 新页面写入失败')
-            painter.save();painter.setClipRect(QRectF(0,0,width,height));painter.translate(0,-i*height)
-            context=QAbstractTextDocumentLayout.PaintContext();context.clip=QRectF(0,i*height,width,height)
-            doc.documentLayout().draw(painter,context);painter.restore()
-            painter.setFont(QFont('Microsoft YaHei',8));painter.drawText(QRectF(0,height+12,width,22),Qt.AlignmentFlag.AlignRight,f'RAMS · {i+1} / {count}')
-    finally:painter.end()
+def export_pdf(html_text, path):
+    """Compatibility entry point; file writing lives in file_io."""
+    return file_io.export_pdf(html_text, path)
 
 
 def build_current_report(data):

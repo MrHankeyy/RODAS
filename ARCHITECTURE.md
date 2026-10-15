@@ -5,6 +5,7 @@ v0.2 采用四层结构，保持现有算法与界面行为不变：
 - core/：纯计算。DOE、代理模型、响应模型、统计与优化均可脱离 PyQt6 调用。
 - services/：业务流程。负责生成方案、准备模型、组织统计分析，以及统一修改 ProjectData。
 - pages/：Qt 界面。页面收集输入、调用 service、显示结果；复杂页面拆为面板、控制器、绘图和文本模块。
+- file_io.py：CSV、JSON、HTML 与 PDF 的实际读写适配。
 - 根目录兼容模块：doe_engine.py、optimizer_engine.py、design_analysis.py、workbench_analysis.py 保留旧导入路径，内部转发到 core/。
 
 ## 项目数据写入规则
