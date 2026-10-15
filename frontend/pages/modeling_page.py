@@ -11,8 +11,7 @@ from frontend.pages.table_widgets import MultiLevelHeader
 
 
 FIXED_VALUE_HELP = (
-    "填写不确定性参数；点击‘固定值’后，该因子将按均值或区间中点"
-    "作为确定值使用。"
+    "点击‘固定值’后，该因子将按均值或区间中点作为确定值使用。"
 )
 
 
