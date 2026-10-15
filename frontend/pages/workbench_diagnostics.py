@@ -6,11 +6,11 @@ from PyQt6.QtWidgets import (QWidget,QVBoxLayout,QHBoxLayout,QLabel,QComboBox,QP
     QDoubleSpinBox,QScrollArea,QFormLayout)
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
-from rams.engines import workbench as wa
-from rams.infrastructure import file_io
-from rams.engines import optimizer as oe
-from rams.services import analysis_service
-from rams.services.project_service import ProjectService
+from backend.engines import workbench as wa
+from backend.infrastructure import file_io
+from backend.engines import optimizer as oe
+from backend.services import analysis_service
+from backend.services.project_service import ProjectService
 
 
 class WorkbenchDiagnostics(QWidget):
@@ -136,7 +136,7 @@ class WorkbenchDiagnostics(QWidget):
                  for name, widget in self.controls.items()},
                 self.kd, self.kc)
             self.snapshot["point_evaluation"] = result
-            from rams.reporting import report_engine as reports
+            from backend.reporting import report_engine as reports
             serialized = reports.serializable(result)
             service.update_workbench(point_evaluation=serialized)
             service.record_operation(
@@ -204,4 +204,4 @@ class WorkbenchDiagnostics(QWidget):
         except (OSError,ValueError) as exc:Notice.warning(self,'导出失败',str(exc))
         else:Notice.information(self,'导出成功',path)
 
-from rams.ui.notifications import Notice
+from frontend.notifications import Notice

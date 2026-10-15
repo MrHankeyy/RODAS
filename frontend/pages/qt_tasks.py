@@ -1,7 +1,7 @@
 """Qt adapters for running long calculations off the UI thread."""
 from PyQt6.QtCore import pyqtSignal, QThread
 
-from rams.engines import optimizer as optimizer
+from backend.engines import optimizer as optimizer
 
 
 class OptimizationWorker(QThread):

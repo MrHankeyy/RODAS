@@ -1,6 +1,6 @@
 import sys
 from PyQt6.QtWidgets import QApplication
-from rams.ui.main_window import MainWindow
+from frontend.main_window import MainWindow
 
 
 def main():

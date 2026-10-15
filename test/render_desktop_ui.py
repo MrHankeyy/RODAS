@@ -6,7 +6,7 @@ os.environ['QT_QPA_PLATFORM'] = 'offscreen'
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from PyQt6.QtWidgets import QApplication, QDoubleSpinBox
 from PyQt6.QtGui import QFont, QFontDatabase
-from rams.ui.main_window import MainWindow
+from frontend.main_window import MainWindow
 from test_workbench_analysis import make_context
 from test_classical_doe import taguchi
 
@@ -54,7 +54,7 @@ capture('04-diagnostics')
 for index in (0, 2, 3, 4, 5, 6, 7, 8):
     w.page_OPT.tabs.setCurrentIndex(index)
     capture(f'04-result-{index}')
-from rams.ui.pages.surrogate_dialogs import SurrogateDialog
+from frontend.pages.surrogate_dialogs import SurrogateDialog
 for key in ('Kriging', 'SVR', 'ANN'):
     dialog = SurrogateDialog(key, w.project_data.factors, w)
     dialog.show()

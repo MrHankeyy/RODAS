@@ -23,19 +23,19 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import pyqtSignal
 
-from rams.engines import doe as engine
-from rams.engines import optimizer as oe
-from rams.engines import design_analysis as da
-from rams.ui.pages.design_results import DesignResultsPanel
-from rams.ui.pages.workbench_diagnostics import WorkbenchDiagnostics
-from rams.ui.pages.qt_tasks import OptimizationWorker
-from rams.ui.pages.optimization_controller import OptimizationController
-from rams.ui.pages import optimization_panels, optimization_plots, result_text
-from rams.engines import workbench as wa
-from rams.reporting import report_engine as reports
-from rams.domain.models import ProjectData
-from rams.services import analysis_service, model_service
-from rams.services.project_service import ProjectService
+from backend.engines import doe as engine
+from backend.engines import optimizer as oe
+from backend.engines import design_analysis as da
+from frontend.pages.design_results import DesignResultsPanel
+from frontend.pages.workbench_diagnostics import WorkbenchDiagnostics
+from frontend.pages.qt_tasks import OptimizationWorker
+from frontend.pages.optimization_controller import OptimizationController
+from frontend.pages import optimization_panels, optimization_plots, result_text
+from backend.engines import workbench as wa
+from backend.reporting import report_engine as reports
+from backend.domain.models import ProjectData
+from backend.services import analysis_service, model_service
+from backend.services.project_service import ProjectService
 
 import matplotlib
 matplotlib.use('Qt5Agg')
@@ -382,4 +382,4 @@ class OptimizationPage(QWidget):
     def _run_tool(self):
         return self.controller._run_tool()
 
-from rams.ui.notifications import Notice
+from frontend.notifications import Notice

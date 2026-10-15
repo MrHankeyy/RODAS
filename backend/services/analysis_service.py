@@ -3,9 +3,9 @@ from dataclasses import asdict
 from datetime import datetime, timezone
 import hashlib
 
-from rams.engines import optimizer as optimizer
-from rams.engines import workbench as statistics
-from rams.services.project_service import ProjectService
+from backend.engines import optimizer as optimizer
+from backend.engines import workbench as statistics
+from backend.services.project_service import ProjectService
 
 
 def build_snapshot(context, k_design=6, k_constraint=6):

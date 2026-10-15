@@ -21,10 +21,10 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from rams.engines import doe as doe
-from rams.engines import optimizer as optimizer
-from rams.domain.models import FactorItem, ProjectData, ResponseItem
-from rams.ui.pages.optimization_page import OptimizationPage
+from backend.engines import doe as doe
+from backend.engines import optimizer as optimizer
+from backend.domain.models import FactorItem, ProjectData, ResponseItem
+from frontend.pages.optimization_page import OptimizationPage
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 APP = QApplication.instance() or QApplication([])

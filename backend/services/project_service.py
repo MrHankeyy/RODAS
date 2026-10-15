@@ -38,7 +38,7 @@ class ProjectService:
 
     def input_snapshot(self):
         """Copy inputs only; no predictors, UI objects or live service references."""
-        from rams.domain.models import ProjectData
+        from backend.domain.models import ProjectData
         return ProjectData(**{key: deepcopy(getattr(self._project, key)) for key in INPUT_FIELDS})
 
     def input_signature(self):

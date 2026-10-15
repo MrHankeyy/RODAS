@@ -11,9 +11,9 @@ sys.path.insert(0, str(ROOT))
 
 from openpyxl import load_workbook
 from PyQt6.QtWidgets import QApplication
-from rams.domain.models import ProjectData, FactorItem, ResponseItem
-from rams.ui.pages.optimization_page import OptimizationPage
-from rams.engines import optimizer as oe
+from backend.domain.models import ProjectData, FactorItem, ResponseItem
+from frontend.pages.optimization_page import OptimizationPage
+from backend.engines import optimizer as oe
 
 APP = QApplication.instance() or QApplication([])
 

@@ -5,10 +5,10 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6 import QtGui
 from PyQt6.QtCore import Qt
-from rams.infrastructure import file_io
-from rams.domain.models import ProjectData
-from rams.services.project_service import ProjectService
-from rams.ui.pages.table_widgets import ExcelLikeTableWidget
+from backend.infrastructure import file_io
+from backend.domain.models import ProjectData
+from backend.services.project_service import ProjectService
+from frontend.pages.table_widgets import ExcelLikeTableWidget
 
 class DataManagementPage(QWidget):
     def __init__(self, project_data: ProjectData):
@@ -71,7 +71,7 @@ class DataManagementPage(QWidget):
         main_layout.addLayout(btn_layout)
 
         self.setLayout(main_layout)
-        from rams.ui.theme import primary
+        from frontend.theme import primary
         self.load_btn.setStyleSheet("")
         primary(self.save_btn)
 
@@ -191,4 +191,4 @@ class DataManagementPage(QWidget):
         except Exception as exc:
             Notice.critical(self, "错误", f"导入失败: {exc}")
 
-from rams.ui.notifications import Notice
+from frontend.notifications import Notice

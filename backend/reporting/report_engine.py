@@ -9,8 +9,8 @@ import math
 import uuid
 from datetime import datetime, timezone
 from dataclasses import asdict
-from rams.infrastructure import file_io
-from rams.services.project_service import ProjectService
+from backend.infrastructure import file_io
+from backend.services.project_service import ProjectService
 
 
 def serializable(value):

@@ -1,7 +1,7 @@
 import unittest
 
-from rams.domain.models import FactorItem, ProjectData, ResponseItem
-from rams.services.project_service import ProjectService
+from backend.domain.models import FactorItem, ProjectData, ResponseItem
+from backend.services.project_service import ProjectService
 
 
 class ProjectServiceTests(unittest.TestCase):

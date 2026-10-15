@@ -11,7 +11,7 @@ class MessageBus(QObject):
 
 bus = MessageBus()
 
-from rams.services.project_service import set_operation_sink
+from backend.services.project_service import set_operation_sink
 set_operation_sink(bus.post)
 
 

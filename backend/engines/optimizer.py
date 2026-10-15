@@ -1,7 +1,7 @@
 """Compatibility imports for existing scripts; implementation lives in core/."""
-from rams.core.factors import HAS_NUMPY, _np
-from rams.core import factors as de
-from rams.core.design_evaluation import (
+from backend.core.factors import HAS_NUMPY, _np
+from backend.core import factors as de
+from backend.core.design_evaluation import (
     _sigma_of_factor,
     robust_moments,
     _response_ref,
@@ -13,10 +13,10 @@ from rams.core.design_evaluation import (
     self_is_constraint,
     design_inputs,
 )
-from rams.core.factors import (
+from backend.core.factors import (
     _isfinite,
 )
-from rams.core.optimization import (
+from backend.core.optimization import (
     _dominates,
     _fast_non_dominated_sort,
     _crowding_distance,
@@ -33,7 +33,7 @@ from rams.core.optimization import (
     evop_cycle,
     aofat_search,
 )
-from rams.core.response_models import (
+from backend.core.response_models import (
     _design_terms,
     _design_row,
     _quad_hess_diag,
@@ -45,7 +45,7 @@ from rams.core.response_models import (
     model_equation,
     build_models,
 )
-from rams.core.statistics import (
+from backend.core.statistics import (
     _gammaln,
     _betacf,
     _betai,
