@@ -16,7 +16,7 @@ def set_operation_sink(callback):
     _operation_sink = callback
 
 
-def signature(project):
+def _input_signature(project):
     return json.dumps({"factors": [asdict(f) for f in project.factors],
                        "responses": [asdict(r) for r in project.responses],
                        "method": project.design_method, "params": project.design_params,
@@ -27,7 +27,7 @@ def signature(project):
 class ProjectService:
     def __init__(self, project):
         self._project = project
-        self._signature = signature(project)
+        self._signature = _input_signature(project)
         self.model_cache = {}
 
     @classmethod
@@ -41,8 +41,12 @@ class ProjectService:
         from rams.domain.models import ProjectData
         return ProjectData(**{key: deepcopy(getattr(self._project, key)) for key in INPUT_FIELDS})
 
+    def input_signature(self):
+        """Return the current serialized input identity for async result checks."""
+        return _input_signature(self._project)
+
     def ensure_current(self):
-        current = signature(self._project)
+        current = self.input_signature()
         changed = current != self._signature
         if changed:
             self._invalidate()
@@ -96,7 +100,7 @@ class ProjectService:
         self._project.report_metadata = deepcopy(metadata)
 
     def _check_source(self, expected_signature):
-        if expected_signature is not None and signature(self._project) != expected_signature:
+        if expected_signature is not None and self.input_signature() != expected_signature:
             raise ValueError('计算期间输入已改变，本次结果已丢弃，请重新运行。')
 
     def publish_results(self, expected_signature=None, **results):

@@ -11,7 +11,6 @@ from rams.ui.notifications import Notice
 from rams.ui.pages.qt_tasks import OptimizationWorker
 from rams.ui.pages.workbench_diagnostics import WorkbenchDiagnostics
 from rams.services import analysis_service, model_service
-from rams.services.project_service import ProjectService
 
 
 class OptimizationController:
@@ -35,7 +34,7 @@ class OptimizationController:
             elif "代理模型" in method:
                 page._run_surrogate()
         except Exception as exc:  # noqa: BLE001
-            page.project_data.record_operation("后端分析", "失败", message=str(exc))
+            page.project_service.record_operation("后端分析", "失败", message=str(exc))
             Notice.critical(page, "分析失败", f"后端分析出错：{exc}")
             return
         page.status_label.setText("分析完成：结果已更新")
@@ -60,8 +59,8 @@ class OptimizationController:
 
     def _check_inputs(self):
         page = self.page
-        page.project_data.ensure_results_current()
-        signature = page.project_data.analysis_signature()
+        page.project_service.ensure_current()
+        signature = page.project_service.input_signature()
         if signature != page._input_signature:
             page._input_signature = signature
             page._oe_context = None
@@ -99,8 +98,8 @@ class OptimizationController:
             context = page._prepare_context()
             mode = {"多目标 NSGA-II":"multi", "加权单目标":"weighted", "约束型":"constraint"}[page.robust_mode_combo.currentText()]
             limits = page._sigma_limits() if mode == "constraint" else {}
-            ProjectService.for_project(page.project_data).clear_workbench()
-            page._run_signature = page.project_data.analysis_signature()
+            page.project_service.clear_workbench()
+            page._run_signature = page.project_service.input_signature()
             page._worker = OptimizationWorker(context, dict(mode=mode, pop=page.pop_spin.value(), gen=page.gen_spin.value(),
                 weight=page.weight_spin.value(), k_design=page.k_design_spin.value(), k_constraint=page.k_constraint_spin.value(),
                 seed=7, sigma_limits=limits), page)
@@ -127,13 +126,13 @@ class OptimizationController:
         page._oe_context = None
         page._robust_res = {}
         page.robust_text.clear()
-        ProjectService.for_project(page.project_data).clear_workbench()
+        page.project_service.clear_workbench()
         Notice.warning(page, "优化失败", message)
 
     def _optimization_ready(self, robust):
         page = self.page
         try:
-            if page.project_data.analysis_signature() != page._run_signature:
+            if page.project_service.input_signature() != page._run_signature:
                 raise ValueError("计算期间输入已改变，本次结果已丢弃，请重新运行。")
             if robust.get("error"):
                 raise ValueError(robust["error"])
@@ -213,7 +212,7 @@ class OptimizationController:
             page.status_label.setText("建模与统计分析完成，未执行鲁棒优化。")
             page.optimization_finished.emit()
         except Exception as exc:
-            page.project_data.record_operation("工作台统计分析", "失败", {"settings": page._analysis_settings()}, message=str(exc))
+            page.project_service.record_operation("工作台统计分析", "失败", {"settings": page._analysis_settings()}, message=str(exc))
             logging.exception("统计分析失败")
             page.status_label.setText(f"统计分析失败：{exc}")
             Notice.warning(page, "统计分析失败", str(exc))
@@ -252,7 +251,7 @@ class OptimizationController:
              for name, rows in bundle["tolerance"].items()
              for row in rows])
     
-        service = ProjectService.for_project(page.project_data)
+        service = page.project_service
         service.publish_results(
             expected_signature=getattr(page, "_run_signature", None),
             workbench_result=reports.serializable(bundle["snapshot"]))
@@ -291,7 +290,7 @@ class OptimizationController:
                 for factor in design_inputs
             }
     
-        service = ProjectService.for_project(page.project_data)
+        service = page.project_service
         try:
             method = (
                 "最陡上升" if "最陡上升" in tool else

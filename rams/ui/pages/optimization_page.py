@@ -59,8 +59,9 @@ class OptimizationPage(QWidget):
     def __init__(self, project_data: ProjectData):
         super().__init__()
         self.project_data = project_data
-        self.project_data.ensure_results_current()
-        self._input_signature = self.project_data.analysis_signature()
+        self.project_service = ProjectService.for_project(project_data)
+        self.project_service.ensure_current()
+        self._input_signature = self.project_service.input_signature()
         self.controller = OptimizationController(self)
         self.init_ui()
 
@@ -73,7 +74,7 @@ class OptimizationPage(QWidget):
             self.diagnostics_panel.clear()
             self._oe_context = None
             self._robust_res = {}
-            ProjectService.for_project(self.project_data).clear_workbench()
+            self.project_service.clear_workbench()
             self.robust_text.clear()
             self.status_label.setText(
                 "优化参数已改变；已有优化结果属于先前设置，请重新执行。")
@@ -265,7 +266,7 @@ class OptimizationPage(QWidget):
 
     # ------------------------------------------------------------- 筛选分析
     def _run_screening(self):
-        service = ProjectService.for_project(self.project_data)
+        service = self.project_service
         result = da.screening(self.project_data)
         service.publish_results(screening_result=result)
         self.screening_panel.set_result(result)
@@ -278,19 +279,19 @@ class OptimizationPage(QWidget):
         context = model_service.build_rsm_context(self.project_data)
         self._oe_context = context
         result = self._store_rsm_fit(context)
-        ProjectService.for_project(self.project_data).record_operation(
+        self.project_service.record_operation(
             "响应曲面建模", payload={"results": {"rsm": result}})
         return context
 
     def _store_rsm_fit(self, context):
         result = model_service.rsm_result(self.project_data, context)
-        ProjectService.for_project(self.project_data).publish_results(
+        self.project_service.publish_results(
             rsm_result=result)
         return result
 
     # ------------------------------------------------------------- 田口分析
     def _run_taguchi(self):
-        service = ProjectService.for_project(self.project_data)
+        service = self.project_service
         result = da.taguchi(self.project_data)
         service.publish_results(taguchi_result=result)
         self.taguchi_panel.set_result(result)
@@ -303,7 +304,7 @@ class OptimizationPage(QWidget):
         return model_service.surrogate_signature(self.project_data)
 
     def _run_surrogate(self):
-        service = ProjectService.for_project(self.project_data)
+        service = self.project_service
         result = model_service.train_surrogates(self.project_data)
         service.publish_results(surrogate_result=result)
         for name, response_result in result["responses"].items():

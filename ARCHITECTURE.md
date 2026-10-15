@@ -22,8 +22,8 @@
 - `update_workbench` / `clear_workbench`：维护工作台结果；
 - 输入变化会统一清除失效结果和模型缓存。
 
-`ProjectData` 中的 `analysis_signature`、`ensure_results_current` 和
-`record_operation` 委托给 `ProjectService`，用于兼容现有对象调用方式。
+`ProjectData` 只保存领域数据，不导入业务服务。输入签名、结果失效和操作通知都通过
+`ProjectService` 的公开方法完成，页面和报告模块不再调用数据对象上的兼容方法。
 
 ## 页面拆分
 

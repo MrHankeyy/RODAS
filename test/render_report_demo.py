@@ -10,6 +10,7 @@ from rams.ui.pages.optimization_page import OptimizationPage
 from rams.ui.pages.analysis_page import AnalysisPage
 from rams.reporting import report_engine as reports
 from rams.engines import workbench as wa
+from rams.services.project_service import ProjectService
 
 font=QFontDatabase.addApplicationFont('C:/Windows/Fonts/msyh.ttc')
 if font>=0:APP.setFont(QFont(QFontDatabase.applicationFontFamilies(font)[0],10))
@@ -19,7 +20,7 @@ p.report_metadata={'project_name':'演示数据：稳定性设计报告（非用
     'materials':'合成数值试验，35 个固定随机种子生成的验证点；未使用真实样机或用户试验数据。',
     'conclusion':'本文件仅为软件功能演示，不能作为产品验收结论。',
     'confirmation':'实际工程使用时，应对候选点补充独立确认试验并复核输入扰动假设。'}
-p.record_operation('业务模型保存');p.record_operation('试验响应保存',message='固定种子合成响应，用于软件验证')
+ProjectService.for_project(p).record_operation('业务模型保存');ProjectService.for_project(p).record_operation('试验响应保存',message='固定种子合成响应，用于软件验证')
 page=OptimizationPage(p);page.pop_spin.setValue(20);page.gen_spin.setValue(30);page.k_constraint_spin.setValue(2)
 with patch.object(QMessageBox,'information'),patch.object(QMessageBox,'warning') as warning:
     page._execute_workbench();assert not warning.called

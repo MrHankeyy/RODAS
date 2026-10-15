@@ -10,6 +10,7 @@ import uuid
 from datetime import datetime, timezone
 from dataclasses import asdict
 from rams.infrastructure import file_io
+from rams.services.project_service import ProjectService
 
 
 def serializable(value):
@@ -50,7 +51,7 @@ def record_operation(project,stage,status='完成',payload=None,message=''):
 
 
 def bundle(project):
-    project.ensure_results_current()
+    ProjectService.for_project(project).ensure_current()
     return {'format':'RAMS-report-archive','version':1,'created_utc':datetime.now(timezone.utc).isoformat(timespec='seconds'),
         'metadata':serializable(project.report_metadata),'input':inputs(project),
         'results':results(project),'history':copy.deepcopy(project.report_history)}

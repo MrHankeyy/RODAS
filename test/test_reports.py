@@ -14,6 +14,7 @@ from rams.domain.models import ProjectData,FactorItem,ResponseItem
 from rams.ui.pages.optimization_page import OptimizationPage
 from rams.ui.pages.analysis_page import AnalysisPage
 from rams.reporting import report_engine as re
+from rams.services.project_service import ProjectService
 from test_workbench_analysis import make_context
 
 APP=QApplication.instance() or QApplication([])
@@ -26,8 +27,8 @@ class ReportTests(unittest.TestCase):
         def receive(*args):messages.append(args)
         bus.posted.connect(receive)
         try:
-            p.record_operation('响应保存')
-            p.record_operation('优化', '失败', message='不可行')
+            ProjectService.for_project(p).record_operation('响应保存')
+            ProjectService.for_project(p).record_operation('优化', '失败', message='不可行')
             self.assertFalse(p.report_history)
             self.assertEqual(messages[-1], ('错误','优化','失败：不可行'))
         finally:bus.posted.disconnect(receive)
@@ -60,8 +61,8 @@ class ReportTests(unittest.TestCase):
         self.assertEqual(clean['model'],{})
 
     def test_stale_results_removed(self):
-        p,_=make_context();p.ensure_results_current();p.workbench_result={'optimization':{'best':{'x':{'A':.7}}}}
-        p.record_operation('鲁棒优化')
+        p,_=make_context();ProjectService.for_project(p).ensure_current();p.workbench_result={'optimization':{'best':{'x':{'A':.7}}}}
+        ProjectService.for_project(p).record_operation('鲁棒优化')
         p.doe_matrix[0]['Y']+=1
         data=re.bundle(p)
         self.assertFalse(data['results']['workbench']);self.assertFalse(data['history'])

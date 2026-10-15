@@ -5,6 +5,7 @@ import hashlib
 
 from rams.engines import optimizer as optimizer
 from rams.engines import workbench as statistics
+from rams.services.project_service import ProjectService
 
 
 def build_snapshot(context, k_design=6, k_constraint=6):
@@ -12,7 +13,7 @@ def build_snapshot(context, k_design=6, k_constraint=6):
     return {
         "created_utc": datetime.now(timezone.utc).isoformat(),
         "input_sha256": hashlib.sha256(
-            project.analysis_signature().encode("utf-8")).hexdigest(),
+            ProjectService.for_project(project).input_signature().encode("utf-8")).hexdigest(),
         "inputs": [asdict(item) for item in context["inputs"]],
         "response_definitions": [
             asdict(item) for item in context["_responses"]],

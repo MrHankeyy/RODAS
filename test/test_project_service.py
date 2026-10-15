@@ -1,7 +1,7 @@
 import unittest
 
 from rams.domain.models import FactorItem, ProjectData, ResponseItem
-from rams.services.project_service import ProjectService, signature
+from rams.services.project_service import ProjectService
 
 
 class ProjectServiceTests(unittest.TestCase):
@@ -47,7 +47,7 @@ class ProjectServiceTests(unittest.TestCase):
     def test_stale_async_result_is_rejected(self):
         project = self.make_project()
         service = ProjectService.for_project(project)
-        started_from = signature(project)
+        started_from = service.input_signature()
         project.doe_matrix[0]["A"] = 0.5
 
         with self.assertRaisesRegex(ValueError, "输入已改变"):
