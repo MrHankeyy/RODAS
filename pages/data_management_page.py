@@ -7,77 +7,8 @@ from PyQt6 import QtGui
 from PyQt6.QtCore import Qt
 import csv
 from models import ProjectData
-
-class ExcelLikeTableWidget(QTableWidget):
-    """支持从 Excel/CSV 范围复制、粘贴以及批量删除的增强表格"""
-    def keyPressEvent(self, event):
-        # Ctrl + C 复制选区
-        if event.matches(QtGui.QKeySequence.StandardKey.Copy):
-            self.copy_to_clipboard()
-        # Ctrl + V 粘贴
-        elif event.matches(QtGui.QKeySequence.StandardKey.Paste):
-            self.paste_from_clipboard()
-        # Delete 或 Backspace 批量删除所选项 (仅限可编辑框)
-        elif event.key() in (Qt.Key.Key_Delete, Qt.Key.Key_Backspace):
-            self.delete_selected()
-        else:
-            super().keyPressEvent(event)
-
-    def copy_to_clipboard(self):
-        selected_ranges = self.selectedRanges()
-        if not selected_ranges:
-            return
-
-        # 找到选区的边界 (支持用户反向框选)
-        top_row = min(r.topRow() for r in selected_ranges)
-        bottom_row = max(r.bottomRow() for r in selected_ranges)
-        left_col = min(r.leftColumn() for r in selected_ranges)
-        right_col = max(r.rightColumn() for r in selected_ranges)
-
-        clipboard_text = ""
-        for row in range(top_row, bottom_row + 1):
-            row_data = []
-            for col in range(left_col, right_col + 1):
-                item = self.item(row, col)
-                row_data.append(item.text() if item else "")
-            # 使用 tab (制表符) 分隔同一行数据，应对 Excel 复制规范
-            clipboard_text += "\t".join(row_data) + "\n"
-        
-        QApplication.clipboard().setText(clipboard_text)
-
-    def paste_from_clipboard(self):
-        clipboard = QApplication.clipboard()
-        text = clipboard.text()
-        if not text: return
-
-        # 获取当前选中的起始单元格
-        selected_ranges = self.selectedRanges()
-        if not selected_ranges:
-            start_row, start_col = 0, 0
-        else:
-            start_row = selected_ranges[0].topRow()
-            start_col = selected_ranges[0].leftColumn()
-
-        # 分割行 (去掉末尾可能自带的空换行)
-        rows = text.rstrip('\n').split('\n')
-        for r_idx, row in enumerate(rows):
-            columns = row.split('\t')
-            for c_idx, col_text in enumerate(columns):
-                target_row = start_row + r_idx
-                target_col = start_col + c_idx
-                # 检查是否越界
-                if target_row < self.rowCount() and target_col < self.columnCount():
-                    item = self.item(target_row, target_col)
-                    # ★ 核心防线：仅在非锁定状态下（即白色响应列）允许粘贴覆盖改变数据
-                    if item and (item.flags() & Qt.ItemFlag.ItemIsEditable):
-                        item.setText(col_text.strip())
-
-    def delete_selected(self):
-        """批量清空所选且允许编辑的单元格内容"""
-        for item in self.selectedItems():
-            # 判断这个单元格是否处于可编辑状态
-            if item and (item.flags() & Qt.ItemFlag.ItemIsEditable):
-                item.setText("")
+from services.project_service import ProjectService
+from pages.table_widgets import ExcelLikeTableWidget
 
 class DataManagementPage(QWidget):
     def __init__(self, project_data: ProjectData):
@@ -186,31 +117,28 @@ class DataManagementPage(QWidget):
         self.analyze_btn.setEnabled(True)
 
     def save_results(self):
-        """将用户在表格中手动敲入的响应结果写回 ProjectData，打通与下一步（建模优化）的通道"""
+        """Validate and atomically publish response values through ProjectService."""
         if self.table.rowCount() == 0:
             return
-            
-        columns = [self.table.horizontalHeaderItem(i).text() for i in range(self.table.columnCount())]
-        responses = [r.name for r in self.project_data.responses if r.name]
-        
-        pending_rows = [dict(row) for row in self.project_data.doe_matrix]
-        for r_idx in range(self.table.rowCount()):
-            row_dict = pending_rows[r_idx]
-            for c_idx, col_name in enumerate(columns):
-                # 仅更新响应结果列
-                if col_name in responses:
-                    item = self.table.item(r_idx, c_idx)
-                    val_str = item.text() if item else ""
-                    try:
-                        row_dict[col_name] = float(val_str) if val_str.strip() else ""
-                    except ValueError:
-                        Notice.warning(self, "转换错误", f"第 {r_idx+1} 行 {col_name} 列填入的必须是数字！")
-                        return
-                        
-        self.project_data.doe_matrix = pending_rows
-        self.project_data.ensure_results_current()
-        self.project_data.record_operation("试验响应保存", message="响应已保存到当前项目内存，可开始分析。")
-        Notice.information(self, "成功", "实验数据保存成功，已同步至后端底座，可进入下一阶段！")
+        columns = [self.table.horizontalHeaderItem(i).text()
+                   for i in range(self.table.columnCount())]
+        rows = []
+        for row_index in range(self.table.rowCount()):
+            row = {}
+            for column_index, name in enumerate(columns):
+                item = self.table.item(row_index, column_index)
+                row[name] = item.text() if item else ""
+            rows.append(row)
+        service = ProjectService.for_project(self.project_data)
+        try:
+            service.update_responses(rows)
+        except ValueError as exc:
+            Notice.warning(self, "转换错误", str(exc))
+            return
+        service.record_operation(
+            "试验响应保存", message="响应已保存到当前项目内存，可开始分析。")
+        Notice.information(
+            self, "成功", "实验数据保存成功，已同步至后端底座，可进入下一阶段！")
 
     def simple_analysis(self):
         # 简单占位：比如检测是否有空数据或计算响应的最大值最小值等
@@ -242,25 +170,25 @@ class DataManagementPage(QWidget):
 
     def import_from_csv(self):
         """导入外部算好的 CSV (如流体仿真自动生成的带结果列的文件)"""
-        file_path, _ = QFileDialog.getOpenFileName(self, "导入测试结果 CSV", "", "CSV Files (*.csv)")
-        if file_path:
-            try:
-                with open(file_path, mode='r', encoding='utf-8') as f:
-                    reader = csv.DictReader(f)
-                    imported_data = list(reader)
-                    
-                # 简单校验字段是否匹配
-                if imported_data and "Run_ID" not in imported_data[0]:
-                    Notice.warning(self, "格式错误", "CSV 缺少必须的 Run_ID 列！")
-                    return
-                    
-                # 覆盖刷新内部模型
-                self.project_data.doe_matrix = imported_data
-                self.project_data.ensure_results_current()
-                self.project_data.record_operation("CSV试验导入", message=f"导入 {len(imported_data)} 行；来源文件 {Path(file_path).name}")
-                self.load_doe_matrix() 
-                Notice.information(self, "成功", "外部实验数据导入成功并已填入表格！请点击下方保存确认接轨后端！")
-            except Exception as e:
-                Notice.critical(self, "错误", f"导入失败: {str(e)}")
+        file_path, _ = QFileDialog.getOpenFileName(
+            self, "导入测试结果 CSV", "", "CSV Files (*.csv)")
+        if not file_path:
+            return
+        try:
+            with open(file_path, mode="r", encoding="utf-8") as handle:
+                imported_data = list(csv.DictReader(handle))
+            service = ProjectService.for_project(self.project_data)
+            service.replace_dataset(imported_data)
+            service.record_operation(
+                "CSV试验导入",
+                message=f"导入 {len(imported_data)} 行；来源文件 {Path(file_path).name}")
+            self.load_doe_matrix()
+            Notice.information(
+                self, "成功",
+                "外部实验数据导入成功并已填入表格！请点击下方保存确认接轨后端！")
+        except ValueError as exc:
+            Notice.warning(self, "格式错误", str(exc))
+        except Exception as exc:
+            Notice.critical(self, "错误", f"导入失败: {exc}")
 
 from notifications import Notice

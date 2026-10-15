@@ -7,7 +7,10 @@ from PyQt6.QtWidgets import (
 
 import doe_engine as engine
 from models import ProjectData
+from services import design_service
+from services.project_service import ProjectService
 from pages.surrogate_dialogs import SurrogateDialog, MODEL_TITLES
+from pages import configuration_panels
 
 
 class ConfigurationPage(QWidget):
@@ -123,217 +126,16 @@ class ConfigurationPage(QWidget):
 
     # ------------------------------------------------------------- 控件构建
     def _build_screening_widget(self):
-        widget = QWidget()
-        layout = QVBoxLayout(widget)
-        layout.setContentsMargins(0, 0, 0, 0)
-
-        row1 = QHBoxLayout()
-        row1.addWidget(QLabel("设计族："))
-        self.screen_kind_combo = QComboBox()
-        self.screen_kind_combo.addItems([
-            "全因子 2^k（小因子数）",
-            "部分析因 1/2 分数",
-            "部分析因 1/4 分数",
-            "Plackett-Burman（12/20 次）",
-        ])
-        row1.addWidget(self.screen_kind_combo)
-        row1.addSpacing(24)
-        row1.addWidget(QLabel("报告重点主效应数："))
-        self.f_topn_spin = QSpinBox()
-        self.f_topn_spin.setRange(1, 10)
-        self.f_topn_spin.setValue(5)
-        row1.addWidget(self.f_topn_spin)
-        row1.addStretch()
-        layout.addLayout(row1)
-
-        row2 = QHBoxLayout()
-        row2.addWidget(QLabel("中心点补充数："))
-        self.f_center_spin = QSpinBox()
-        self.f_center_spin.setRange(0, 10)
-        self.f_center_spin.setValue(2)
-        row2.addWidget(self.f_center_spin)
-        row2.addSpacing(24)
-        row2.addWidget(QLabel("整表重复次数："))
-        self.f_repeat_spin = QSpinBox()
-        self.f_repeat_spin.setRange(1, 5)
-        self.f_repeat_spin.setValue(1)
-        row2.addWidget(self.f_repeat_spin)
-        row2.addSpacing(24)
-        row2.addWidget(QLabel("试验顺序："))
-        self.f_order_combo = QComboBox()
-        self.f_order_combo.addItems(["随机", "保持相同"])
-        row2.addWidget(self.f_order_combo)
-        row2.addSpacing(24)
-        row2.addWidget(QLabel("随机种子："))
-        self.f_seed_spin = QSpinBox()
-        self.f_seed_spin.setRange(0, 99999)
-        self.f_seed_spin.setValue(123)
-        row2.addWidget(self.f_seed_spin)
-        row2.addStretch()
-        layout.addLayout(row2)
-
-        self.screen_center_hint = QLabel(
-            "中心点用于检验曲率并估计纯误差；PB 设计主效应与双因子交互存在部分混杂。")
-        self.screen_center_hint.setStyleSheet("color:#666;")
-        layout.addWidget(self.screen_center_hint)
-        return widget
+        return configuration_panels.screening(self)
 
     def _build_rsm_widget(self):
-        widget = QWidget()
-        layout = QVBoxLayout(widget)
-        layout.setContentsMargins(0, 0, 0, 0)
-
-        row1 = QHBoxLayout()
-        row1.addWidget(QLabel("曲面设计类型："))
-        self.rsm_type_combo = QComboBox()
-        self.rsm_type_combo.addItems([
-            "中心复合设计 (CCD)",
-            "Box-Behnken 设计 (BBD)",
-        ])
-        row1.addWidget(self.rsm_type_combo)
-        row1.addSpacing(24)
-        row1.addWidget(QLabel("CCD 轴值（α）："))
-        self.rsm_alpha_combo = QComboBox()
-        self.rsm_alpha_combo.addItems([
-            "可旋转（α=2^(k/4)，推荐）",
-            "位于表面（面心，α=1）",
-            "用户指定 α",
-        ])
-        row1.addWidget(self.rsm_alpha_combo)
-        self.rsm_alpha_spin = QDoubleSpinBox()
-        self.rsm_alpha_spin.setRange(0.5, 5.0)
-        self.rsm_alpha_spin.setDecimals(3)
-        self.rsm_alpha_spin.setValue(1.414)
-        self.rsm_alpha_spin.setEnabled(False)
-        row1.addWidget(self.rsm_alpha_spin)
-        row1.addStretch()
-        layout.addLayout(row1)
-
-        row2 = QHBoxLayout()
-        row2.addWidget(QLabel("中心点数量："))
-        self.rsm_center_spin = QSpinBox()
-        self.rsm_center_spin.setRange(0, 20)
-        self.rsm_center_spin.setValue(3)
-        row2.addWidget(self.rsm_center_spin)
-        row2.addSpacing(24)
-        row2.addWidget(QLabel("整表重复次数："))
-        self.rsm_repeat_spin = QSpinBox()
-        self.rsm_repeat_spin.setRange(1, 5)
-        self.rsm_repeat_spin.setValue(1)
-        row2.addWidget(self.rsm_repeat_spin)
-        row2.addSpacing(24)
-        row2.addWidget(QLabel("试验顺序："))
-        self.rsm_order_combo = QComboBox()
-        self.rsm_order_combo.addItems(["随机", "保持相同"])
-        row2.addWidget(self.rsm_order_combo)
-        row2.addSpacing(24)
-        row2.addWidget(QLabel("随机种子："))
-        self.rsm_seed_spin = QSpinBox()
-        self.rsm_seed_spin.setRange(0, 99999)
-        self.rsm_seed_spin.setValue(456)
-        row2.addWidget(self.rsm_seed_spin)
-        row2.addStretch()
-        layout.addLayout(row2)
-
-        self.rsm_hint = QLabel(
-            "CCD＝立方点＋轴点＋中心点；可旋转 α 使预测方差只依赖到中心的距离。"
-            "BBD 每个因子仅 3 个水平、不含立方体顶点。")
-        self.rsm_hint.setStyleSheet("color:#666;")
-        layout.addWidget(self.rsm_hint)
-
-        self.rsm_type_combo.currentTextChanged.connect(self._on_rsm_type)
-        self.rsm_alpha_combo.currentTextChanged.connect(self._on_alpha_mode)
-        return widget
+        return configuration_panels.response_surface(self)
 
     def _build_taguchi_widget(self):
-        widget = QWidget()
-        layout = QVBoxLayout(widget)
-        layout.setContentsMargins(0, 0, 0, 0)
-
-        row1 = QHBoxLayout()
-        row1.addWidget(QLabel("因子水平数："))
-        self.t_levels_combo = QComboBox()
-        self.t_levels_combo.addItems(["2 水平", "3 水平"])
-        row1.addWidget(self.t_levels_combo)
-        row1.addSpacing(20)
-        row1.addWidget(QLabel("内表（控制因子）："))
-        self.t_inner_combo = QComboBox()
-        self.t_inner_combo.addItems(["自动推荐", "L4 (2^3)", "L8 (2^7)", "L9 (3^4)",
-                                     "L12 (2^11)", "L16 (2^15)", "L27 (3^13)"])
-        row1.addWidget(self.t_inner_combo)
-        row1.addSpacing(20)
-        row1.addWidget(QLabel("外表（噪声因子）："))
-        self.t_outer_combo = QComboBox()
-        self.t_outer_combo.addItems(["无（仅内表）", "自动推荐", "L4 (2^3)", "L8 (2^7)",
-                                     "L9 (3^4)", "L12 (2^11)", "L16 (2^15)"])
-        row1.addWidget(self.t_outer_combo)
-        row1.addStretch()
-        layout.addLayout(row1)
-
-        options = QHBoxLayout()
-        options.addWidget(QLabel("噪声因子水平数："))
-        self.t_noise_levels_combo = QComboBox()
-        self.t_noise_levels_combo.addItems(["2 水平", "3 水平"])
-        options.addWidget(self.t_noise_levels_combo)
-        options.addWidget(QLabel("整表重复次数："))
-        self.t_repeat_spin = QSpinBox()
-        self.t_repeat_spin.setRange(1, 10)
-        options.addWidget(self.t_repeat_spin)
-        options.addWidget(QLabel("试验顺序："))
-        self.t_order_combo = QComboBox()
-        self.t_order_combo.addItems(["随机", "保持相同"])
-        options.addWidget(self.t_order_combo)
-        layout.addLayout(options)
-
-        row2 = QHBoxLayout()
-        row2.addWidget(QLabel("信噪比目标："))
-        self.t_snr_combo = QComboBox()
-        self.t_snr_combo.addItems(["按各响应目标特征自动", "望大（越大越好）",
-                                   "望小（越小越好）", "望目（名义最好）"])
-        row2.addWidget(self.t_snr_combo)
-        row2.addSpacing(24)
-        row2.addWidget(QLabel("随机种子："))
-        self.t_seed_spin = QSpinBox()
-        self.t_seed_spin.setRange(0, 99999)
-        self.t_seed_spin.setValue(789)
-        row2.addWidget(self.t_seed_spin)
-        row2.addStretch()
-        layout.addLayout(row2)
-
-        self.t_hint = QLabel(
-            "内表安排控制因子（设计因子）、外表安排噪声因子（环境因子）；"
-            "完整试验＝内表×外表叉积。环境因子列将自动填充外表水平。")
-        self.t_hint.setStyleSheet("color:#666;")
-        layout.addWidget(self.t_hint)
-
-        self.t_levels_combo.currentTextChanged.connect(self._on_taguchi_levels)
-        self.t_noise_levels_combo.currentTextChanged.connect(self._on_taguchi_levels)
-        return widget
+        return configuration_panels.taguchi(self)
 
     def _build_surrogate_widget(self):
-        widget = QWidget()
-        layout = QVBoxLayout(widget)
-        layout.setContentsMargins(0, 0, 0, 0)
-
-        self.surrogate_info_label = QLabel()
-        layout.addWidget(self.surrogate_info_label)
-        row = QHBoxLayout()
-        self.surrogate_open_btn = QPushButton("打开建模设置窗口…")
-        self.surrogate_open_btn.setStyleSheet("")
-        self.surrogate_open_btn.clicked.connect(self._open_surrogate_dialog)
-        row.addWidget(self.surrogate_open_btn)
-        self.surrogate_status = QLabel("尚未设置模型参数")
-        self.surrogate_status.setStyleSheet("color:#b45309;")
-        row.addWidget(self.surrogate_status)
-        row.addStretch()
-        layout.addLayout(row)
-
-        self.surrogate_hint = QLabel(
-            "设置窗口包含两部分：① 试验设计（变量维度/上下界、样本点数、抽样方法）；"
-            "② 模型参数（相关/回归函数、核函数与 C/g 搜索、网络结构与寻优等）。")
-        self.surrogate_hint.setStyleSheet("color:#666;")
-        layout.addWidget(self.surrogate_hint)
-        return widget
+        return configuration_panels.surrogate(self)
 
     # ------------------------------------------------------------- 联动刷新
     def _connect_preview_signals(self):
@@ -434,9 +236,6 @@ class ConfigurationPage(QWidget):
         if "Plackett" in text:
             return "pb"
         return "full"
-
-    def _screen_kind_label(self):
-        return engine.SCREENING_KINDS[self._screen_kind_key()]
 
     def _refresh_preview(self):
         method = self.method_combo.currentText()
@@ -567,19 +366,19 @@ class ConfigurationPage(QWidget):
     # ------------------------------------------------------------- 生成方案
     def on_generate_clicked(self):
         method = self.method_combo.currentText()
+        service = ProjectService.for_project(self.project_data)
         try:
             self._generate_by_method(method)
         except ValueError as exc:
-            self.project_data.record_operation("方案生成", "失败", message=str(exc))
+            service.record_operation("方案生成", "失败", message=str(exc))
             Notice.warning(self, "无法生成方案", str(exc))
             return
         except Exception as exc:  # noqa: BLE001
-            self.project_data.record_operation("方案生成", "失败", message=str(exc))
+            service.record_operation("方案生成", "失败", message=str(exc))
             Notice.critical(self, "生成失败", f"发生未预期错误：{exc}")
             return
-        self.project_data.design_method = method
-        self.project_data.workbench_result = {}
-        self.project_data.record_operation("方案生成", message=f"生成 {len(self.project_data.doe_matrix)} 行 DOE")
+        service.record_operation(
+            "方案生成", message=f"生成 {len(self.project_data.doe_matrix)} 行 DOE")
         self.info_label.setText(
             f"设计因子：{self._k()} 个 ｜ 环境因子：{len(self._noise_factors())} 个 ｜ "
             f"响应：{len(self.project_data.responses)} 个\n当前设计方案：{method}"
@@ -590,152 +389,48 @@ class ConfigurationPage(QWidget):
             "请进入【数据管理】查看 DOE 矩阵并填入/导入响应结果。")
 
     def _generate_by_method(self, method):
-        ctl_factors = engine.simple_factors(self._design_factors())
-        if not ctl_factors:
-            raise ValueError("未发现设计因子，无法生成方案。请先在【业务建模】添加设计因子。")
-
         if "筛选" in method:
-            rows, meta = engine.build_screening(
-                ctl_factors, self._screen_kind_key(), seed=self.f_seed_spin.value(),
-                centers=self.f_center_spin.value(), replicates=self.f_repeat_spin.value(),
-                randomize=self.f_order_combo.currentText() == "随机")
-            self._commit(rows, groups=None)
-            self.project_data.design_params = {
-                "doe_family": meta["kind"], "meta": meta,
-                "top_n": self.f_topn_spin.value(),
-            }
-            self._write_screening_result(meta)
-            return
-
-        if "响应曲面" in method:
-            rsm_type = "BBD" if "BBD" in self.rsm_type_combo.currentText() else "CCD"
+            plan = design_service.screening_plan(
+                self.project_data, method, self._screen_kind_key(),
+                self.f_seed_spin.value(), self.f_center_spin.value(),
+                self.f_repeat_spin.value(),
+                self.f_order_combo.currentText() == "随机",
+                self.f_topn_spin.value())
+        elif "响应曲面" in method:
+            rsm_type = (
+                "BBD" if "BBD" in self.rsm_type_combo.currentText() else "CCD")
             alpha_text = self.rsm_alpha_combo.currentText()
             if "位于表面" in alpha_text:
-                alpha_mode, alpha_val = "face", 1.0
+                alpha_mode, alpha_value = "face", 1.0
             elif "可旋转" in alpha_text:
-                alpha_mode, alpha_val = "rotatable", 0.0
+                alpha_mode, alpha_value = "rotatable", 0.0
             else:
-                alpha_mode, alpha_val = "custom", self.rsm_alpha_spin.value()
-            rows, meta = engine.build_response_surface(
-                ctl_factors, rsm_type, alpha_mode, alpha_val,
-                centers=self.rsm_center_spin.value(),
-                replicates=self.rsm_repeat_spin.value(),
-                seed=self.rsm_seed_spin.value(),
-                randomize=self.rsm_order_combo.currentText() == "随机")
-            self._commit(rows, groups=None)
-            self.project_data.design_params = {"meta": meta}
-            self.project_data.rsm_result = {
-                "design": meta,
-                "fit": None,
-                "message": "试验设计已生成；在【数据管理】填入响应后，可到【设计优化】拟合响应曲面。",
-            }
-            return
-
-        if "田口" in method:
-            noise_factors = engine.simple_factors(self._noise_factors())
+                alpha_mode, alpha_value = "custom", self.rsm_alpha_spin.value()
+            plan = design_service.response_surface_plan(
+                self.project_data, method, rsm_type, alpha_mode, alpha_value,
+                self.rsm_center_spin.value(), self.rsm_repeat_spin.value(),
+                self.rsm_seed_spin.value(),
+                self.rsm_order_combo.currentText() == "随机")
+        elif "田口" in method:
             levels = 2 if "2 水平" in self.t_levels_combo.currentText() else 3
-            inner = self._resolve_oa(self.t_inner_combo.currentText(), len(ctl_factors), levels)
-            outer = self._resolve_oa(self.t_outer_combo.currentText(), len(noise_factors), 2 if "2" in self.t_noise_levels_combo.currentText() else 3)
-            if noise_factors and outer == "无":
-                raise ValueError("当前存在环境（噪声）因子，田口外表不能为“无”；"
-                                "请选择外表正交表，或先在【业务建模】中移除环境因子。")
-            rows, meta = engine.build_taguchi(
-                ctl_factors, noise_factors, inner, outer, levels,
-                seed=self.t_seed_spin.value(), replicates=self.t_repeat_spin.value(),
-                randomize=self.t_order_combo.currentText() == "随机")
-            self._commit(rows, groups=meta["groups"])
-            self.project_data.design_params = {
-                "meta": meta, "snr_mode": self.t_snr_combo.currentText(),
-                "levels": levels,
-            }
-            self._write_taguchi_result(meta)
-            return
-
-        # 代理模型
-        if not self.surrogate_config:
-            raise ValueError("尚未设置代理模型参数，请先点击【打开建模设置窗口…】。")
-        expected = "Kriging" if "Kriging" in method else ("SVR" if "SVR" in method else "ANN")
-        cfg = self.surrogate_config
-        if cfg.get("model") != expected:
-            raise ValueError(f"当前窗口中的设置属于 {cfg.get('model')}，与所选 {expected} 不一致，"
-                            "请重新打开对应模型的设置窗口。")
-        bounds = cfg.get("bounds") or {}
-        sample_factors = []
-        for f in ctl_factors:
-            name, _lo, _hi, fixed = f
-            lo, hi = bounds.get(name, [_lo, _hi])
-            sample_factors.append((name, lo, hi, fixed))
-        rows = engine.build_samples(sample_factors, cfg["sample_count"],
-                                    cfg["doe_method"], seed=self.f_seed_spin.value())
-        self._commit(rows, groups=None)
-        self.project_data.design_params = {
-            "surrogate_config": cfg,
-            "sample_count": cfg["sample_count"],
-            "doe_method": cfg["doe_method"],
-        }
-        self.project_data.surrogate_config = cfg
-        return
-
-    def _commit(self, rows, groups=None):
-        """把试验行写入 ProjectData.doe_matrix（响应列留空）。"""
-        responses = [r.name for r in self.project_data.responses if r.name]
-        names = [f.name for f in self.project_data.factors if f.name]
-        if len(set(names + responses)) != len(names + responses) or set(names + responses) & {"Run_ID", "内表组号", "外表组号", "重复组号"}:
-            raise ValueError("因子和响应名称必须互不重复，且不能使用试验编号/组号等保留列名")
-        matrix = []
-        for i, row in enumerate(rows):
-            record = {"Run_ID": i + 1}
-            record.update(row)
-            for factor in self.project_data.factors:
-                if factor.name and factor.is_fixed:
-                    try:
-                        record[factor.name] = float(factor.fixed_value)
-                    except (TypeError, ValueError):
-                        raise ValueError(f"固定因子 {factor.name} 缺少有效固定值")
-            if groups is not None:
-                record["内表组号"] = groups[i]["inner"] + 1
-                if groups[i]["outer"] is not None:
-                    record["外表组号"] = groups[i]["outer"] + 1
-                record["重复组号"] = groups[i].get("replicate", 0) + 1
-            for r in responses:
-                record[r] = ""
-            matrix.append(record)
-        self.project_data.doe_matrix = matrix
-        for field in ("screening_result", "taguchi_result", "rsm_result", "surrogate_result"):
-            setattr(self.project_data, field, {})
+            inner = self._resolve_oa(
+                self.t_inner_combo.currentText(), self._k(), levels)
+            noise_count = len(self._noise_factors())
+            noise_levels = (
+                2 if "2" in self.t_noise_levels_combo.currentText() else 3)
+            outer = self._resolve_oa(
+                self.t_outer_combo.currentText(), noise_count, noise_levels)
+            plan = design_service.taguchi_plan(
+                self.project_data, method, inner, outer, levels,
+                self.t_seed_spin.value(), self.t_repeat_spin.value(),
+                self.t_order_combo.currentText() == "随机",
+                self.t_snr_combo.currentText())
+        else:
+            plan = design_service.surrogate_plan(
+                self.project_data, method, self.surrogate_config,
+                self.f_seed_spin.value())
+        design_service.commit_plan(self.project_data, plan)
+        return plan
 
     # ------------------------------------------------------------- 后端结果
-    def _write_screening_result(self, meta):
-        self.project_data.screening_result = {
-            "factor_rankings": [], "main_effects": [], "plot_points": [],
-            "stability_impact": [], "response_effects": {}, "response_analysis": {},
-            "diagnostic_summary": f"{meta['kind']}，{meta['total_runs']} 次试验。{meta['diagnostic']}",
-            "conclusion": "方案已生成，尚无响应数据；不生成先验因子排名。",
-            "analysis_status": "等待响应数据",
-        }
-
-    def _write_taguchi_result(self, meta):
-        groups = meta.get("groups") or []
-        self.project_data.taguchi_result = {
-            **meta,
-            "array_name": meta["inner_label"],
-            "outer_label": meta["outer_label"],
-            "inner_runs": meta["inner_runs"],
-            "outer_runs": meta["outer_runs"],
-            "has_outer": meta["has_outer"],
-            "levels": meta["levels"],
-            "factor_levels": meta["factor_levels"],
-            "noise_levels": meta.get("noise_levels", {}),
-            "orthogonal_array": [],
-            "signal_to_noise": [],
-            "best_levels": {},
-            "groups": groups,
-            "recommendation": (
-                "内表×外表叉积试验已完成安排。在【数据管理】填入各次试验响应后，"
-                "可到【设计优化】计算均值响应表、S/N 表并给出待确认的候选水平组合。"),
-            "summary": (f"已按内表 {meta['inner_label']}（{meta['inner_runs']} 组）×"
-                        f"外表 {meta['outer_label']}（{meta['outer_runs']} 组）生成"
-                        f" {meta['total_runs']} 次叉积试验。"),
-        }
-
 from notifications import Notice

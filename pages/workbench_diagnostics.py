@@ -14,6 +14,8 @@ from matplotlib.figure import Figure
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
 import workbench_analysis as wa
 import optimizer_engine as oe
+from services import analysis_service
+from services.project_service import ProjectService
 
 
 class WorkbenchDiagnostics(QWidget):
@@ -68,26 +70,35 @@ class WorkbenchDiagnostics(QWidget):
         self.figure.clear();self.canvas.draw()
         self.notice.setText('输入或模型已更新，请重新计算统计分析。')
 
-    def set_context(self,context,robust=None,kd=6,kc=6):
-        self.context=context;self.robust=robust or {};self.kd=kd;self.kc=kc
-        self.snapshot={'created_utc':datetime.now(timezone.utc).isoformat(),
-                       'input_sha256':hashlib.sha256(context['_project'].analysis_signature().encode('utf-8')).hexdigest(),
-                       'inputs':[asdict(f) for f in context['inputs']],
-                       'response_definitions':[asdict(r) for r in context['_responses']],
-                       'model_types':{name:m.get('model_type','二次回归') for name,m in context['models'].items()},
-                       'method':context['_project'].design_method,'k_design':kd,'k_constraint':kc,
-                       'data':wa.descriptive(context['_project']),
-                       'responses':{name:wa.diagnostics(context,name) for name in context['models']}}
-        self.fill(self.tables['data'],self.snapshot['data'])
-        self.response.blockSignals(True);self.response.clear();self.response.addItems(list(context['models']));self.response.blockSignals(False)
-        while self.form.rowCount():self.form.removeRow(0)
-        self.controls={}
-        for f in oe.design_inputs(context):
-            lo,hi=oe.de.factor_limits(f);spin=QDoubleSpinBox();spin.setDecimals(8);spin.setRange(lo,hi)
-            spin.setSingleStep((hi-lo)/100);spin.setValue((hi+lo)/2)
-            self.controls[f.name]=spin;self.form.addRow(f'{f.name} [{lo:g}, {hi:g}]',spin)
-        self.point_table.setRowCount(0);self.point_note.clear()
-        self.notice.setText(f'共 {len(context["models"])} 个响应模型。统计基于当前已训练模型；设计点评估使用 k输入={kd:g}，k约束={kc:g}。')
+    def set_context(self, context, robust=None, kd=6, kc=6, snapshot=None):
+        self.context = context
+        self.robust = robust or {}
+        self.kd = kd
+        self.kc = kc
+        self.snapshot = snapshot or analysis_service.build_snapshot(
+            context, kd, kc)
+        self.fill(self.tables["data"], self.snapshot["data"])
+        self.response.blockSignals(True)
+        self.response.clear()
+        self.response.addItems(list(context["models"]))
+        self.response.blockSignals(False)
+        while self.form.rowCount():
+            self.form.removeRow(0)
+        self.controls = {}
+        for factor in oe.design_inputs(context):
+            low, high = oe.de.factor_limits(factor)
+            spin = QDoubleSpinBox()
+            spin.setDecimals(8)
+            spin.setRange(low, high)
+            spin.setSingleStep((high - low) / 100)
+            spin.setValue((high + low) / 2)
+            self.controls[factor.name] = spin
+            self.form.addRow(f"{factor.name} [{low:g}, {high:g}]", spin)
+        self.point_table.setRowCount(0)
+        self.point_note.clear()
+        self.notice.setText(
+            f"共 {len(context['models'])} 个响应模型。统计基于当前已训练模型；"
+            f"设计点评估使用 k输入={kd:g}，k约束={kc:g}。")
         self.render()
 
     def render(self,*args):
@@ -119,20 +130,35 @@ class WorkbenchDiagnostics(QWidget):
         self.evaluate_point()
 
     def evaluate_point(self):
-        if not self.context:return
+        if not self.context:
+            return
+        project = self.context["_project"]
+        service = ProjectService.for_project(project)
         try:
-            result=wa.point_analysis(self.context,{k:v.value() for k,v in self.controls.items()},self.kd,self.kc)
-            self.snapshot['point_evaluation']=result
+            result = analysis_service.evaluate_point(
+                self.context,
+                {name: widget.value()
+                 for name, widget in self.controls.items()},
+                self.kd, self.kc)
+            self.snapshot["point_evaluation"] = result
             import report_engine as reports
-            project=self.context['_project']
-            project.workbench_result.update(point_evaluation=reports.serializable(result))
-            project.record_operation('设计点核验', '完成' if result['feasible'] else '未通过', {'workbench':reports.serializable(self.snapshot)}, '模型计算，非实测确认')
-            self.fill(self.point_table,result['responses'])
-            self.point_note.setText(('当前点满足设定约束。' if result['feasible'] else '当前点违反设定约束。')+'\n'+result['note'])
+            serialized = reports.serializable(result)
+            service.update_workbench(point_evaluation=serialized)
+            service.record_operation(
+                "设计点核验",
+                "完成" if result["feasible"] else "未通过",
+                {"workbench": reports.serializable(self.snapshot)},
+                "模型计算，非实测确认")
+            self.fill(self.point_table, result["responses"])
+            self.point_note.setText(
+                ("当前点满足设定约束。" if result["feasible"]
+                 else "当前点违反设定约束。")
+                + "\n" + result["note"])
         except Exception as exc:
-            self.point_table.setRowCount(0);self.snapshot.pop('point_evaluation',None)
+            self.point_table.setRowCount(0)
+            self.snapshot.pop("point_evaluation", None)
             self.point_note.setText(str(exc))
-            self.context["_project"].record_operation("设计点核验", "失败", message=str(exc))
+            service.record_operation("设计点核验", "失败", message=str(exc))
 
     def export_csv(self):
         table=self.tabs.currentWidget()

@@ -21,16 +21,21 @@ from PyQt6.QtWidgets import (
     QTabWidget, QTableWidget, QTableWidgetItem, QHeaderView,
     QSpinBox, QDoubleSpinBox, QFrame, QLineEdit
 )
-from PyQt6.QtCore import pyqtSignal, QThread
+from PyQt6.QtCore import pyqtSignal
 
 import doe_engine as engine
 import optimizer_engine as oe
 import design_analysis as da
 from pages.design_results import DesignResultsPanel
 from pages.workbench_diagnostics import WorkbenchDiagnostics
+from pages.qt_tasks import OptimizationWorker
+from pages.optimization_controller import OptimizationController
+from pages import optimization_panels, optimization_plots, result_text
 import workbench_analysis as wa
 import report_engine as reports
 from models import ProjectData
+from services import analysis_service, model_service
+from services.project_service import ProjectService
 
 import matplotlib
 matplotlib.use('Qt5Agg')
@@ -38,22 +43,6 @@ from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 matplotlib.rcParams['font.sans-serif'] = ['Microsoft YaHei', 'SimHei', 'Arial Unicode MS', 'DejaVu Sans']
 matplotlib.rcParams['axes.unicode_minus'] = False
-
-
-class OptimizationWorker(QThread):
-    result_ready = pyqtSignal(object)
-    failed = pyqtSignal(str)
-    progress = pyqtSignal(int, int)
-
-    def __init__(self, context, settings, parent=None):
-        super().__init__(parent)
-        self.context, self.settings = context, settings
-
-    def run(self):
-        try:
-            self.result_ready.emit(oe.robust_optimize(self.context, **self.settings, progress=self.progress.emit))
-        except Exception as exc:
-            self.failed.emit(str(exc))
 
 
 class OptimizationPage(QWidget):
@@ -72,78 +61,22 @@ class OptimizationPage(QWidget):
         self.project_data = project_data
         self.project_data.ensure_results_current()
         self._input_signature = self.project_data.analysis_signature()
+        self.controller = OptimizationController(self)
         self.init_ui()
 
     # ------------------------------------------------------------------ UI
     def init_ui(self):
-        main_layout = QVBoxLayout()
-        main_layout.setContentsMargins(12, 12, 12, 12)
-        main_layout.setSpacing(12)
-
-        # 顶部：状态 + 主执行按钮
-        top = QHBoxLayout()
-        self.status_label = QLabel("尚未运行稳定性设计与鲁棒优化")
-        self.status_label.setProperty("role", "muted")
-        self.status_label.setWordWrap(True)
-        top.addWidget(self.status_label, 1)
-
-        self.run_all_btn = QPushButton("执行稳定性设计与鲁棒优化")
-        self.run_all_btn.setMinimumWidth(225)
-        self.run_all_btn.clicked.connect(self._run_primary_action)
-        self.stats_btn = QPushButton("仅建模与统计分析")
-        self.stats_btn.clicked.connect(self.run_statistics)
-        top.addWidget(self.stats_btn)
-        top.addWidget(self.run_all_btn)
-        main_layout.addLayout(top)
-
-        from ui_theme import ResultTabs
-        self.tabs = ResultTabs()
-        self.tabs.setUsesScrollButtons(True)
-        self.tab_overview = QWidget(); self._build_overview_tab()
-        self.tab_robust = QWidget(); self._build_robust_tab()
-        self.tab_data = QWidget(); self._build_data_tab()
-        self.tab_signif = QWidget(); self._build_signif_tab()
-        self.tab_cv = QWidget(); self._build_cv_tab()
-        self.tab_param = QWidget(); self._build_param_tab()
-        self.tab_tol = QWidget(); self._build_tol_tab()
-        self.tab_model = QWidget(); self._build_model_tab()
-        self.tab_tools = QWidget(); self._build_tools_tab()
-        self.tabs.addTab(self.tab_overview, "方案/结果汇总")
-        self.tabs.addTab(self.tab_robust, "鲁棒优化设计")
-        self.tabs.addTab(self.tab_data, "整体数据分析")
-        self.tabs.addTab(self.tab_signif, "显著性/LOF")
-        self.tabs.addTab(self.tab_cv, "交叉验证与残差")
-        self.tabs.addTab(self.tab_param, "参数取值")
-        self.tabs.addTab(self.tab_tol, "容差贡献")
-        self.tabs.addTab(self.tab_model, "模型提取")
-        self.tabs.addTab(self.tab_tools, "优化工具集")
-        self.screening_panel = DesignResultsPanel("screening")
-        self.taguchi_panel = DesignResultsPanel("taguchi")
-        self.tabs.addTab(self.screening_panel, "筛选主效应")
-        self.tabs.addTab(self.taguchi_panel, "田口稳健分析")
-        self.diagnostics_panel = WorkbenchDiagnostics()
-        self.tabs.addTab(self.diagnostics_panel, "统计诊断与导出")
-        from ui_theme import ResultsWorkspace, primary
-        self.results_workspace = ResultsWorkspace(self.tabs)
-        main_layout.addWidget(self.results_workspace, 1)
-        primary(self.run_all_btn)
-
-        self.setLayout(main_layout)
-        self._oe_context = None
-        self._update_method_actions()
-        for control in (self.k_design_spin, self.k_constraint_spin, self.weight_spin, self.pop_spin, self.gen_spin):
-            control.valueChanged.connect(self._settings_changed)
-        self.robust_mode_combo.currentTextChanged.connect(self._settings_changed)
-        self.sigma_limits_table.itemChanged.connect(self._settings_changed)
+        return optimization_panels.build(self)
 
     def _settings_changed(self, *_args):
         if self._oe_context:
             self.diagnostics_panel.clear()
             self._oe_context = None
             self._robust_res = {}
-            self.project_data.workbench_result = {}
+            ProjectService.for_project(self.project_data).clear_workbench()
             self.robust_text.clear()
-            self.status_label.setText("优化参数已改变；已有优化结果属于先前设置，请重新执行。")
+            self.status_label.setText(
+                "优化参数已改变；已有优化结果属于先前设置，请重新执行。")
 
     def _update_method_actions(self):
         """按方案类型切换主动作，避免把筛选/田口误导成鲁棒优化。"""
@@ -188,84 +121,10 @@ class OptimizationPage(QWidget):
             self.run_workbench()
 
     def _build_overview_tab(self):
-        layout = QVBoxLayout(self.tab_overview)
-        head = QHBoxLayout()
-        head.addWidget(QLabel("结果视图："))
-        self.view_combo = QComboBox()
-        self.view_combo.addItems(self.VIEWS)
-        head.addWidget(self.view_combo)
-        head.addStretch()
-        self.run_btn = QPushButton("更新方案汇总")
-        self.run_btn.clicked.connect(self.run_optimization)
-        head.addWidget(self.run_btn)
-        layout.addLayout(head)
-        self.result_text = QTextEdit()
-        self.result_text.setReadOnly(True)
-        self.result_text.setStyleSheet("font-family:Consolas, 'Microsoft YaHei'; font-size:13px;")
-        layout.addWidget(self.result_text)
-        self.view_combo.currentTextChanged.connect(self._refresh_view)
-        self._refresh_view(self.view_combo.currentText())
+        return optimization_panels.build_overview_tab(self)
 
     def _build_robust_tab(self):
-        layout = QVBoxLayout(self.tab_robust)
-        controls = QHBoxLayout()
-        controls.addWidget(QLabel("优化模式："))
-        self.robust_mode_combo = QComboBox()
-        self.robust_mode_combo.addItems(["多目标 NSGA-II", "加权单目标", "约束型"])
-        controls.addWidget(self.robust_mode_combo)
-        controls.addSpacing(16)
-        controls.addWidget(QLabel("种群数："))
-        self.pop_spin = QSpinBox(); self.pop_spin.setRange(20, 300); self.pop_spin.setValue(80)
-        controls.addWidget(self.pop_spin)
-        controls.addSpacing(8)
-        controls.addWidget(QLabel("代数："))
-        self.gen_spin = QSpinBox(); self.gen_spin.setRange(30, 1000); self.gen_spin.setValue(160)
-        controls.addWidget(self.gen_spin)
-        controls.addStretch()
-        layout.addLayout(controls)
-
-        controls2 = QHBoxLayout()
-        controls2.addWidget(QLabel("均值权重 λ："))
-        self.weight_spin = QDoubleSpinBox(); self.weight_spin.setRange(0.0, 1.0)
-        self.weight_spin.setSingleStep(0.05); self.weight_spin.setValue(0.5)
-        controls2.addWidget(self.weight_spin)
-        controls2.addSpacing(16)
-        controls2.addWidget(QLabel("约束安全系数 k："))
-        self.k_constraint_spin = QDoubleSpinBox(); self.k_constraint_spin.setRange(1.0, 10.0)
-        self.k_constraint_spin.setSingleStep(0.5); self.k_constraint_spin.setValue(6.0)
-        self.k_constraint_spin.setToolTip("在所有优化模式中执行已勾选约束。例如望小约束：均值 + k×标准差 ≤ 上限。")
-        controls2.addWidget(self.k_constraint_spin)
-        controls2.addSpacing(8)
-        controls2.addWidget(QLabel("输入不确定性系数 k："))
-        self.k_design_spin = QDoubleSpinBox(); self.k_design_spin.setRange(1.0, 10.0)
-        self.k_design_spin.setSingleStep(0.5); self.k_design_spin.setValue(6.0)
-        self.k_design_spin.setToolTip("设计区间因子：标准差=(上限−下限)/(2k)。k 越大，扰动越小；此参数不收缩搜索边界。概率因子采用已填写的方差。")
-        controls2.addWidget(self.k_design_spin)
-        controls2.addStretch()
-        layout.addLayout(controls2)
-        self.sigma_limits_table = QTableWidget(0, 2)
-        self.sigma_limits_table.setHorizontalHeaderLabels(["目标响应（原单位）", "允许的最大标准差 σ"])
-        self.sigma_limits_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        self.sigma_limits_table.setFixedHeight(85)
-        layout.addWidget(self.sigma_limits_table)
-        self.uncertainty_label = QLabel()
-        self.uncertainty_label.setWordWrap(True)
-        layout.addWidget(self.uncertainty_label)
-        self.k_design_spin.valueChanged.connect(self._update_uncertainty_label)
-        self._update_uncertainty_label()
-
-        self.robust_mode_combo.currentTextChanged.connect(self._on_robust_mode)
-        self._on_robust_mode(self.robust_mode_combo.currentText())
-        self.pareto_fig = Figure(figsize=(5, 3.6), dpi=100, layout="constrained")
-        self.pareto_canvas = FigureCanvas(self.pareto_fig)
-        self.pareto_canvas.setMinimumHeight(170)
-        layout.addWidget(self.pareto_canvas, 1)
-        self.robust_text = QTextEdit()
-        self.robust_text.setReadOnly(True)
-        self.robust_text.setMinimumHeight(85)
-        self.robust_text.setMaximumHeight(125)
-        self.robust_text.setStyleSheet("padding:6px; background:#f7f9fb;")
-        layout.addWidget(self.robust_text)
+        return optimization_panels.build_robust_tab(self)
 
     def _on_robust_mode(self, text):
         self.sigma_limits_table.setVisible(text == "约束型")
@@ -313,22 +172,7 @@ class OptimizationPage(QWidget):
         return text
 
     def _build_data_tab(self):
-        layout = QVBoxLayout(self.tab_data)
-        self.refresh_data_btn = QPushButton("刷新数据统计（无需模型）")
-        self.refresh_data_btn.clicked.connect(self._refresh_data_analysis)
-        layout.addWidget(self.refresh_data_btn)
-        self.data_stats_table = QTableWidget()
-        self.data_stats_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-        self.data_stats_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
-        layout.addWidget(self.data_stats_table)
-        self.data_overall_label = QLabel()
-        self.data_overall_label.setWordWrap(True)
-        layout.addWidget(self.data_overall_label)
-        self.level_table = QTableWidget(0, 9)
-        self.level_table.setHorizontalHeaderLabels(
-            ["因子", "水平", "响应", "均值", "方差", "极差", "样本数", "F比", "p值"])
-        self.level_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        layout.addWidget(self.level_table)
+        return optimization_panels.build_data_tab(self)
 
     def _refresh_data_analysis(self):
         self._check_inputs()
@@ -337,77 +181,22 @@ class OptimizationPage(QWidget):
         self._fill_level_table(oe.level_stats(self.project_data))
 
     def _build_signif_tab(self):
-        layout = QVBoxLayout(self.tab_signif)
-        self.signif_text = self._new_text()
-        layout.addWidget(self.signif_text)
+        return optimization_panels.build_signif_tab(self)
 
     def _build_cv_tab(self):
-        layout = QVBoxLayout(self.tab_cv)
-        self.cv_text = self._new_text()
-        self.cv_text.setMaximumHeight(145)
-        layout.addWidget(self.cv_text)
-        self.resid_fig = Figure(figsize=(5, 3.4), dpi=100, layout="constrained")
-        self.resid_canvas = FigureCanvas(self.resid_fig)
-        layout.addWidget(self.resid_canvas)
+        return optimization_panels.build_cv_tab(self)
 
     def _build_param_tab(self):
-        layout = QVBoxLayout(self.tab_param)
-        self.param_text = self._new_text()
-        self.param_text.setMaximumHeight(150)
-        layout.addWidget(self.param_text)
-        self.factor_fig = Figure(figsize=(6, 4), dpi=100, layout="constrained")
-        self.factor_canvas = FigureCanvas(self.factor_fig)
-        layout.addWidget(self.factor_canvas)
+        return optimization_panels.build_param_tab(self)
 
     def _build_tol_tab(self):
-        layout = QVBoxLayout(self.tab_tol)
-        self.tol_text = self._new_text()
-        self.tol_text.setMaximumHeight(150)
-        self.tol_text.setStyleSheet("background:#f7f9fb;border:1px solid #d9e0e7;padding:8px;")
-        layout.addWidget(self.tol_text)
-        self.tol_table = QTableWidget()
-        self.tol_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-        self.tol_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        layout.addWidget(self.tol_table)
+        return optimization_panels.build_tol_tab(self)
 
     def _build_model_tab(self):
-        layout = QVBoxLayout(self.tab_model)
-        self.model_text = self._new_text()
-        layout.addWidget(self.model_text)
+        return optimization_panels.build_model_tab(self)
 
     def _build_tools_tab(self):
-        layout = QVBoxLayout(self.tab_tools)
-        head = QHBoxLayout()
-        self.tool_combo = QComboBox()
-        self.tool_combo.addItems(["最陡上升", "EVOP 演化操作", "自适应 AOFAT"])
-        head.addWidget(QLabel("步数"))
-        self.tool_steps = QSpinBox(); self.tool_steps.setRange(1,100); self.tool_steps.setValue(12)
-        head.addWidget(self.tool_steps)
-        head.addWidget(QLabel("步长/因子跨度"))
-        self.tool_step = QDoubleSpinBox(); self.tool_step.setRange(.001,.5); self.tool_step.setDecimals(3); self.tool_step.setValue(.1)
-        head.addWidget(self.tool_step)
-        head.addStretch()
-        layout.addLayout(head)
-        head = QHBoxLayout()
-        head.addWidget(QLabel("探索方法"))
-        head.addWidget(self.tool_combo)
-        self.tool_start = QComboBox(); self.tool_start.addItems(["优化返回点", "手动核验点", "区间中心"])
-        head.addWidget(self.tool_start)
-        self.tool_weight = QDoubleSpinBox(); self.tool_weight.setRange(0,1); self.tool_weight.setSingleStep(.05); self.tool_weight.setValue(.5)
-        head.addWidget(QLabel("均值权重 λ")); head.addWidget(self.tool_weight)
-        head.addStretch()
-        self.run_tool_btn = QPushButton("运行工具")
-        self.run_tool_btn.clicked.connect(self._run_tool)
-        head.addWidget(self.run_tool_btn)
-        layout.addLayout(head)
-        self.tool_text = self._new_text()
-        self.tool_text.setMaximumHeight(150)
-        self.tool_text.setPlaceholderText("选择探索方法与起点后运行，结果和接受路径将在此显示。")
-        layout.addWidget(self.tool_text)
-        self.tool_table = QTableWidget()
-        self.tool_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-        self.tool_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
-        layout.addWidget(self.tool_table)
+        return optimization_panels.build_tools_tab(self)
 
     # ------------------------------------------------------------- 公共工具
     def _responses(self):
@@ -418,19 +207,6 @@ class OptimizationPage(QWidget):
 
     def _method(self):
         return self.project_data.design_method or ""
-
-    def _count_filled(self, response_name):
-        total = 0
-        for row in self._matrix():
-            val = row.get(response_name, "")
-            try:
-                total += int(math.isfinite(float(val)))
-            except (TypeError, ValueError):
-                pass
-        return total
-
-    def _has_response_data(self, response_name):
-        return bool(self._matrix()) and self._count_filled(response_name) == len(self._matrix())
 
     # ------------------------------------------------------------- 视图调度
     def _refresh_view(self, text):
@@ -448,155 +224,23 @@ class OptimizationPage(QWidget):
 
     # ------------------------------------------------------------- 结果文本
     def _summary_text(self):
-        method = self._method()
-        if not method:
-            return "尚未在【方案配置】生成任何方案。"
-        params = self.project_data.design_params or {}
-        meta = params.get("meta") or {}
-        lines = [f"【当前方案】{method}", ""]
-        if meta:
-            lines.append("【设计结构】")
-            for key, value in meta.items():
-                if key == "groups":
-                    continue
-                lines.append(f"  {key} = {value}")
-        lines.append("")
-        matrix = self._matrix()
-        lines.append(f"试验次数：{len(matrix)}")
-        for resp in self._responses():
-            lines.append(f"响应 [{resp.name}]：已填入 {self._count_filled(resp.name)} / {len(matrix)} 行")
-        lines.append("")
-        missing = [r.name for r in self._responses() if not self._has_response_data(r.name)]
-        if missing:
-            lines.append(f"提示：响应 {missing} 数据不足，请先在【数据管理】填入/导入结果后再执行分析。")
-        else:
-            lines.append("响应数据齐备，可执行设计优化与后端分析。")
-        return "\n".join(lines)
+        return result_text.summary(self.project_data)
 
     def _screening_text(self):
-        result = self.project_data.screening_result or {}
-        lines = ["【筛选设计：主效应分析】", result.get("analysis_status", "等待分析"),
-                 result.get("diagnostic_summary", ""), result.get("conclusion", "")]
-        for name, message in result.get("errors", {}).items():
-            lines.append(f"{name}：{message}")
-        lines.append("各响应的有符号效应、纯误差、中心点曲率和混杂提示见【筛选主效应】页。")
-        return "\n".join(lines)
+        return result_text.screening(self.project_data)
 
     def _rsm_text(self):
-        result = self.project_data.rsm_result or {}
-        if not result:
-            return "尚未生成响应曲面方案。请在【方案配置】选择响应曲面设计并点击生成。"
-        lines = ["【响应曲面设计结果】"]
-        design = result.get("design") or {}
-        if design:
-            for key, value in design.items():
-                if key == "groups":
-                    continue
-                lines.append(f"  {key} = {value}")
-        lines.append("")
-        fit = result.get("fit")
-        if not fit:
-            lines.append(result.get("message",
-                                   "请在【数据管理】填入响应数据后，点击【执行后端分析并更新结果】。"))
-            return "\n".join(lines)
-        for resp_name, resp_fit in fit.items():
-            if resp_fit.get("error"):
-                lines.append(f"◆ 响应：{resp_name}：{resp_fit['error']}")
-                continue
-            lines.append(f"◆ 响应：{resp_name}")
-            lines.append(f"  R² = {resp_fit['r2']} ｜ 调整 R² = {resp_fit['adj_r2']} ｜ "
-                         f"RMSE = {resp_fit['rmse']} ｜ 模型自由度 {resp_fit['df_model']} / "
-                         f"残差自由度 {resp_fit['df_residual']}")
-            lines.append(f"  编码 z=(x−中心)/半跨度：{resp_fit.get('coding', {})}")
-            lines.append("  编码变量系数（按绝对值排序）：")
-            coefs = sorted(resp_fit["coefficients"], key=lambda c: abs(c[1]), reverse=True)
-            for name, value in coefs[:8]:
-                lines.append(f"    {name} = {value:+.5g}")
-            opt = resp_fit.get("optimum")
-            if opt:
-                lines.append(f"  模型优选设置：{opt.get('x')} → 预测 {opt.get('predicted'):.5g}")
-            lines.append("")
-        return "\n".join(lines)
+        return result_text.response_surface(self.project_data)
 
     def _taguchi_text(self):
-        result = self.project_data.taguchi_result or {}
-        lines = ["【田口设计：按响应的稳健水平分析】", result.get("summary", ""),
-                 result.get("analysis_status", "等待响应数据"), result.get("recommendation", "")]
-        for name, levels in result.get("best_levels_by_response", {}).items():
-            lines.append(f"{name} 的候选水平：{levels}")
-        for name, message in result.get("errors", {}).items():
-            lines.append(f"{name}：{message}")
-        lines.append("内表组均值/标准差、因子水平表、均值与信噪比图见【田口稳健分析】页。")
-        return "\n".join(lines)
+        return result_text.taguchi(self.project_data)
 
     def _surrogate_text(self):
-        result = self.project_data.surrogate_result or {}
-        cfg = self.project_data.surrogate_config or {}
-        lines = ["【代理模型训练结果】"]
-        if not cfg:
-            lines.append("尚未配置代理模型。请在【方案配置】选择代理模型方法并打开设置窗口。")
-            return "\n".join(lines)
-        lines.append(f"模型：{cfg.get('model')} ｜ 样本 {cfg.get('sample_count')} 点"
-                     f" ｜ 抽样方法 {cfg.get('doe_method')}")
-        lines.append("")
-        per_resp = result.get("responses") or {}
-        if not per_resp:
-            lines.append("尚未执行训练。填入响应数据后点击【执行后端分析并更新结果】。")
-            return "\n".join(lines)
-        for resp_name, item in per_resp.items():
-            if item.get("error"):
-                lines.append(f"响应 {resp_name}：{item['error']}")
-                continue
-            params = item.get("params") or {}
-            lines.append(f"◆ 响应：{resp_name}")
-            lines.append(f"  测试集平均相对误差 {item.get('mape_test_%')}% ｜ "
-                         f"R² = {item.get('r2_test')} ｜ "
-                         f"训练样本 {item.get('train_samples')} / "
-                         f"测试样本 {item.get('test_samples')} ｜ "
-                         f"耗时 {item.get('train_time_s')}s")
-            lines.append(f"  模型参数：{params}")
-            lines.append("")
-        return "\n".join(lines)
+        return result_text.surrogate(self.project_data)
 
     # ------------------------------------------------------------- 后端执行
     def run_optimization(self):
-        self._check_inputs()
-        method = self._method()
-        if not method:
-            Notice.warning(self, "无方案", "请先在【方案配置】生成试验方案。")
-            return
-        try:
-            if "筛选" in method:
-                self._run_screening()
-            elif "响应曲面" in method:
-                self._run_rsm()
-            elif "田口" in method:
-                self._run_taguchi()
-            elif "代理模型" in method:
-                self._run_surrogate()
-        except Exception as exc:  # noqa: BLE001
-            self.project_data.record_operation("后端分析", "失败", message=str(exc))
-            Notice.critical(self, "分析失败", f"后端分析出错：{exc}")
-            return
-        self.status_label.setText("分析完成：结果已更新")
-        self._refresh_view(self.view_combo.currentText())
-        if "筛选" in method:
-            self.tabs.setCurrentWidget(self.screening_panel)
-            self.view_combo.setCurrentText("筛选设计结果")
-            self.result_text.setPlainText(self._screening_text())
-            self._finish_classic(self.project_data.screening_result)
-            return
-        if "田口" in method:
-            self.tabs.setCurrentWidget(self.taguchi_panel)
-            self.view_combo.setCurrentText("田口稳健结果")
-            self.result_text.setPlainText(self._taguchi_text())
-            self._finish_classic(self.project_data.taguchi_result)
-            return
-        Notice.information(
-            self, "分析完成",
-            "后端分析已完成，结果已写入当前数据模型。可在上方切换结果视图，"
-            "随后前往【分析报告】查看可视化。")
-        self.optimization_finished.emit()
+        return self.controller.run_optimization()
 
     def _factors_for_doe(self):
         return da.active_controls(self.project_data)
@@ -608,30 +252,7 @@ class OptimizationPage(QWidget):
         self.optimization_finished.emit()
 
     def _check_inputs(self):
-        self.project_data.ensure_results_current()
-        signature = self.project_data.analysis_signature()
-        if signature != self._input_signature:
-            self._input_signature = signature
-            self._oe_context = None
-            self._robust_res = {}
-            self._param_res = {}
-            self._resid_data = {}
-            self.diagnostics_panel.clear()
-            self.screening_panel.set_result({})
-            self.taguchi_panel.set_result({})
-            self.data_stats_table.setRowCount(0)
-            self.level_table.setRowCount(0)
-            self.tol_table.setRowCount(0)
-            self.tool_table.setRowCount(0)
-            for name in ("robust_text", "signif_text", "cv_text", "param_text", "tol_text", "model_text", "tool_text"):
-                getattr(self, name).clear()
-            for name in ("pareto", "resid", "factor"):
-                fig, canvas = getattr(self, name + "_fig", None), getattr(self, name + "_canvas", None)
-                if fig is not None:
-                    fig.clear()
-                    canvas.draw()
-            self.status_label.setText("输入已更新，请重新执行当前方案分析。")
-            self._refresh_view(self.view_combo.currentText())
+        return self.controller._check_inputs()
 
     def showEvent(self, event):
         super().showEvent(event)
@@ -644,148 +265,66 @@ class OptimizationPage(QWidget):
 
     # ------------------------------------------------------------- 筛选分析
     def _run_screening(self):
-        self.project_data.screening_result = da.screening(self.project_data)
-        self.screening_panel.set_result(self.project_data.screening_result)
-        self.project_data.record_operation("筛选分析", "部分完成" if self.project_data.screening_result.get("errors") else "完成", {"results": {"screening": self.project_data.screening_result}})
+        service = ProjectService.for_project(self.project_data)
+        result = da.screening(self.project_data)
+        service.publish_results(screening_result=result)
+        self.screening_panel.set_result(result)
+        service.record_operation(
+            "筛选分析", "部分完成" if result.get("errors") else "完成",
+            {"results": {"screening": result}})
 
     # ------------------------------------------------------------- 响应曲面
     def _run_rsm(self):
-        context, errors = oe.build_models(self.project_data)
-        if errors or not context or not context["models"]:
-            raise ValueError("\n".join(errors or ["响应曲面拟合失败"]))
+        context = model_service.build_rsm_context(self.project_data)
         self._oe_context = context
-        self._store_rsm_fit(context)
-        self.project_data.record_operation("响应曲面建模", payload={"results": {"rsm": self.project_data.rsm_result}})
+        result = self._store_rsm_fit(context)
+        ProjectService.for_project(self.project_data).record_operation(
+            "响应曲面建模", payload={"results": {"rsm": result}})
         return context
 
     def _store_rsm_fit(self, context):
-        fitted = {}
-        for name, model in context["models"].items():
-            fitted[name] = {
-                key: model[key] for key in ("r2", "adj_r2", "rmse", "df_model", "df_residual", "predicted")
-            }
-            fitted[name]["coefficients"] = list(zip(model["names"], [float(c) for c in model["coef"]]))
-            fitted[name]["coding"] = dict(zip(context["names"], zip(model["center"].tolist(), model["half"].tolist())))
-        self.project_data.rsm_result["fit"] = fitted
-        self.project_data.rsm_result["message"] = "汇总与优化使用同一完整二次模型；输入编码 z=(x−中心)/半跨度。"
+        result = model_service.rsm_result(self.project_data, context)
+        ProjectService.for_project(self.project_data).publish_results(
+            rsm_result=result)
+        return result
 
     # ------------------------------------------------------------- 田口分析
-    def _snr_type(self, resp, mode):
-        if mode and "按各响应" not in mode:
-            return "望大" if "望大" in mode else ("望小" if "望小" in mode else "望目")
-        return resp.feature
-
-    @staticmethod
-    def _snr(values, snr_type):
-        return da.snr(values, snr_type)
-
     def _run_taguchi(self):
-        self.project_data.taguchi_result = da.taguchi(self.project_data)
-        self.taguchi_panel.set_result(self.project_data.taguchi_result)
-        self.project_data.record_operation("田口分析", "部分完成" if self.project_data.taguchi_result.get("errors") else "完成", {"results": {"taguchi": self.project_data.taguchi_result}})
+        service = ProjectService.for_project(self.project_data)
+        result = da.taguchi(self.project_data)
+        service.publish_results(taguchi_result=result)
+        self.taguchi_panel.set_result(result)
+        service.record_operation(
+            "田口分析", "部分完成" if result.get("errors") else "完成",
+            {"results": {"taguchi": result}})
 
     # ------------------------------------------------------------- 代理模型
     def _surrogate_signature(self):
-        return json.dumps({
-            "config": self.project_data.surrogate_config,
-            "factors": [asdict(f) for f in self._factors_for_doe()],
-            "responses": [asdict(r) for r in self._responses()],
-            "matrix": self._matrix(),
-        }, sort_keys=True, ensure_ascii=False)
+        return model_service.surrogate_signature(self.project_data)
 
     def _run_surrogate(self):
-        cfg = self.project_data.surrogate_config or {}
-        if not cfg:
-            raise ValueError("尚未配置代理模型，请先到【方案配置】打开设置窗口。")
-        factors = [f for f in self._factors_for_doe() if f.name]
-        names = [f.name for f in factors]
-        bounds = cfg.get("bounds") or {}
-        lo = {}
-        hi = {}
-        for name, f in zip(names, factors):
-            default_lo, default_hi = engine.factor_limits(f)
-            b = bounds.get(name) or [default_lo, default_hi]
-            lo[name], hi[name] = b[0], b[1]
-        per_resp = {}
-        for resp in self._responses():
-            X_rows, y = [], []
-            for row in self._matrix():
-                try:
-                    yv = float(row.get(resp.name))
-                except (TypeError, ValueError):
-                    continue
-                try:
-                    x = [(float(row[n]) - lo[n]) / max(hi[n] - lo[n], 1e-12) for n in names]
-                    X_rows.append(x)
-                    y.append(yv)
-                except (KeyError, TypeError, ValueError):
-                    continue
-            if len(y) < 6:
-                per_resp[resp.name] = {
-                    "error": f"响应 {resp.name} 有效样本 {len(y)} < 6，无法训练。"}
-                continue
-            per_resp[resp.name] = engine.train_surrogate(
-                X_rows, y, model=cfg.get("model"),
-                model_params=cfg.get("model_params") or {})
-        self.project_data.surrogate_result = {
-            "responses": per_resp, "signature": self._surrogate_signature()}
-
-        for name, result in per_resp.items():
-            score = result.get("r2_test")
-            if score is not None and (not math.isfinite(score) or score < .6):
-                Notice.warning(self, "代理预测精度偏低", f"{name} 留出集 R²={score}。请检查异常样本、补充采样或调整模型参数；优化候选应另做确认。")
-        self.project_data.record_operation("代理模型训练", "部分完成" if any(v.get("error") for v in per_resp.values()) else "完成", {"results": {"surrogate": self.project_data.surrogate_result}})
+        service = ProjectService.for_project(self.project_data)
+        result = model_service.train_surrogates(self.project_data)
+        service.publish_results(surrogate_result=result)
+        for name, response_result in result["responses"].items():
+            score = response_result.get("r2_test")
+            if score is not None and (
+                    not math.isfinite(score) or score < .6):
+                Notice.warning(
+                    self, "代理预测精度偏低",
+                    f"{name} 留出集 R²={score}。请检查异常样本、补充采样或"
+                    "调整模型参数；优化候选应另做确认。")
+        service.record_operation(
+            "代理模型训练",
+            "部分完成" if any(
+                item.get("error") for item in result["responses"].values())
+            else "完成",
+            {"results": {"surrogate": result}})
+        return result
 
     def _build_surrogate_context(self):
         """把已训练的代理预测器接入鲁棒优化上下文。"""
-        cfg = self.project_data.surrogate_config or {}
-        results = self.project_data.surrogate_result.get("responses", {})
-        factors = self._factors_for_doe()
-        names = [f.name for f in factors]
-        bounds = cfg.get("bounds") or {}
-        lo = {name: (bounds.get(name) or engine.factor_limits(f))[0]
-              for name, f in zip(names, factors)}
-        hi = {name: (bounds.get(name) or engine.factor_limits(f))[1]
-              for name, f in zip(names, factors)}
-        models = {}
-        errors = []
-        for resp in self._responses():
-            result = results.get(resp.name) or {}
-            predictor = result.get("predict_fn")
-            if not callable(predictor):
-                errors.append(f"响应 {resp.name}：{result.get('error', '没有可用的代理预测器')}")
-                continue
-            raw_values = []
-            for row in self._matrix():
-                try:
-                    raw_values.append(float(row[resp.name]))
-                except (KeyError, TypeError, ValueError):
-                    pass
-
-            def predict_raw(values, predictor=predictor):
-                normalized = [
-                    (float(value) - lo[name]) / max(hi[name] - lo[name], 1e-12)
-                    for name, value in zip(names, values)
-                ]
-                return predictor(normalized)
-
-            models[resp.name] = {
-                "model_type": cfg.get("model", "Kriging"),
-                "validation": result,
-                "predict_fn": predict_raw,
-                "predicted": raw_values or [0.0, 1.0],
-                "rmse": math.sqrt(statistics.mean(
-                    (a - p) ** 2 for a, p in zip(result["actual"], result["predicted"]))),
-                "residual_std": 0.0,
-                "finite_difference_step": 1e-3,
-            }
-        if errors or not models:
-            return None, errors or ["代理模型尚未训练成功，请先检查响应数据和模型设置。"]
-        return {
-            "inputs": factors, "names": names, "models": models,
-            "errors": [], "_responses": self.project_data.responses,
-            "_project": self.project_data,
-        }, []
+        return model_service.build_surrogate_context(self.project_data)
 
     # ============================================================ 工作台
     def _analysis_settings(self):
@@ -794,163 +333,28 @@ class OptimizationPage(QWidget):
                 "sigma_limits": {self.sigma_limits_table.item(i,0).data(256): self.sigma_limits_table.item(i,1).text() for i in range(self.sigma_limits_table.rowCount()) if self.sigma_limits_table.item(i,1)}, "population": self.pop_spin.value(), "generations": self.gen_spin.value(), "seed": 7}
 
     def run_workbench(self):
-        if getattr(self, "_worker", None) is not None:
-            return
-        if any(x in self._method() for x in ("筛选", "田口")):
-            self.run_optimization()
-            return
-        from notifications import bus
-        try:
-            self._check_inputs()
-            bus.post("进度", "模型准备", "检查数据与当前模型配置")
-            context = self._prepare_context()
-            mode = {"多目标 NSGA-II":"multi", "加权单目标":"weighted", "约束型":"constraint"}[self.robust_mode_combo.currentText()]
-            limits = self._sigma_limits() if mode == "constraint" else {}
-            self.project_data.workbench_result = {}
-            self._run_signature = self.project_data.analysis_signature()
-            self._worker = OptimizationWorker(context, dict(mode=mode, pop=self.pop_spin.value(), gen=self.gen_spin.value(),
-                weight=self.weight_spin.value(), k_design=self.k_design_spin.value(), k_constraint=self.k_constraint_spin.value(),
-                seed=7, sigma_limits=limits), self)
-            self.setEnabled(False)
-            self._worker.progress.connect(lambda done,total: bus.post("进度", "鲁棒优化", f"已完成 {done}/{total} 代"))
-            self._worker.result_ready.connect(self._optimization_ready)
-            self._worker.failed.connect(self._optimization_failed)
-            self._worker.finished.connect(self._worker_finished)
-            self.status_label.setText("正在后台计算，进度见下方消息面板…")
-            self._worker.start()
-        except Exception as exc:
-            self._optimization_failed(str(exc))
+        return self.controller.run_workbench()
 
     def _worker_finished(self):
-        worker = self._worker
-        self._worker = None
-        worker.deleteLater()
-        self.setEnabled(True)
+        return self.controller._worker_finished()
 
     def _optimization_failed(self, message):
-        self.status_label.setText("优化失败：" + message)
-        self._oe_context = None
-        self._robust_res = {}
-        self.robust_text.clear()
-        self.project_data.workbench_result = {}
-        Notice.warning(self, "优化失败", message)
+        return self.controller._optimization_failed(message)
 
     def _optimization_ready(self, robust):
-        try:
-            if self.project_data.analysis_signature() != self._run_signature:
-                raise ValueError("计算期间输入已改变，本次结果已丢弃，请重新运行。")
-            if robust.get("error"):
-                raise ValueError(robust["error"])
-            self._oe_context["sigma_limits"] = robust.get("sigma_limits", {})
-            self._robust_res = robust
-            self.robust_text.setText(robust["text"])
-            self._plot_pareto(robust)
-            self._update_analysis(self._oe_context, robust)
-            self.status_label.setText("计算完成" if robust["feasible_count"] else "计算完成，未找到可行候选")
-            self.optimization_finished.emit()
-        except Exception as exc:
-            self._optimization_failed(str(exc))
+        return self.controller._optimization_ready(robust)
 
     def _execute_workbench(self):
-        self._check_inputs()
-        if any(x in self._method() for x in ("筛选", "田口")):
-            self.run_optimization()
-            return
-        context = self._prepare_context()
-        mode = {"多目标 NSGA-II": "multi", "加权单目标": "weighted",
-                "约束型": "constraint"}[self.robust_mode_combo.currentText()]
-        pop = self.pop_spin.value()
-        gen = self.gen_spin.value()
-        weight = self.weight_spin.value()
-        kd = self.k_design_spin.value()
-        kc = self.k_constraint_spin.value()
-        self.status_label.setText("正在执行鲁棒优化与稳定性分析…（可能稍候）")
-        robust = oe.robust_optimize(context, mode=mode, pop=pop, gen=gen,
-                                    weight=weight, k_design=kd,
-                                    k_constraint=kc, seed=7, sigma_limits=self._sigma_limits() if mode == "constraint" else None)
-        if robust.get("error"):
-            raise ValueError(robust["error"])
-        context["sigma_limits"] = robust.get("sigma_limits", {})
-        self._robust_res = robust
-        self.robust_text.setText(robust.get("text", robust.get("error", "")))
-        self._plot_pareto(robust)
-
-        self._update_analysis(context, robust)
-
-        self.status_label.setText("分析完成：全部工作台已更新")
-        Notice.information(
-            self, "稳定性设计分析完成",
-            "已执行鲁棒优化与全套稳定性分析。可切换标签页查看帕累托/Knee点、推荐取值、"
-            "容差贡献与模型方程，或使用优化工具集做更深入的取值探索。")
-        self.optimization_finished.emit()
+        return self.controller._execute_workbench()
 
     def _prepare_context(self):
-        self._oe_context = None
-        if "代理模型" in self._method():
-            saved = self.project_data.surrogate_result or {}
-            if saved.get("signature") != self._surrogate_signature():
-                self._run_surrogate()
-            context, errors = self._build_surrogate_context()
-        elif "响应曲面" in self._method():
-            context, errors = self._run_rsm(), []
-        else:
-            context, errors = oe.build_models(self.project_data)
-        if errors or not context or not context["models"]:
-            raise ValueError("\n".join(errors or ["缺少可建模的响应数据。"]))
-
-        self._oe_context = context
-        return context
+        return self.controller._prepare_context()
 
     def run_statistics(self):
-        self._check_inputs()
-        self.stats_btn.setEnabled(False)
-        try:
-            context = self._prepare_context()
-            self._robust_res = {}
-            self.robust_text.clear()
-            self._plot_pareto({})
-            self._update_analysis(context, {})
-            self.tabs.setCurrentWidget(self.diagnostics_panel)
-            self.status_label.setText("建模与统计分析完成，未执行鲁棒优化。")
-            self.optimization_finished.emit()
-        except Exception as exc:
-            self.project_data.record_operation("工作台统计分析", "失败", {"settings": self._analysis_settings()}, message=str(exc))
-            logging.exception("统计分析失败")
-            self.status_label.setText(f"统计分析失败：{exc}")
-            Notice.warning(self, "统计分析失败", str(exc))
-        finally:
-            self.stats_btn.setEnabled(True)
+        return self.controller.run_statistics()
 
     def _update_analysis(self, context, robust):
-        kd, kc = self.k_design_spin.value(), self.k_constraint_spin.value()
-        self._refresh_view(self.view_combo.currentText())
-        self.data_overall_label.setText(oe.describe_data(self.project_data) + "\n水平分组为单因子描述，未控制其他因子；F/p 不可估计时留空，不用于多因子效应归因。")
-        ls = oe.level_stats(self.project_data)
-        self._fill_level_table(ls)
-        self.signif_text.setPlainText(oe.anova_and_lof(context, self.project_data))
-        cv_text = oe.cross_validation(context)
-        resid_text, resid_data = oe.residual_analysis(context)
-        self._resid_data = resid_data
-        self.cv_text.setPlainText(cv_text + "\n\n" + resid_text)
-        self._plot_residual(resid_data)
-        param_res = oe.parameter_design(context, robust, kd, kc) if robust else {"text": "尚未执行鲁棒优化，无推荐点；可在统计诊断页手动核验设计点。", "factor_plots": []}
-        self._param_res = param_res
-        self.param_text.setText(param_res.get("text", ""))
-        self._plot_factor(param_res.get("factor_plots", []))
-        tol_text, _tol = oe.tolerance_contribution(context, kd, (robust.get("best") or {}).get("x"))
-        self.tol_text.setText(tol_text)
-        self.model_text.setPlainText(oe.model_extraction(context))
-
-        WorkbenchDiagnostics.fill(self.data_stats_table, wa.descriptive(self.project_data))
-        self.diagnostics_panel.set_context(context, robust, kd, kc)
-        self.diagnostics_panel.snapshot.update(optimization=robust, tolerance=_tol, parameter_design=param_res,
-            anova_text=self.signif_text.toPlainText(), validation_text=self.cv_text.toPlainText(), model_text=self.model_text.toPlainText())
-        self.project_data.workbench_result = reports.serializable(self.diagnostics_panel.snapshot)
-        self.project_data.record_operation("鲁棒优化与统计分析" if robust else "工作台统计分析",
-            "未通过" if robust and robust.get("feasible_count", 0) == 0 else "完成",
-            {"results": reports.results(self.project_data)},
-            "未找到可行候选" if robust and robust.get("feasible_count", 0) == 0 else "计算完成，工程结论待确认")
-        self.diagnostics_panel.fill(self.tol_table, [{"响应":name,"因子":row["name"],"局部方差":row["variance"],"份额 %":row["share"]} for name,rows in _tol.items() for row in rows])
+        return self.controller._update_analysis(context, robust)
 
     def _fill_level_table(self, ls):
         rows = ls.get("rows", [])
@@ -963,125 +367,18 @@ class OptimizationPage(QWidget):
                 self.level_table.setItem(i, j, QTableWidgetItem(v))
 
     def _plot_pareto(self, robust):
-        self.pareto_fig.clear()
-        ax = self.pareto_fig.add_subplot(111)
-        scatter = robust.get("front_scatter") or []
-        if robust.get("mode") == "constraint" and robust.get("best"):
-            constraints = robust["best"].get("sigma_constraints", [])
-            names = [r["name"] for r in constraints]
-            ratios = [r["sigma"]/r["sigma_limit"] for r in constraints]
-            ax.barh(names, ratios, color=["#168064" if ratio <= 1 else "#c73545" for ratio in ratios])
-            ax.axvline(1, color="#c73545", linestyle="--", label="允许上限")
-            ax.set_xlabel("传播标准差 / 允许最大标准差（≤ 1 为通过）")
-            ax.set_title("候选点独立波动约束核验")
-            ax.legend(fontsize=8)
-        elif scatter:
-            xs = [p[0] for p in scatter]
-            ys = [p[1] for p in scatter]
-            ax.scatter(xs, ys, s=18, alpha=0.6, color="#17a2b8", label="可行进化解")
-            # 前沿曲线
-            front = robust.get("front") or []
-            if front:
-                fx = [p["obj"][0] for p in front]
-                fy = [p["obj"][1] for p in front if len(p["obj"]) > 1]
-                if len(fy) == len(fx):
-                    ax.plot(fx, fy, "-o", color="#1d4ed8", lw=1.6,
-                            label="帕累托前沿")
-            knee = robust.get("knee")
-            if knee and len(knee["obj"]) > 1:
-                ax.scatter([knee["obj"][0]], [knee["obj"][1]], s=120,
-                           marker="*", color="#f97316", label="Knee Point")
-            best = robust.get("best")
-            if best and len(best["obj"]) > 1:
-                ax.scatter([best["obj"][0]], [best["obj"][1]], s=60,
-                           marker="D", color="#16a34a", label="推荐解")
-            ax.set_xlabel("均值损失（1 − 望性）")
-            ax.set_ylabel("归一化标准差 σ")
-            ax.set_title("鲁棒优化 帕累托前沿")
-            ax.grid(alpha=0.3)
-            ax.legend(fontsize=8)
-        else:
-            if robust.get("mode") == "weighted" and robust.get("best"):
-                best = robust["best"]
-                ax.bar(["均值损失", "归一化波动"], [1-best["mean_perf"],best["std_norm"]], color=["#2563eb","#168064"])
-                ax.set_title("加权优化候选点指标")
-            else:
-                ax.text(0.5, 0.5, "暂无可行前沿数据", ha="center", va="center")
-        self.pareto_canvas.draw()
+        optimization_plots.pareto(
+            self.pareto_fig, self.pareto_canvas, robust)
 
-    def _plot_residual(self, resid_data):
-        self.resid_fig.clear()
-        ax = self.resid_fig.add_subplot(111)
-        if resid_data:
-            for name, d in resid_data.items():
-                ax.scatter(d["predicted"], d["residual"], s=16, alpha=0.6,
-                           label=name)
-            ax.axhline(0, color="gray", ls="--")
-            ax.set_xlabel("模型预测值")
-            ax.set_ylabel("残差")
-            ax.set_title("残差 vs 预测")
-            ax.legend(fontsize=8)
-        else:
-            ax.text(0.5, 0.5, "暂无残差", ha="center", va="center")
-        self.resid_canvas.draw()
+    def _plot_residual(self, residual_data):
+        optimization_plots.residual(
+            self.resid_fig, self.resid_canvas, residual_data)
 
     def _plot_factor(self, plots):
-        self.factor_fig.clear()
-        n = len(plots)
-        if n == 0:
-            ax = self.factor_fig.add_subplot(111)
-            ax.text(0.5, 0.5, "暂无因子图", ha="center", va="center")
-            self.factor_canvas.draw()
-            return
-        cols = min(2, n)
-        rows = math.ceil(n / cols)
-        for i, p in enumerate(plots):
-            ax = self.factor_fig.add_subplot(rows, cols, i + 1)
-            ax.plot(p["x"], p["mean"], "-o", color="#1d4ed8", label="均值望性")
-            ax.plot(p["x"], p["std"], "-s", color="#dc2626", label="σ 归一")
-            bad = [j for j, ok in enumerate(p.get("feasible", [])) if not ok]
-            if bad:
-                ax.scatter([p["x"][j] for j in bad], [p["mean"][j] for j in bad], marker="x", color="black", label="违反约束")
-            ax.set_title(p["factor"])
-            ax.grid(alpha=0.3)
-            if i == 0:
-                ax.legend(fontsize=7)
-            ax.tick_params(labelsize=7)
-        self.factor_canvas.draw()
+        optimization_plots.factor_effects(
+            self.factor_fig, self.factor_canvas, plots)
 
     def _run_tool(self):
-        self._check_inputs()
-        if not self._oe_context:
-            Notice.warning(self, "无模型", "请先点击【执行稳定性设计与鲁棒优化】。")
-            return
-        tool = self.tool_combo.currentText()
-        kd = self.k_design_spin.value()
-        start = (self._param_res or {}).get("recommended")
-        if self.tool_start.currentText() == "手动核验点":
-            start = (self.diagnostics_panel.snapshot.get("point_evaluation") or {}).get("point")
-            if not start:
-                Notice.warning(self, "缺少起点", "请先在统计诊断页计算手动设计点。")
-                return
-        elif self.tool_start.currentText() == "区间中心":
-            start = None
-        if not start:
-            self.tool_start.setCurrentText("区间中心")
-            d_inputs = oe.design_inputs(self._oe_context)
-            start = {f.name: sum(engine.factor_limits(f)) / 2.0 for f in d_inputs}
-        try:
-            method = "最陡上升" if "最陡上升" in tool else "EVOP" if "EVOP" in tool else "AOFAT"
-            result = oe.local_search(self._oe_context, start, kd, self.k_constraint_spin.value(),
-                                     self.tool_weight.value(), method, self.tool_steps.value(), self.tool_step.value())
-            self.tool_text.setPlainText(result["text"])
-            self.diagnostics_panel.fill(self.tool_table, [
-                {"轮次":r["iteration"], **r["x"], "望性":r["mean"], "归一标准差":r["std"],
-                 "约束违反":r["violation"], "加权损失":r["score"], "可行":r["feasible"]} for r in result["trials"]])
-            self.diagnostics_panel.snapshot["local_search"] = result
-            self.project_data.workbench_result.update(local_search=reports.serializable(result))
-            self.project_data.record_operation("局部探索", "完成" if result["best"]["feasible"] else "未通过", {"workbench": reports.serializable(self.diagnostics_panel.snapshot)}, result["text"])
-        except Exception as exc:
-            self.tool_table.setRowCount(0)
-            self.tool_text.setPlainText(f"探索失败：{exc}")
-            self.project_data.record_operation("局部探索", "失败", message=str(exc))
+        return self.controller._run_tool()
 
 from notifications import Notice

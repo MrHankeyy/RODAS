@@ -26,26 +26,6 @@ class FactorItem:
 
 
 @dataclass
-class ScreeningResult:
-    factor_rankings: list[dict] = field(default_factory=list)
-    main_effects: list[dict] = field(default_factory=list)
-    stability_impact: list[dict] = field(default_factory=list)
-    diagnostic_summary: str = ""
-    conclusion: str = ""
-    plot_points: list[dict] = field(default_factory=list)
-
-
-@dataclass
-class TaguchiResult:
-    array_name: str = ""
-    orthogonal_array: list[dict] = field(default_factory=list)
-    signal_to_noise: list[dict] = field(default_factory=list)
-    best_levels: dict = field(default_factory=dict)
-    recommendation: str = ""
-    summary: str = ""
-
-
-@dataclass
 class ProjectData:
     responses: list[ResponseItem] = field(default_factory=list)
     factors: list[FactorItem] = field(default_factory=list)
@@ -68,27 +48,13 @@ class ProjectData:
     report_history: list[dict] = field(default_factory=list)
 
     def record_operation(self, stage, status="完成", payload=None, message=""):
-        from notifications import bus
-        bus.post("错误" if status == "失败" else "提醒" if status in ("未通过", "部分完成") else "成功", stage, status + ("：" + message if message else ""))
+        from services.project_service import ProjectService
+        ProjectService.for_project(self).record_operation(stage, status, payload, message)
 
     def analysis_signature(self):
-        import json
-        from dataclasses import asdict
-        return json.dumps({"factors": [asdict(f) for f in self.factors],
-                           "responses": [asdict(r) for r in self.responses],
-                           "method": self.design_method, "params": self.design_params,
-                           "matrix": self.doe_matrix, "surrogate": self.surrogate_config},
-                          sort_keys=True, ensure_ascii=False, default=str)
+        from services.project_service import signature
+        return signature(self)
 
     def ensure_results_current(self):
-        signature = self.analysis_signature()
-        previous = getattr(self, "_analysis_signature", signature)
-        changed = previous != signature
-        if changed:
-            self.screening_result = {}
-            self.taguchi_result = {}
-            self.rsm_result = {}
-            self.surrogate_result = {}
-            self.workbench_result = {}
-        self._analysis_signature = signature
-        return changed
+        from services.project_service import ProjectService
+        return ProjectService.for_project(self).ensure_current()

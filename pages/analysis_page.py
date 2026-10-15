@@ -3,6 +3,7 @@ from pathlib import Path
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QTextBrowser, QLineEdit, QFileDialog
 import report_engine as reports
 from notifications import Notice
+from services.project_service import ProjectService
 
 class AnalysisPage(QWidget):
     def __init__(self, project_data):
@@ -44,16 +45,21 @@ class AnalysisPage(QWidget):
         self.report = None
         self.report_html = ""
         try:
-            self.project_data.report_metadata = {k:w.text().strip() for k,w in self.fields.items()}
+            service = ProjectService.for_project(self.project_data)
+            service.update_report_metadata(
+                {key: widget.text().strip() for key, widget in self.fields.items()})
             data = reports.bundle(self.project_data)
             if not any(data["results"].values()):
-                self.preview.setPlainText("暂无当前结果。请先完成筛选分析、田口分析或模型优化。输入改变后需要重新计算。")
+                self.preview.setPlainText(
+                    "暂无当前结果。请先完成筛选分析、田口分析或模型优化。"
+                    "输入改变后需要重新计算。")
                 self.status_label.setText("等待当前输入的分析结果")
                 return
             self.report = reports.build_current_report(data)
             self.report_html = reports.render_html(self.report)
             self.preview.setHtml(self.report_html)
-            self.status_label.setText("当前计算结果 · 再次计算后替换本报告 · 不保存操作履历")
+            self.status_label.setText(
+                "当前计算结果 · 再次计算后替换本报告 · 不保存操作履历")
         except Exception as exc:
             self.preview.setPlainText("报告生成失败：" + str(exc))
             Notice.warning(self, "报告生成失败", str(exc))

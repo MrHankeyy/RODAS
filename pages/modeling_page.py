@@ -6,73 +6,8 @@ from PyQt6.QtWidgets import (
     QCheckBox, QMessageBox, QTabWidget, QSplitter
 )
 from models import ResponseItem, FactorItem, ProjectData
-
-
-class MultiLevelHeader(QHeaderView):
-    """多级表头：支持「分组大栏 → 小栏 → 叶子列」的层级渲染。"""
-
-    def __init__(self, levels, parent=None):
-        super().__init__(Qt.Orientation.Horizontal, parent)
-        self._leaves = []          # 最底层叶子列: (起始列, 结束列, 文本)
-        self._group_bands = []     # 分组带: _group_bands[d] 存放第 d 层的分组
-        self._leaf_count = 0
-        for node in levels:
-            self._build(node, 0)
-        self._band_height = 28
-        self._header_height = self._band_height * (len(self._group_bands) + 1)
-        self.setFixedHeight(self._header_height)
-        self.setSectionsClickable(False)
-        self.setHighlightSections(False)
-        self.setDefaultAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.sectionResized.connect(lambda *_: self.viewport().update())
-        self.sectionMoved.connect(lambda *_: self.viewport().update())
-
-    def sizeHint(self):
-        return QSize(super().sizeHint().width(), self._header_height)
-
-    def _build(self, node, depth):
-        """递归解析表头结构：叶子占一列，分组记录其跨列范围。"""
-        if isinstance(node, str):
-            start = self._leaf_count
-            self._leaf_count += 1
-            self._leaves.append((start, start, node))
-            return
-        label, children = node
-        start = self._leaf_count
-        for child in children:
-            self._build(child, depth + 1)
-        end = self._leaf_count - 1
-        while len(self._group_bands) <= depth:
-            self._group_bands.append([])
-        self._group_bands[depth].append((start, end, label))
-
-    def paintEvent(self, event):
-        painter = QPainter(self.viewport())
-        painter.fillRect(event.rect(), self.palette().window())
-        self._draw_band(painter, 0, self._leaves, bold=False)
-        for band_idx, groups in enumerate(self._group_bands, start=1):
-            self._draw_band(painter, band_idx, groups, bold=True)
-
-    def _draw_band(self, painter, band_index, items, bold):
-        band_h = self._band_height
-        if band_index == 0:
-            y = self.height() - band_h
-        else:
-            y = (band_index - 1) * band_h
-        font = self.font()
-        font.setBold(bold)
-        painter.setFont(font)
-        for start, end, label in items:
-            x0 = self.sectionViewportPosition(start)
-            x1 = self.sectionViewportPosition(end) + self.sectionSize(end)
-            if x1 <= 0 or x0 >= self.viewport().width():
-                continue
-            rect = QRect(x0, y, x1 - x0, band_h)
-            painter.fillRect(rect, QColor(237, 242, 247))
-            painter.setPen(QPen(QColor(213, 222, 231)))
-            painter.drawRect(rect)
-            painter.setPen(self.palette().color(QPalette.ColorRole.Text))
-            painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, label)
+from services.project_service import ProjectService
+from pages.table_widgets import MultiLevelHeader
 
 
 class ModelingPage(QWidget):
@@ -184,18 +119,13 @@ class ModelingPage(QWidget):
 
 
     def on_save_clicked(self):
-        """
-        触发：将界面上的输入数据传递到后端（同步到数据模型 ProjectData 中）
-        并可在此调用后续算法
-        """
         errors = self._validate_response_inputs()
         if errors:
             Notice.warning(self, "业务建模数据校验未通过", "\n".join(errors))
             return
-
         self.sync_to_project_data()
-        self.project_data.ensure_results_current()
-        self.project_data.record_operation("业务模型保存")
+        service = ProjectService.for_project(self.project_data)
+        service.record_operation("业务模型保存")
         self.model_saved.emit()
         self.save_status_label.setText(
             f"已保存：{len(self.project_data.responses)} 个响应，"
@@ -488,30 +418,21 @@ class ModelingPage(QWidget):
             if item["约束"]:
                 kind = kind + "+约束" if kind else "约束"
             responses.append(ResponseItem(
-                name=item["名称"],
-                kind=kind,
-                feature=feature,
-                lower=lower,
-                upper=upper,
-                robust_limit=robust_limit,
-                unit=item["单位"],
-            ))
-        self.project_data.responses = responses
+                name=item["名称"], kind=kind, feature=feature,
+                lower=lower, upper=upper, robust_limit=robust_limit,
+                unit=item["单位"]))
 
-        self.project_data.factors = [
+        factors = [
             FactorItem(
-                name=item["名称"],
-                source=item["设计/环境"],
-                uncertainty=item["不确定性"],
-                distribution=item["分布类型"],
-                param1=item["P1"],
-                param2=item["P2"],
+                name=item["名称"], source=item["设计/环境"],
+                uncertainty=item["不确定性"], distribution=item["分布类型"],
+                param1=item["P1"], param2=item["P2"],
                 fixed_value=item["固定值"],
-                is_fixed=bool(item["固定值"]),
-                unit=item["单位"],
-            )
+                is_fixed=bool(item["固定值"]), unit=item["单位"])
             for item in self.get_factor_data()
         ]
+        return ProjectService.for_project(self.project_data).update_definition(
+            factors=factors, responses=responses)
 
 
 from notifications import Notice
