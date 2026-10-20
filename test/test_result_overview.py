@@ -49,7 +49,6 @@ class ResultOverviewTests(unittest.TestCase):
             self.assertEqual(view.status_label.text(), "分析已完成")
             self.assertEqual(view.result_tables[0].horizontalHeaderItem(1).text(), "测试集 R²")
             self.assertEqual(view.result_tables[0].item(0, 1).text(), "0.97")
-            self.assertEqual(view.details_layout.rowCount(), 4)
         self.assertFalse(view.findChildren(QComboBox))
         view.close()
 
@@ -86,18 +85,16 @@ class ResultOverviewTests(unittest.TestCase):
         item["runs"][0]["settings"] = item["best_levels"]
         self.assertIn("已试验统计", overview(project)["sections"][1]["title"])
 
-    def test_switching_plan_removes_tables_and_collapses_details(self):
+    def test_switching_plan_removes_old_result_tables(self):
         project = self.project()
         page = OptimizationPage(project)
         project.surrogate_result = {"responses": {"Y": {"r2_test": .97, "params": {"kernel": "RBF"}}}}
         page._refresh_view()
         self.assertEqual(len(page.overview.result_tables), 1)
-        page.overview.details_toggle.setChecked(True)
         project.design_method = "两水平筛选设计"
         page._check_inputs()
         self.assertFalse(project.surrogate_result)
         self.assertFalse(page.overview.result_tables)
-        self.assertFalse(page.overview.details_toggle.isChecked())
         page.close()
 
 

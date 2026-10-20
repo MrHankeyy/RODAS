@@ -34,10 +34,11 @@ class DesktopLayoutTests(unittest.TestCase):
 
     def test_result_navigation_tracks_visible_method_pages(self):
         page = self.window.page_OPT
-        for method, wanted, unwanted in [('筛选设计', 9, 10), ('田口设计', 10, 9), ('响应曲面设计', 1, 9)]:
+        for method, wanted, unwanted in [('筛选设计', 8, 9), ('田口设计', 9, 8), ('响应曲面设计', 1, 8)]:
             page.project_data.design_method = method
             page._update_method_actions()
             workspace = page.results_workspace
+            self.assertNotIn('整体数据分析', [page.tabs.tabText(i) for i in range(page.tabs.count())])
             self.assertIn(wanted, workspace.buttons)
             self.assertNotIn(unwanted, workspace.buttons)
             workspace.buttons[wanted].click()
@@ -45,6 +46,26 @@ class DesktopLayoutTests(unittest.TestCase):
             page.tabs.setCurrentIndex(0)
             self.assertTrue(workspace.buttons[0].isChecked())
             self.assertEqual(sum(button.isChecked() for button in workspace.buttons.values()), 1)
+
+    def test_configuration_controls_preserve_full_panel_width(self):
+        self.window.resize(1900, 1000)
+        self.window.on_switch_module('方案配置', 1)
+        page = self.window.page_CFG
+        self.assertFalse(hasattr(page, 'info_group'))
+        page.method_combo.setCurrentIndex(2)
+        for model in range(4):
+            page.model_combo.setCurrentIndex(model)
+            APP.processEvents()
+            editor = page.model_stack.currentWidget()
+            expected = (page.model_stack.width(), editor.width())
+            designs = ('CCD', 'BBD') if model == 0 else ('Latin Hypercube (LHS)', '均匀网格抽样')
+            for design in designs:
+                editor.doe_method_combo.setCurrentText(design)
+                for alpha in (1, 2, 0):
+                    editor.alpha_mode_combo.setCurrentIndex(alpha)
+                    self.assertEqual((page.model_stack.width(), editor.width()), expected)
+                    APP.processEvents()
+                    self.assertEqual((page.model_stack.width(), editor.width()), expected)
 
     def test_factor_tabs_preserve_rows_and_show_counts(self):
         page = self.window.page_MOD

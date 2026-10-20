@@ -66,8 +66,6 @@ class OptimizationController:
             page.diagnostics_panel.clear()
             page.screening_panel.set_result({})
             page.taguchi_panel.set_result({})
-            page.data_stats_table.setRowCount(0)
-            page.level_table.setRowCount(0)
             page.tol_table.setRowCount(0)
             page.tool_table.setRowCount(0)
             for name in ("robust_text", "signif_text", "cv_text", "param_text", "tol_text", "model_text", "tool_text"):
@@ -223,8 +221,6 @@ class OptimizationController:
             page.project_data, context, robust, kd, kc)
     
         page._refresh_view()
-        page.data_overall_label.setText(bundle["data_summary"])
-        page._fill_level_table(bundle["level_stats"])
         page.signif_text.setPlainText(bundle["anova_text"])
         page._resid_data = bundle["residual_data"]
         page.cv_text.setPlainText(bundle["validation_text"])
@@ -236,8 +232,6 @@ class OptimizationController:
         page.tol_text.setText(bundle["tolerance_text"])
         page.model_text.setPlainText(bundle["model_text"])
     
-        WorkbenchDiagnostics.fill(
-            page.data_stats_table, bundle["descriptive"])
         page.diagnostics_panel.set_context(
             context, robust, kd, kc, snapshot=bundle["snapshot"])
         page.diagnostics_panel.fill(

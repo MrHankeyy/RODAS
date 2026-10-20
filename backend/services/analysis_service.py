@@ -57,12 +57,6 @@ def analyze(project, context, robust, k_design=6, k_constraint=6):
         model_text=model_text,
     )
     return {
-        "data_summary": (
-            optimizer.describe_data(project)
-            + "\n水平分组为单因子描述，未控制其他因子；"
-              "F/p 不可估计时留空，不用于多因子效应归因。"),
-        "descriptive": snapshot["data"],
-        "level_stats": optimizer.level_stats(project),
         "anova_text": snapshot["anova_text"],
         "validation_text": snapshot["validation_text"],
         "residual_data": residual_data,

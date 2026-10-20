@@ -31,7 +31,7 @@ def train_surrogates(project):
     config = project.surrogate_config or {}
     if not config:
         raise ValueError(
-            "尚未配置代理模型，请先到【方案配置】打开设置窗口。")
+            "尚未配置代理模型，请先在【方案配置】填写模型参数并生成方案。")
     factors = [item for item in active_factors(project) if item.name]
     names = [item.name for item in factors]
     bounds = config.get("bounds") or {}

@@ -1,119 +1,154 @@
-"""代理模型建模设置窗口（Kriging / SVR / BP 人工神经网络）。
-
-每个模型窗口都包含两部分：
-1. 试验设计（DOE）：不确定性变量维度/上下界、样本点数量、试验设计方法；
-2. 模型自身设置：相关函数与回归函数（Kriging）、核函数与 C/g 搜索（SVR）、
-   网络参数设置（BPANN：手动/自动寻优）。
-"""
+"""Inline, reusable model and experiment configuration components."""
 from PyQt6.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QLabel, QGroupBox,
-    QComboBox, QSpinBox, QDoubleSpinBox, QAbstractSpinBox, QPushButton, QTableWidget,
-    QTableWidgetItem, QHeaderView, QMessageBox, QWidget
+    QVBoxLayout, QHBoxLayout, QLabel, QGroupBox,
+    QComboBox, QSpinBox, QDoubleSpinBox, QAbstractSpinBox, QTableWidget,
+    QTableWidgetItem, QHeaderView, QWidget
 )
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, pyqtSignal
 
 from backend.engines.doe import factor_limits
+from backend.services.design_service import MODEL_DESIGNS
 
 
 MODEL_TITLES = {
-    "Kriging": "Kriging 代理模型建模",
-    "SVR": "SVR（支持向量回归）建模",
-    "ANN": "BP 人工神经网络建模",
+    "RSM": "二次响应面",
+    "Kriging": "Kriging",
+    "SVR": "SVR（支持向量回归）",
+    "ANN": "BP 神经网络",
 }
 
 
-class SurrogateDialog(QDialog):
-    """代理模型设置窗口。factors 为业务建模中的设计因子对象列表。"""
+class ModelConfiguration(QWidget):
+    """Shared inline DOE editor with model-specific parameter controls."""
+    changed = pyqtSignal()
 
     def __init__(self, model_key, factors, parent=None, config=None):
         super().__init__(parent)
         self.model_key = model_key
-        self.factors = [f for f in factors if getattr(f, "name", "").strip()]
-        self.setWindowTitle(MODEL_TITLES[model_key])
-        self.resize(760, 620)
-        self._build_ui()
-        self._load_config(config)
-
-    # ------------------------------------------------------------------ UI
-    def _build_ui(self):
+        self.factors = list(factors)
         root = QVBoxLayout(self)
-        root.setSpacing(10)
-
-        root.addWidget(self._build_doe_group())
-        root.addWidget(self._build_model_group())
-
-        btn_row = QHBoxLayout()
-        btn_row.addStretch()
-        cancel_btn = QPushButton("取消")
-        cancel_btn.clicked.connect(self.reject)
-        ok_btn = QPushButton("保存设置")
-        from frontend.theme import primary, polish_tables
-        primary(ok_btn)
-        polish_tables(self)
-        ok_btn.clicked.connect(self._on_ok)
-        btn_row.addWidget(cancel_btn)
-        btn_row.addWidget(ok_btn)
-        root.addLayout(btn_row)
-
-    def _build_doe_group(self):
-        group = QGroupBox("试验设计（DOE）设置")
+        root.setContentsMargins(0, 0, 0, 0)
+        self.range_group = QGroupBox("因子与试验范围")
+        bounds_layout = QVBoxLayout(self.range_group)
+        self.bounds_table = QTableWidget(0, 3)
+        self.bounds_table.setHorizontalHeaderLabels(["设计因子（单位）", "低水平 / 抽样下限", "高水平 / 抽样上限"])
+        self.bounds_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.bounds_table.verticalHeader().hide()
+        self.bounds_table.setMaximumHeight(145)
+        bounds_layout.addWidget(self.bounds_table)
+        root.addWidget(self.range_group)
+        self.set_factors(factors)
+        group = QGroupBox("试验设计")
         layout = QVBoxLayout(group)
-
-        if not self.factors:
-            layout.addWidget(QLabel("当前业务模型没有可用的设计因子，请先在【业务建模】中添加设计因子。"))
-            return group
-
-        desc = QLabel(
-            f"输入（不确定性）变量维度：{len(self.factors)} 个 "
-            f"（来自业务建模设计因子）。下方可调整各变量抽样上下界。"
-        )
-        layout.addWidget(desc)
-
-        row1 = QHBoxLayout()
-        row1.addWidget(QLabel("样本点数量："))
+        row = QHBoxLayout()
+        row.addWidget(QLabel("试验设计方法："))
+        self.doe_method_combo = QComboBox()
+        self.doe_method_combo.addItems(MODEL_DESIGNS[model_key])
+        row.addWidget(self.doe_method_combo)
+        self.sample_label = QLabel("基础样本点数：")
+        row.addWidget(self.sample_label)
         self.sample_count_spin = QSpinBox()
-        self.sample_count_spin.setRange(6, 20000)
+        self.sample_count_spin.setRange(1, 20000)
         self.sample_count_spin.setValue(50)
         self.sample_count_spin.setKeyboardTracking(False)
-        row1.addWidget(self.sample_count_spin)
-        row1.addSpacing(20)
-        row1.addWidget(QLabel("试验设计方法："))
-        self.doe_method_combo = QComboBox()
-        self.doe_method_combo.addItems([
-            "Latin Hypercube (LHS)",
-            "最优 LHS",
-            "低差异序列 SOBOL",
-            "均匀网格抽样",
-            "稀疏配点法",
-            "随机抽样",
-        ])
-        row1.addWidget(self.doe_method_combo)
-        row1.addStretch()
-        layout.addLayout(row1)
+        row.addWidget(self.sample_count_spin)
+        row.addStretch()
+        layout.addLayout(row)
+        self.structured = QWidget()
+        row = QHBoxLayout(self.structured)
+        row.setContentsMargins(0, 0, 0, 0)
+        row.addWidget(QLabel("CCD 轴值 α："))
+        self.alpha_mode_combo = QComboBox()
+        self.alpha_mode_combo.addItem("面心（α=1）", "face")
+        self.alpha_mode_combo.addItem("可旋转", "rotatable")
+        self.alpha_mode_combo.addItem("自定义 α", "custom")
+        row.addWidget(self.alpha_mode_combo)
+        self.alpha_spin = self._dspin(.5, 5, 1)
+        row.addWidget(self.alpha_spin)
+        row.addWidget(QLabel("中心点数量："))
+        self.centers_spin = QSpinBox()
+        self.centers_spin.setRange(0, 20)
+        self.centers_spin.setValue(3)
+        row.addWidget(self.centers_spin)
+        row.addStretch()
+        layout.addWidget(self.structured)
+        row = QHBoxLayout()
+        row.addWidget(QLabel("整表重复次数："))
+        self.repeats_spin = QSpinBox()
+        self.repeats_spin.setRange(1, 10)
+        row.addWidget(self.repeats_spin)
+        row.addWidget(QLabel("试验顺序："))
+        self.order_combo = QComboBox()
+        self.order_combo.addItems(["随机", "保持相同"])
+        row.addWidget(self.order_combo)
+        row.addWidget(QLabel("随机种子："))
+        self.seed_spin = QSpinBox()
+        self.seed_spin.setRange(0, 99999)
+        self.seed_spin.setValue(456 if model_key == "RSM" else 123)
+        row.addWidget(self.seed_spin)
+        row.addStretch()
+        layout.addLayout(row)
+        self.design_hint = QLabel()
+        self.design_hint.setWordWrap(True)
+        self.design_hint.setProperty("role", "muted")
+        layout.addWidget(self.design_hint)
+        root.addWidget(group)
+        root.addWidget(self._build_model_group())
+        self._load_config(config)
+        self._on_design_changed()
+        self.doe_method_combo.currentTextChanged.connect(self._on_design_changed)
+        self.alpha_mode_combo.currentTextChanged.connect(self._on_design_changed)
+        for control in self.findChildren(QComboBox):
+            control.currentIndexChanged.connect(lambda *_args: self.changed.emit())
+        for control in self.findChildren(QAbstractSpinBox):
+            control.valueChanged.connect(lambda *_args: self.changed.emit())
+        self.bounds_table.itemChanged.connect(lambda *_args: self.changed.emit())
 
-        self.bounds_table = QTableWidget(len(self.factors), 3)
-        self.bounds_table.setHorizontalHeaderLabels(["不确定性变量", "下限", "上限"])
-        header = self.bounds_table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
-        header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
-        header.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
-        self.bounds_table.verticalHeader().setVisible(False)
-        for r, f in enumerate(self.factors):
-            lo, hi = factor_limits(f)
-            self.bounds_table.setItem(r, 0, QTableWidgetItem(f.name))
-            self.bounds_table.item(r, 0).setFlags(
-                Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
-            self.bounds_table.setItem(r, 1, QTableWidgetItem(str(lo)))
-            self.bounds_table.setItem(r, 2, QTableWidgetItem(str(hi)))
-        layout.addWidget(self.bounds_table)
-        return group
+    def set_factors(self, factors):
+        old = {f.name: [self.bounds_table.item(i, col).text() for col in (1, 2)]
+               for i, f in enumerate(self.factors) if i < self.bounds_table.rowCount()}
+        defaults = getattr(self, "_range_defaults", {})
+        self.factors = list(factors)
+        self.bounds_table.blockSignals(True)
+        self.bounds_table.setRowCount(len(self.factors))
+        for i, factor in enumerate(self.factors):
+            values = old.get(factor.name, factor_limits(factor))
+            try:
+                if tuple(map(float, values)) == defaults.get(factor.name):
+                    values = factor_limits(factor)
+            except ValueError:
+                pass
+            name = f"{factor.name}（{factor.unit}）" if factor.unit else factor.name
+            self.bounds_table.setItem(i, 0, QTableWidgetItem(name))
+            self.bounds_table.item(i, 0).setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
+            for col, value in enumerate(values, 1):
+                self.bounds_table.setItem(i, col, QTableWidgetItem(str(value)))
+        self.bounds_table.blockSignals(False)
+        self._range_defaults = {f.name: factor_limits(f) for f in self.factors}
+
+    def _on_design_changed(self, *_args):
+        design = self.doe_method_combo.currentText()
+        structured = design in ("CCD", "BBD")
+        self.structured.setVisible(structured)
+        self.sample_label.setVisible(not structured)
+        self.sample_count_spin.setVisible(not structured)
+        self.alpha_mode_combo.setEnabled(design == "CCD")
+        self.alpha_spin.setEnabled(design == "CCD" and self.alpha_mode_combo.currentData() == "custom")
+        self.design_hint.setText(
+            "CCD 的低高水平对应编码 ±1；α>1 时轴点会超出这些水平。" if design == "CCD" else
+            "BBD 使用三水平的成对组合，不包含立方体顶点。" if design == "BBD" else
+            "生成时检查样本数量与模型设置。")
 
     def _build_model_group(self):
         group = QGroupBox("模型设置")
         layout = QVBoxLayout(group)
         key = self.model_key
 
-        if key == "Kriging":
+        if key == "RSM":
+            info = QLabel("采用完整二次模型：常数项、一次项、平方项和两两交互项。生成时检查设计矩阵是否满秩。")
+            info.setWordWrap(True)
+            layout.addWidget(info)
+        elif key == "Kriging":
             row = QHBoxLayout()
             row.addWidget(QLabel("相关函数："))
             self.corr_combo = QComboBox()
@@ -262,7 +297,7 @@ class SurrogateDialog(QDialog):
     # ------------------------------------------------------------------ 数据
     def _load_config(self, config):
         """Restore saved settings without changing the caller's configuration."""
-        if not config or config.get("model") != self.model_key or not self.factors:
+        if not config or config.get("model") != self.model_key:
             return
 
         def restore_combo(combo, value):
@@ -285,6 +320,13 @@ class SurrogateDialog(QDialog):
                 self.bounds_table.item(row, 1).setText(str(lo))
                 self.bounds_table.item(row, 2).setText(str(hi))
 
+        self.seed_spin.setValue(config.get("seed", self.seed_spin.value()))
+        self.repeats_spin.setValue(config.get("replicates", 1))
+        self.order_combo.setCurrentIndex(0 if config.get("randomize", True) else 1)
+        self.centers_spin.setValue(config.get("centers", 3))
+        self.alpha_spin.setValue(config.get("alpha", 1))
+        index = self.alpha_mode_combo.findData(config.get("alpha_mode", "face"))
+        self.alpha_mode_combo.setCurrentIndex(max(index, 0))
         params = config.get("model_params", config)
         if self.model_key == "Kriging":
             restore_combo(self.corr_combo, params.get("correlation"))
@@ -295,7 +337,7 @@ class SurrogateDialog(QDialog):
                 if name in params:
                     control = self.poly_degree_spin if name == "poly_degree" else getattr(self, name)
                     control.setValue(params[name])
-        else:
+        elif self.model_key == "ANN":
             for name, control in (("hidden_layers", self.hidden_layers_spin),
                                   ("hidden_nodes", self.hidden_nodes_spin),
                                   ("learning_rate", self.lr_spin), ("epochs", self.epoch_spin)):
@@ -313,18 +355,15 @@ class SurrogateDialog(QDialog):
         result = {}
         for r, f in enumerate(self.factors):
             try:
-                lo = float(self.bounds_table.item(r, 1).text())
-                hi = float(self.bounds_table.item(r, 2).text())
-            except (TypeError, ValueError):
-                lo, hi = factor_limits(f)
-            if hi < lo:
-                lo, hi = hi, lo
-            result[f.name] = [lo, hi]
+                result[f.name] = [float(self.bounds_table.item(r, col).text()) for col in (1, 2)]
+            except (TypeError, ValueError) as exc:
+                raise ValueError(f"因子 {f.name} 的试验范围必须填写数字。") from exc
         return result
 
-    def collect_config(self):
-        for spin in self.findChildren(QAbstractSpinBox):
-            spin.interpretText()
+    def collect_config(self, commit=True):
+        if commit:
+            for spin in self.findChildren(QAbstractSpinBox):
+                spin.interpretText()
         model_cfg = {}
         if self.model_key == "Kriging":
             model_cfg = {
@@ -339,7 +378,7 @@ class SurrogateDialog(QDialog):
                 "c_step": self.c_step.value(), "g_min": self.g_min.value(),
                 "g_max": self.g_max.value(), "g_step": self.g_step.value(),
             }
-        else:
+        elif self.model_key == "ANN":
             node_search = None
             if self.net_mode_combo.currentText() == "自动寻优":
                 node_search = [self.node_min_spin.value(), self.node_max_spin.value(),
@@ -359,20 +398,8 @@ class SurrogateDialog(QDialog):
             "sample_count": self.sample_count_spin.value(),
             "doe_method": self.doe_method_combo.currentText(),
             "bounds": self._bounds(),
+            "alpha_mode": self.alpha_mode_combo.currentData(), "alpha": self.alpha_spin.value(),
+            "centers": self.centers_spin.value(), "replicates": self.repeats_spin.value(),
+            "seed": self.seed_spin.value(), "randomize": self.order_combo.currentIndex() == 0,
         }
 
-    def _on_ok(self):
-        if not self.factors:
-            return
-        self.sample_count_spin.interpretText()
-        bounds = self._bounds()
-        for name, (lo, hi) in bounds.items():
-            if hi <= lo:
-                Notice.warning(self, "参数错误", f"变量 {name} 的上下界无效，请检查。")
-                return
-        if self.sample_count_spin.value() < len(self.factors) + 1:
-            Notice.warning(self, "参数错误", "样本点数量过少，建议不小于因子数+1。")
-            return
-        self.accept()
-
-from frontend.notifications import Notice

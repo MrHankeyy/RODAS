@@ -90,8 +90,8 @@ def polish_tables(root):
 
 
 class ResultsWorkspace(QWidget):
-    """Keep existing tab indices and dispatch, expose a grouped result navigator."""
-    GROUPS = [('设计分析', [0, 1, 9, 10]), ('模型与数据', [2, 3, 4, 7, 11]), ('取值与改进', [5, 6, 8])]
+    """Expose a grouped result navigator for the analysis pages."""
+    GROUPS = [('设计分析', [0, 1, 8, 9]), ('模型与数据', [2, 3, 6, 10]), ('取值与改进', [4, 5, 7])]
 
     def __init__(self, tabs):
         super().__init__()

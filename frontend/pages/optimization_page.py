@@ -27,11 +27,9 @@ from backend.engines import doe as engine
 from backend.engines import optimizer as oe
 from backend.engines import design_analysis as da
 from frontend.pages.design_results import DesignResultsPanel
-from frontend.pages.workbench_diagnostics import WorkbenchDiagnostics
 from frontend.pages.qt_tasks import OptimizationWorker
 from frontend.pages.optimization_controller import OptimizationController
 from frontend.pages import optimization_panels, optimization_plots
-from backend.engines import workbench as wa
 from backend.reporting import report_engine as reports
 from backend.domain.models import ProjectData
 from backend.services import analysis_service, model_service
@@ -81,23 +79,18 @@ class OptimizationPage(QWidget):
         is_special = is_screening or is_taguchi
         if is_screening:
             self.run_all_btn.setText("筛选设计：计算主效应")
-            self.run_btn.setText("计算筛选主效应")
         elif is_taguchi:
             self.run_all_btn.setText("田口设计：计算信噪比")
-            self.run_btn.setText("计算田口信噪比")
         else:
             self.run_all_btn.setText("执行稳定性设计与鲁棒优化")
-            self.run_btn.setText("更新方案汇总")
-        for index in (1, 3, 4, 5, 6, 7, 8):
+        for index in (1, 2, 3, 4, 5, 6, 7):
             self.tabs.setTabVisible(index, not is_special)
-        self.tabs.setTabVisible(9, is_screening)
-        self.tabs.setTabVisible(10, is_taguchi)
-        self.tabs.setTabVisible(11, not is_special)
+        self.tabs.setTabVisible(8, is_screening)
+        self.tabs.setTabVisible(9, is_taguchi)
+        self.tabs.setTabVisible(10, not is_special)
         self.stats_btn.setVisible(not is_special)
         if hasattr(self, "results_workspace"):
             self.results_workspace.refresh()
-        if hasattr(self, "level_table"):
-            self.level_table.setVisible(not is_special)
         self.run_all_btn.setToolTip(
             "筛选设计只计算因子敏感度，不执行优化"
             if is_screening else
@@ -164,15 +157,6 @@ class OptimizationPage(QWidget):
         text.setStyleSheet("font-family:Consolas,'Microsoft YaHei';font-size:13px;")
         return text
 
-    def _build_data_tab(self):
-        return optimization_panels.build_data_tab(self)
-
-    def _refresh_data_analysis(self):
-        self._check_inputs()
-        WorkbenchDiagnostics.fill(self.data_stats_table, wa.descriptive(self.project_data))
-        self.data_overall_label.setText(oe.describe_data(self.project_data) + "\n分组 F/p 为单因素描述，未控制其他因子，不用于多因子效应归因。")
-        self._fill_level_table(oe.level_stats(self.project_data))
-
     def _build_signif_tab(self):
         return optimization_panels.build_signif_tab(self)
 
@@ -215,8 +199,6 @@ class OptimizationPage(QWidget):
 
     def _finish_classic(self, result):
         self.status_label.setText(result.get("analysis_status", "分析完成"))
-        self.data_overall_label.setText(oe.describe_data(self.project_data) + "\n水平分组为单因子描述，未控制其他因子；F/p 不可估计时留空，不用于多因子效应归因。")
-        self._fill_level_table(oe.level_stats(self.project_data))
         self.optimization_finished.emit()
 
     def _check_inputs(self):
@@ -229,7 +211,6 @@ class OptimizationPage(QWidget):
         self._on_robust_mode(self.robust_mode_combo.currentText())
         self.screening_panel.set_result(self.project_data.screening_result)
         self.taguchi_panel.set_result(self.project_data.taguchi_result)
-        self._refresh_data_analysis()
 
     # ------------------------------------------------------------- 筛选分析
     def _run_screening(self):
@@ -323,16 +304,6 @@ class OptimizationPage(QWidget):
 
     def _update_analysis(self, context, robust):
         return self.controller._update_analysis(context, robust)
-
-    def _fill_level_table(self, ls):
-        rows = ls.get("rows", [])
-        self.level_table.setRowCount(len(rows))
-        for i, r in enumerate(rows):
-            vals = [r["factor"], f"{r['level']:.4g}", r["response"],
-                    f"{r['mean']:.4g}", f"{r['var']:.4g}" if math.isfinite(r["var"]) else "不可估计", f"{r['range']:.4g}",
-                    str(r["n"]), f"{r['F']:.4g}" if math.isfinite(r["F"]) else "不可估计", f"{r['p']:.4g}" if math.isfinite(r["p"]) else "不可估计"]
-            for j, v in enumerate(vals):
-                self.level_table.setItem(i, j, QTableWidgetItem(v))
 
     def _plot_pareto(self, robust):
         optimization_plots.pareto(

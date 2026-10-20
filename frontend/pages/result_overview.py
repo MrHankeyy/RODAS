@@ -1,8 +1,8 @@
-"""Reusable Qt overview: information, readiness, result tables and folded details."""
+"""Reusable Qt overview: information, readiness and result tables."""
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
-    QFormLayout, QGroupBox, QHBoxLayout, QHeaderView, QLabel, QProgressBar,
-    QScrollArea, QTableWidget, QTableWidgetItem, QToolButton, QVBoxLayout, QWidget,
+    QGroupBox, QHBoxLayout, QHeaderView, QLabel, QProgressBar,
+    QScrollArea, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget,
 )
 
 from frontend.pages.result_summary import display, overview
@@ -63,25 +63,8 @@ class ResultOverview(QScrollArea):
         self.column.addWidget(self.info)
         self.body = QVBoxLayout()
         self.column.addLayout(self.body)
-        self.details_toggle = QToolButton()
-        self.details_toggle.setText("查看方案与分析详情")
-        self.details_toggle.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
-        self.details_toggle.setCheckable(True)
-        self.details_toggle.toggled.connect(self._toggle_details)
-        self.column.addWidget(self.details_toggle)
-        self.details_panel = QWidget()
-        self.details_layout = QFormLayout(self.details_panel)
-        self.details_layout.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
-        self.details_layout.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapLongRows)
-        self.column.addWidget(self.details_panel)
         self.column.addStretch()
         self.setWidget(content)
-        self._method = None
-        self._toggle_details(False)
-
-    def _toggle_details(self, expanded):
-        self.details_toggle.setArrowType(Qt.ArrowType.DownArrow if expanded else Qt.ArrowType.RightArrow)
-        self.details_panel.setVisible(expanded)
 
     def _section(self, title):
         group = QGroupBox(title)
@@ -92,9 +75,6 @@ class ResultOverview(QScrollArea):
 
     def set_project(self, project):
         data = overview(project)
-        if self._method != project.design_method:
-            self.details_toggle.setChecked(False)
-            self._method = project.design_method
         for (caption, value), (name, text) in zip(self.info_values, data["information"]):
             caption.setText(name)
             value.setText(text)
@@ -128,9 +108,3 @@ class ResultOverview(QScrollArea):
                 self.result_tables.append(table)
             if section["message"]:
                 layout.addWidget(label(section["message"], "muted"))
-        while self.details_layout.rowCount():
-            self.details_layout.removeRow(0)
-        for name, value in data["details"]:
-            if value:
-                self.details_layout.addRow(label(name, "muted"), label(value))
-        self.details_toggle.setVisible(bool(data["details"]))

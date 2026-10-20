@@ -50,8 +50,6 @@ from backend.core.statistics import (
     _betacf,
     _betai,
     _f_pvalue,
-    describe_data,
-    level_stats,
     anova_and_lof,
     cross_validation,
     _matrix_xy,

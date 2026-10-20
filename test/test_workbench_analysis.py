@@ -37,7 +37,6 @@ class WorkbenchAnalysisTests(unittest.TestCase):
         r=wa.descriptive(p)[0]
         self.assertEqual(r['有效数'],3);self.assertEqual(r['缺失或无效'],3)
         self.assertEqual(r['样本标准差'],1);self.assertEqual(r['中位数'],2)
-        self.assertEqual(oe.level_stats(ProjectData())['rows'],[])
 
     def test_ols_inference_against_independent_matrix(self):
         p,c=make_context();r=wa.diagnostics(c,'Y');m=c['models']['Y']
@@ -77,17 +76,6 @@ class WorkbenchAnalysisTests(unittest.TestCase):
         self.assertAlmostEqual(measures['纯误差平方和'],.12)
         expected=((measures['残差平方和']-.12)/measures['失拟自由度'])/(.12/12)
         self.assertAlmostEqual(measures['失拟 F'],expected)
-
-    def test_data_only_ui_with_missing_values_and_one_level(self):
-        p,c=make_context()
-        for row in p.doe_matrix:row['A']=0
-        p.doe_matrix[0]['Y']='';p.doe_matrix[1]['Y']=float('nan')
-        page=OptimizationPage(p)
-        with patch.object(oe,'build_models',side_effect=AssertionError('data-only view fitted model')):
-            page._refresh_data_analysis()
-        self.assertEqual(page.data_stats_table.rowCount(),1)
-        self.assertTrue(all(np.isnan(r['F']) for r in oe.level_stats(p)['rows'] if r['factor']=='A'))
-        page.close()
 
     def test_surrogate_holdout_never_claims_ols_inference(self):
         p,c=make_context();c['models']['Y']={'predict_fn':lambda x:0,'validation':{'actual':[1,2,3],'predicted':[1,2.5,3]}}
