@@ -63,7 +63,7 @@ def install_theme(app):
     from pathlib import Path
     app.setStyle('Fusion')
     app.setFont(QFont('Microsoft YaHei', 10))
-    icons = (Path(__file__).parent / 'assets' / 'ui').as_posix()
+    icons = (Path(__file__).resolve().parents[1] / 'assets' / 'ui').as_posix()
     app.setStyleSheet(STYLE + f'''
     QComboBox::down-arrow {{ image:url("{icons}/chevron-down.svg"); width:10px; height:10px; }}
     QSpinBox::up-button, QDoubleSpinBox::up-button {{ subcontrol-origin:border; subcontrol-position:top right; width:18px; border-left:1px solid #e2e7ed; }}
