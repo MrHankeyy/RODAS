@@ -36,6 +36,8 @@ QTableWidget { gridline-color:#e5eaf0; alternate-background-color:#f7f9fb; }
 QTableWidget QLineEdit, QTableWidget QComboBox { border:0; border-radius:0; padding:3px 5px; }
 QHeaderView::section { background:#edf2f7; color:#42566b; padding:6px 8px; border:0; border-right:1px solid #dce3eb; border-bottom:1px solid #d5dee7; font-weight:600; }
 QTableCornerButton::section { background:#edf2f7; border:1px solid #d5dee7; }
+QProgressBar { border:0; background:#edf3f9; color:#26364a; text-align:center; border-radius:3px; margin:5px 8px; }
+QProgressBar::chunk { background:#9ec8e6; border-radius:3px; }
 QTabWidget::pane { background:white; border:1px solid #d5dee7; }
 QTabBar::tab { background:#edf1f5; color:#52667a; border:0; border-bottom:2px solid transparent; padding:8px 12px; }
 QTabBar::tab:selected { background:white; color:#246da4; border-bottom:2px solid #246da4; font-weight:600; }

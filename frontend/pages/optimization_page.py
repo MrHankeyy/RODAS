@@ -30,7 +30,7 @@ from frontend.pages.design_results import DesignResultsPanel
 from frontend.pages.workbench_diagnostics import WorkbenchDiagnostics
 from frontend.pages.qt_tasks import OptimizationWorker
 from frontend.pages.optimization_controller import OptimizationController
-from frontend.pages import optimization_panels, optimization_plots, result_text
+from frontend.pages import optimization_panels, optimization_plots
 from backend.engines import workbench as wa
 from backend.reporting import report_engine as reports
 from backend.domain.models import ProjectData
@@ -47,14 +47,6 @@ matplotlib.rcParams['axes.unicode_minus'] = False
 
 class OptimizationPage(QWidget):
     optimization_finished = pyqtSignal()
-
-    VIEWS = [
-        "方案设计摘要",
-        "筛选设计结果",
-        "响应曲面结果",
-        "田口稳健结果",
-        "代理模型训练结果",
-    ]
 
     def __init__(self, project_data: ProjectData):
         super().__init__()
@@ -210,34 +202,9 @@ class OptimizationPage(QWidget):
         return self.project_data.design_method or ""
 
     # ------------------------------------------------------------- 视图调度
-    def _refresh_view(self, text):
+    def _refresh_view(self):
         self._update_method_actions()
-        if "方案设计摘要" in text:
-            self.result_text.setPlainText(self._summary_text())
-        elif "筛选" in text:
-            self.result_text.setPlainText(self._screening_text())
-        elif "响应曲面" in text:
-            self.result_text.setPlainText(self._rsm_text())
-        elif "田口" in text:
-            self.result_text.setPlainText(self._taguchi_text())
-        else:
-            self.result_text.setPlainText(self._surrogate_text())
-
-    # ------------------------------------------------------------- 结果文本
-    def _summary_text(self):
-        return result_text.summary(self.project_data)
-
-    def _screening_text(self):
-        return result_text.screening(self.project_data)
-
-    def _rsm_text(self):
-        return result_text.response_surface(self.project_data)
-
-    def _taguchi_text(self):
-        return result_text.taguchi(self.project_data)
-
-    def _surrogate_text(self):
-        return result_text.surrogate(self.project_data)
+        self.overview.set_project(self.project_data)
 
     # ------------------------------------------------------------- 后端执行
     def run_optimization(self):

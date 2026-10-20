@@ -9,6 +9,7 @@ from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 
 from frontend.pages.design_results import DesignResultsPanel
+from frontend.pages.result_overview import ResultOverview
 from frontend.pages.workbench_diagnostics import WorkbenchDiagnostics
 
 
@@ -76,21 +77,15 @@ def build(owner):
 def build_overview_tab(owner):
         layout = QVBoxLayout(owner.tab_overview)
         head = QHBoxLayout()
-        head.addWidget(QLabel("结果视图："))
-        owner.view_combo = QComboBox()
-        owner.view_combo.addItems(owner.VIEWS)
-        head.addWidget(owner.view_combo)
+        head.addWidget(QLabel("方案 / 结果汇总"))
         head.addStretch()
         owner.run_btn = QPushButton("更新方案汇总")
         owner.run_btn.clicked.connect(owner.run_optimization)
         head.addWidget(owner.run_btn)
         layout.addLayout(head)
-        owner.result_text = QTextEdit()
-        owner.result_text.setReadOnly(True)
-        owner.result_text.setStyleSheet("font-family:Consolas, 'Microsoft YaHei'; font-size:13px;")
-        layout.addWidget(owner.result_text)
-        owner.view_combo.currentTextChanged.connect(owner._refresh_view)
-        owner._refresh_view(owner.view_combo.currentText())
+        owner.overview = ResultOverview()
+        layout.addWidget(owner.overview)
+        owner._refresh_view()
 
 def build_robust_tab(owner):
         layout = QVBoxLayout(owner.tab_robust)

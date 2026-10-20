@@ -38,23 +38,19 @@ class OptimizationController:
             Notice.critical(page, "分析失败", f"后端分析出错：{exc}")
             return
         page.status_label.setText("分析完成：结果已更新")
-        page._refresh_view(page.view_combo.currentText())
+        page._refresh_view()
         if "筛选" in method:
             page.tabs.setCurrentWidget(page.screening_panel)
-            page.view_combo.setCurrentText("筛选设计结果")
-            page.result_text.setPlainText(page._screening_text())
             page._finish_classic(page.project_data.screening_result)
             return
         if "田口" in method:
             page.tabs.setCurrentWidget(page.taguchi_panel)
-            page.view_combo.setCurrentText("田口稳健结果")
-            page.result_text.setPlainText(page._taguchi_text())
             page._finish_classic(page.project_data.taguchi_result)
             return
         Notice.information(
             page, "分析完成",
-            "后端分析已完成，结果已写入当前数据模型。可在上方切换结果视图，"
-            "随后前往【分析报告】查看可视化。")
+            "后端分析已完成，当前方案的摘要与结果已自动更新。"
+            "可前往【分析报告】查看并导出报告。")
         page.optimization_finished.emit()
 
     def _check_inputs(self):
@@ -82,7 +78,7 @@ class OptimizationController:
                     fig.clear()
                     canvas.draw()
             page.status_label.setText("输入已更新，请重新执行当前方案分析。")
-            page._refresh_view(page.view_combo.currentText())
+            page._refresh_view()
 
     def run_workbench(self):
         page = self.page
@@ -226,7 +222,7 @@ class OptimizationController:
         bundle = analysis_service.analyze(
             page.project_data, context, robust, kd, kc)
     
-        page._refresh_view(page.view_combo.currentText())
+        page._refresh_view()
         page.data_overall_label.setText(bundle["data_summary"])
         page._fill_level_table(bundle["level_stats"])
         page.signif_text.setPlainText(bundle["anova_text"])
