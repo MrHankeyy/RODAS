@@ -17,7 +17,7 @@ class MainWindow(QMainWindow):
     PAGE_INFO = [
         ("业务建模", "定义响应目标、性能约束与输入因子，建立分析问题。"),
         ("方案配置", "选择试验设计方法，设置采样与模型参数，生成试验方案。"),
-        ("数据管理", "检查试验矩阵并回填响应；支持与 Excel 复制、粘贴。"),
+        ("数据管理", "导入、编辑试验数据，检查完整度并查看描述统计。"),
         ("设计优化", "运行当前方案分析，在分类工作区查看模型诊断与设计结果。"),
         ("分析报告", "预览本次计算结果，填写编制信息并导出报告。"),
     ]
@@ -49,10 +49,8 @@ class MainWindow(QMainWindow):
         text.setSpacing(3)
         self.page_title = QLabel(self.PAGE_INFO[0][0])
         self.page_title.setProperty("role", "heading")
-        self.page_description = QLabel(self.PAGE_INFO[0][1])
-        self.page_description.setProperty("role", "muted")
+        self.page_title.setToolTip(self.PAGE_INFO[0][1])
         text.addWidget(self.page_title)
-        text.addWidget(self.page_description)
         header.addLayout(text, 1)
         self.step_label = QLabel("工作流程  1 / 5")
         self.step_label.setProperty("role", "badge")
@@ -92,7 +90,7 @@ class MainWindow(QMainWindow):
             button.setProperty("workflow", True)
             button.setProperty("active", i == 0)
             button.setCursor(Qt.CursorShape.PointingHandCursor)
-            button.setToolTip(f"{title}（Alt+{i+1}）")
+            button.setToolTip(f"{title}（Alt+{i+1}）\n{self.PAGE_INFO[i][1]}")
             button.setShortcut(f"Alt+{i+1}")
             button.clicked.connect(lambda checked=False, index=i: self.on_switch_module(self.PAGE_INFO[index][0], index))
             self.btns_switch.append(button)
@@ -108,6 +106,7 @@ class MainWindow(QMainWindow):
         self.page_OPT = OptimizationPage(self.project_data)
         self.page_REP = AnalysisPage(self.project_data)
         self.page_OPT.optimization_finished.connect(self.page_REP.run_analysis)
+        self.page_OPT.overview.data_requested.connect(lambda: self.switch_page(2))
         self.page_MOD.model_saved.connect(self.page_CFG.update_info_display)
         for page in (self.page_MOD, self.page_CFG, self.page_DM, self.page_OPT, self.page_REP):
             page.setMinimumWidth(1000)
@@ -241,7 +240,7 @@ class MainWindow(QMainWindow):
         self._refresh_navigation(index)
         title, description = self.PAGE_INFO[index]
         self.page_title.setText(title)
-        self.page_description.setText(description)
+        self.page_title.setToolTip(description)
         self.step_label.setText(f"工作流程  {index + 1} / 5")
 
     def closeEvent(self, event):

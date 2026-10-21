@@ -2,8 +2,8 @@
 import numpy as np
 from scipy import stats
 from PyQt6.QtWidgets import (QWidget,QVBoxLayout,QHBoxLayout,QLabel,QComboBox,QPushButton,
-    QTabWidget,QTableWidget,QTableWidgetItem,QHeaderView,QTextEdit,QFileDialog,QMessageBox,
-    QDoubleSpinBox,QScrollArea,QFormLayout)
+    QTabWidget,QTableWidget,QHeaderView,QTextEdit,QFileDialog,QMessageBox,
+    QScrollArea,QFormLayout)
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
 from backend.engines import workbench as wa
@@ -12,8 +12,10 @@ from backend.engines import optimizer as oe
 from backend.services import analysis_service
 from backend.services.project_service import ProjectService
 from backend.reporting.math_format import rich_text
-from frontend.math_widgets import install_delegate, MathTextEdit, decorate_item
+from frontend.math_widgets import MathTextEdit
 from frontend.workspace import dialog_path
+from frontend.pages.table_widgets import fill_records
+from frontend.numeric_inputs import numeric_input, commit_numeric_inputs
 
 
 class WorkbenchDiagnostics(QWidget):
@@ -26,10 +28,10 @@ class WorkbenchDiagnostics(QWidget):
         for title,slot in [('导出当前表 CSV',self.export_csv),('导出完整统计 JSON',self.export_json),('导出诊断图',self.export_plot)]:
             button=QPushButton(title);button.clicked.connect(slot);head.addWidget(button)
         layout.addLayout(head)
-        self.notice=QLabel('请先执行“仅建模与统计分析”或鲁棒优化。');self.notice.setWordWrap(True)
+        self.notice=QLabel('请先执行“建模与模型诊断”或鲁棒优化。');self.notice.setWordWrap(True)
         layout.addWidget(self.notice)
         self.tabs=QTabWidget();layout.addWidget(self.tabs)
-        for key,title in [('data','数据概览'),('summary','拟合统计'),('coefficients','系数与区间'),('observations','逐点诊断')]:
+        for key,title in [('summary','拟合统计'),('coefficients','系数与区间'),('observations','逐点诊断')]:
             table=QTableWidget();table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
             table.setAlternatingRowColors(True)
             table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
@@ -51,17 +53,7 @@ class WorkbenchDiagnostics(QWidget):
         point_layout.addWidget(self.point_table);self.tabs.addTab(self.point_tab,'设计点与约束核验')
         self.response.currentTextChanged.connect(self.render)
 
-    @staticmethod
-    def fill(table,rows):
-        install_delegate(table)
-        headers=list(dict.fromkeys(k for row in rows for k in row))
-        table.setColumnCount(len(headers));table.setHorizontalHeaderLabels(headers);table.setRowCount(len(rows))
-        for i,row in enumerate(rows):
-            for j,key in enumerate(headers):
-                value=row.get(key)
-                text='—' if value is None else f'{value:.6g}' if isinstance(value,float) else str(value)
-                table.setItem(i,j,decorate_item(QTableWidgetItem(text), value))
-        table.resizeRowsToContents()
+    fill = staticmethod(fill_records)
 
     def clear(self):
         self.context=None;self.snapshot={};self.response.clear()
@@ -77,7 +69,6 @@ class WorkbenchDiagnostics(QWidget):
         self.kc = kc
         self.snapshot = snapshot or analysis_service.build_snapshot(
             context, kd, kc)
-        self.fill(self.tables["data"], self.snapshot["data"])
         self.response.blockSignals(True)
         self.response.clear()
         self.response.addItems(list(context["models"]))
@@ -87,11 +78,7 @@ class WorkbenchDiagnostics(QWidget):
         self.controls = {}
         for factor in oe.design_inputs(context):
             low, high = oe.de.factor_limits(factor)
-            spin = QDoubleSpinBox()
-            spin.setDecimals(8)
-            spin.setRange(low, high)
-            spin.setSingleStep((high - low) / 100)
-            spin.setValue((high + low) / 2)
+            spin = numeric_input(float, low, high, (high + low) / 2, decimals=8)
             self.controls[factor.name] = spin
             self.form.addRow(f"{factor.name} [{low:g}, {high:g}]", spin)
         self.point_table.setRowCount(0)
@@ -130,6 +117,7 @@ class WorkbenchDiagnostics(QWidget):
         self.evaluate_point()
 
     def evaluate_point(self):
+        commit_numeric_inputs(self)
         if not self.context:
             return
         project = self.context["_project"]

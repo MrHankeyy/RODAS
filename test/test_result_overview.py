@@ -23,8 +23,8 @@ class ResultOverviewTests(unittest.TestCase):
         project.doe_matrix += [{"Y": ""}, {"Y": "nan"}, {"Y": float("inf")}, {}]
         view = ResultOverview()
         view.set_project(project)
-        self.assertEqual(view.progress_bars[0].value(), 2)
-        self.assertEqual(view.progress_bars[0].maximum(), 6)
+        self.assertEqual(overview(project)["readiness"], [("Y（mm）", 2, 6)])
+        self.assertFalse(hasattr(view, "readiness_table"))
         self.assertEqual(view.status_label.text(), "等待响应数据")
         self.assertFalse(view.result_tables)
         view.close()
@@ -33,7 +33,7 @@ class ResultOverviewTests(unittest.TestCase):
         self.assertEqual(overview(ProjectData())["status"], "尚未生成方案")
         for method, action in [("两水平筛选设计", "计算筛选主效应"),
                                ("田口稳健设计", "计算田口信噪比"),
-                               ("响应曲面设计", "仅建模与统计分析")]:
+                               ("响应曲面设计", "建模与模型诊断")]:
             with self.subTest(method=method):
                 data = overview(self.project(method))
                 self.assertEqual(data["status"], "等待分析")

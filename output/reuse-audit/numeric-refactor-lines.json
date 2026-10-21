@@ -1,0 +1,64 @@
+{
+  "before_files": 56,
+  "after_files": 57,
+  "before_lines": 8388,
+  "after_lines": 8383,
+  "files": [
+    {
+      "file": "frontend/numeric_inputs.py",
+      "before": 0,
+      "after": 35,
+      "added": 35,
+      "removed": 0
+    },
+    {
+      "file": "frontend/pages/configuration_page.py",
+      "before": 285,
+      "after": 288,
+      "added": 3,
+      "removed": 0
+    },
+    {
+      "file": "frontend/pages/configuration_panels.py",
+      "before": 139,
+      "after": 128,
+      "added": 7,
+      "removed": 18
+    },
+    {
+      "file": "frontend/pages/model_configuration.py",
+      "before": 408,
+      "after": 378,
+      "added": 22,
+      "removed": 52
+    },
+    {
+      "file": "frontend/pages/optimization_controller.py",
+      "before": 309,
+      "after": 311,
+      "added": 2,
+      "removed": 0
+    },
+    {
+      "file": "frontend/pages/optimization_page.py",
+      "before": 321,
+      "after": 321,
+      "added": 1,
+      "removed": 1
+    },
+    {
+      "file": "frontend/pages/optimization_panels.py",
+      "before": 211,
+      "after": 209,
+      "added": 10,
+      "removed": 12
+    },
+    {
+      "file": "frontend/pages/workbench_diagnostics.py",
+      "before": 213,
+      "after": 211,
+      "added": 4,
+      "removed": 6
+    }
+  ]
+}

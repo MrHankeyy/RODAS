@@ -2,7 +2,7 @@
 from PyQt6 import QtGui
 from PyQt6.QtCore import Qt, QRect, QSize, QEvent
 from PyQt6.QtGui import QPainter, QPen, QColor, QPalette
-from PyQt6.QtWidgets import QApplication, QHeaderView, QTableWidget, QToolTip
+from PyQt6.QtWidgets import QApplication, QHeaderView, QTableWidget, QTableWidgetItem, QToolTip
 
 
 class MultiLevelHeader(QHeaderView):
@@ -148,3 +148,19 @@ class ExcelLikeTableWidget(QTableWidget):
         for item in self.selectedItems():
             if item and item.flags() & Qt.ItemFlag.ItemIsEditable:
                 item.setText("")
+
+
+def fill_records(table, rows):
+    """Fill a read-only result table with mathematical display support."""
+    from frontend.math_widgets import install_delegate, decorate_item
+    install_delegate(table)
+    headers = list(dict.fromkeys(key for row in rows for key in row))
+    table.setColumnCount(len(headers))
+    table.setHorizontalHeaderLabels(headers)
+    table.setRowCount(len(rows))
+    for i, row in enumerate(rows):
+        for j, key in enumerate(headers):
+            value = row.get(key)
+            text = "—" if value is None else f"{value:.6g}" if isinstance(value, float) else str(value)
+            table.setItem(i, j, decorate_item(QTableWidgetItem(text), value))
+    table.resizeRowsToContents()

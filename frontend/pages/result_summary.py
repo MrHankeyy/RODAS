@@ -1,5 +1,6 @@
 """Present existing analysis results as reusable overview sections (no computation)."""
 import math
+from backend.services.data_service import data_overview
 
 
 def display(value):
@@ -89,29 +90,16 @@ def _taguchi_results(project, labels):
 def overview(project):
     """Return method-independent information, readiness and result sections."""
     method = project.design_method or ""
-    meta = project.design_params.get("meta", {}) or {}
-    config = project.surrogate_config or {}
     responses = [r for r in project.responses if r.name]
     labels = {r.name: named(r) for r in responses}
-    total = len(project.doe_matrix)
-    readiness = []
-    for response in responses:
-        count = 0
-        for row in project.doe_matrix:
-            try:
-                count += math.isfinite(float(row.get(response.name)))
-            except (ValueError, TypeError, OverflowError):
-                pass
-        readiness.append((labels[response.name], count, total))
-    ready = bool(total and responses) and all(n == total for _, n, _ in readiness)
-    design = config.get("doe_method", "—")
+    dataset = data_overview(project)
+    readiness = [(labels[name], count, total) for name, count, total in dataset["readiness"]]
+    ready = dataset["ready"]
     render = _model_results
     if "筛选" in method:
-        design, render = meta.get("kind", "两水平筛选"), _screening_results
+        render = _screening_results
     elif "田口" in method:
-        design, render = f"内表 {meta.get('inner_label', '—')} × 外表 {meta.get('outer_label', '—')}", _taguchi_results
-    elif "响应曲面" in method:
-        design = meta.get("design", "响应曲面")
+        render = _taguchi_results
     sections, successes, errors = render(project, labels) if method else ([], 0, 0)
     if not method:
         status, next_step = "尚未生成方案", "下一步：到「方案配置」生成试验方案。"
@@ -122,10 +110,9 @@ def overview(project):
     elif successes:
         status, next_step = "分析已完成", "当前数据与分析结果已就绪。"
     else:
-        action = "计算筛选主效应" if "筛选" in method else "计算田口信噪比" if "田口" in method else "仅建模与统计分析"
+        action = "计算筛选主效应" if "筛选" in method else "计算田口信噪比" if "田口" in method else "建模与模型诊断"
         status, next_step = "等待分析", f"下一步：使用页面上方「{action}」。"
     if not sections:
         sections = [section("分析结果", message="尚未执行分析。" if ready else "响应数据就绪后显示当前方案的分析结果。")]
-    return dict(information=[("当前方法", method or "未选择"), ("试验次数", f"{total} 次"),
-                             ("设计 / 采样方式", design)], readiness=readiness, status=status,
+    return dict(information=dataset["information"], readiness=readiness, status=status,
                 next_step=next_step, sections=sections)

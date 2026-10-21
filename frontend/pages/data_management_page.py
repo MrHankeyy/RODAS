@@ -1,31 +1,44 @@
 from pathlib import Path
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QApplication,
-    QPushButton, QTableWidget, QTableWidgetItem, QHeaderView, QGroupBox, QMessageBox, QFileDialog
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel,
+    QPushButton, QTableWidgetItem, QGroupBox, QFileDialog
 )
 from PyQt6 import QtGui
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QSignalBlocker
 from backend.infrastructure import file_io
 from backend.domain.models import ProjectData
 from backend.services.project_service import ProjectService
 from frontend.pages.table_widgets import ExcelLikeTableWidget
 from frontend.workspace import dialog_path
+from frontend.theme import ResultTabs, ResultsWorkspace
+from frontend.pages.data_inspection import DataInspection
+from backend.services.data_service import data_overview
 
 class DataManagementPage(QWidget):
     def __init__(self, project_data: ProjectData):
         super().__init__()
         self.project_data = project_data
+        self._dirty = False
+        self._loaded_signature = None
         self.init_ui()
 
     def init_ui(self):
-        main_layout = QVBoxLayout()
+        root = QVBoxLayout(self)
+        root.setContentsMargins(12, 12, 12, 12)
+        self.scheme_group = QGroupBox("当前方案")
+        scheme_layout = QVBoxLayout(self.scheme_group)
+        self.title_label = QLabel()
+        self.title_label.setWordWrap(True)
+        scheme_layout.addWidget(self.title_label)
+        root.addWidget(self.scheme_group)
+        self.tabs = ResultTabs()
+        trial = QWidget()
+        main_layout = QVBoxLayout(trial)
         main_layout.setSpacing(10)
         main_layout.setContentsMargins(16,12,16,12)
 
         # ========= 顶部控制栏 =========
         ctrl_layout = QHBoxLayout()
-        self.title_label = QLabel("当前无加载的数据方案。请先在[方案配置]生成。")
-        self.title_label.setStyleSheet("font-weight: bold; color: #333;")
         
         self.load_btn = QPushButton("加载当前试验矩阵")
         self.load_btn.setStyleSheet("background-color: #6c757d; color: white;")
@@ -37,8 +50,6 @@ class DataManagementPage(QWidget):
         self.import_btn = QPushButton("导入 CSV")
         self.import_btn.clicked.connect(self.import_from_csv)
         
-        self.title_label.setWordWrap(True)
-        main_layout.addWidget(self.title_label)
         ctrl_layout.addStretch()
         ctrl_layout.addWidget(self.load_btn)
         ctrl_layout.addWidget(self.export_btn)
@@ -46,10 +57,12 @@ class DataManagementPage(QWidget):
         main_layout.addLayout(ctrl_layout)
 
         # ========= 数据表格区 =========
-        table_group = QGroupBox("试验数据 · 因子列只读，响应列可编辑")
+        table_group = QGroupBox()
         table_layout = QVBoxLayout()
         
         self.table = ExcelLikeTableWidget()
+        self.table.setToolTip("因子列只读，响应列可编辑")
+        self.table.itemChanged.connect(self._mark_dirty)
         table_layout.addWidget(self.table)
         
         table_group.setLayout(table_layout)
@@ -57,24 +70,64 @@ class DataManagementPage(QWidget):
 
         # ========= 底部按钮区 =========
         btn_layout = QHBoxLayout()
-        self.analyze_btn = QPushButton("数据分布初评(未完善)")
-        self.analyze_btn.hide()
-        self.analyze_btn.clicked.connect(self.simple_analysis)
         
         self.save_btn = QPushButton("保存响应数据")
         self.save_btn.setMinimumWidth(200)
         self.save_btn.setStyleSheet("font-weight: bold; background-color: #2b78e4; color: white;")
         self.save_btn.clicked.connect(self.save_results)
         
-        btn_layout.addWidget(self.analyze_btn)
         btn_layout.addStretch()
         btn_layout.addWidget(self.save_btn)
         main_layout.addLayout(btn_layout)
 
-        self.setLayout(main_layout)
+        self.check_view = DataInspection(self.project_data, "check")
+        self.statistics_view = DataInspection(self.project_data, "statistics")
+        self.check_view.issue_requested.connect(self._locate_issue)
+        for view, title in ((trial, "试验数据"), (self.check_view, "数据检查"),
+                            (self.statistics_view, "描述统计")):
+            self.tabs.addTab(view, title)
+        self.results_workspace = ResultsWorkspace(self.tabs, [("数据管理", [0, 1, 2])])
+        root.addWidget(self.results_workspace, 1)
+        self.tabs.currentChanged.connect(self._refresh_views)
         from frontend.theme import primary
         self.load_btn.setStyleSheet("")
         primary(self.save_btn)
+        self._refresh_views()
+
+    def _refresh_views(self, *_args):
+        data = data_overview(self.project_data)
+        information = data["information"]
+        self.title_label.setText("　 |　 ".join(f"{name}：{value}" for name, value in information))
+        self.check_view.refresh(self._dirty, data)
+        self.statistics_view.refresh(self._dirty, data)
+
+    def _mark_dirty(self, *_args):
+        self._dirty = True
+        for view in (self.check_view, self.statistics_view):
+            view.dirty = True
+            view.notice.setText("有未保存修改；以下为已保存数据，请先保存响应数据。")
+
+    def _locate_issue(self, row, response):
+        self.tabs.setCurrentIndex(0)
+        for column in range(self.table.columnCount()):
+            if self.table.horizontalHeaderItem(column).text() == response:
+                self.table.setCurrentCell(row, column)
+                self.table.scrollToItem(self.table.item(row, column))
+                self.table.setFocus()
+                break
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        signature = ProjectService.for_project(self.project_data).input_signature()
+        if signature != self._loaded_signature:
+            if self.project_data.doe_matrix:
+                self.load_doe_matrix()
+            else:
+                with QSignalBlocker(self.table):
+                    self.table.setRowCount(0)
+                self._dirty = False
+                self._loaded_signature = signature
+        self._refresh_views()
 
     def load_doe_matrix(self):
         matrix = self.project_data.doe_matrix
@@ -82,11 +135,11 @@ class DataManagementPage(QWidget):
             Notice.warning(self, "无数据", "后端中未找到DOE点列，请先进入【方案配置】生成DOE实验方案！")
             return
             
-        method = self.project_data.design_method
-        self.title_label.setText(f"目前方案：{method} | 实验次数：{len(matrix)}")
         
-        # 提取表头
-        columns = list(matrix[0].keys())
+        # Include response columns even when an imported row is missing them.
+        columns = list(dict.fromkeys([key for row in matrix for key in row]
+                                    + [r.name for r in self.project_data.responses if r.name]))
+        blocker = QSignalBlocker(self.table)
         self.table.setColumnCount(len(columns))
         self.table.setRowCount(len(matrix))
         self.table.setHorizontalHeaderLabels(columns)
@@ -96,9 +149,10 @@ class DataManagementPage(QWidget):
 
         for r_idx, row_dict in enumerate(matrix):
             for c_idx, col_name in enumerate(columns):
-                val = row_dict[col_name]
-                item = QTableWidgetItem(str(val))
-                item.setToolTip(str(val))
+                val = row_dict.get(col_name, "")
+                text = "" if val is None else str(val)
+                item = QTableWidgetItem(text)
+                item.setToolTip(text)
                 if isinstance(val, (int, float)):
                     item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
                 
@@ -115,7 +169,10 @@ class DataManagementPage(QWidget):
         self.table.resizeColumnsToContents()
         for column in range(self.table.columnCount()):
             self.table.setColumnWidth(column, max(110, min(240, self.table.columnWidth(column))))
-        self.analyze_btn.setEnabled(True)
+        del blocker
+        self._dirty = False
+        self._loaded_signature = ProjectService.for_project(self.project_data).input_signature()
+        self._refresh_views()
 
     def save_results(self):
         """Validate and atomically publish response values through ProjectService."""
@@ -138,20 +195,11 @@ class DataManagementPage(QWidget):
             return
         service.record_operation(
             "试验响应保存", message="响应已保存到当前项目内存，可开始分析。")
+        self._dirty = False
+        self._loaded_signature = service.input_signature()
+        self._refresh_views()
         Notice.information(
             self, "成功", "实验数据保存成功，已同步至后端底座，可进入下一阶段！")
-
-    def simple_analysis(self):
-        # 简单占位：比如检测是否有空数据或计算响应的最大值最小值等
-        responses = [r.name for r in self.project_data.responses if r.name]
-        msg = "数据填写概览：\n"
-        for r_name in responses:
-            valid_cnt = 0
-            for row in self.project_data.doe_matrix:
-                if row.get(r_name) != "":
-                    valid_cnt += 1
-            msg += f"- 指标 [{r_name}]: 已填入 {valid_cnt} / {len(self.project_data.doe_matrix)} 项\n"
-        Notice.information(self, "数据完整性自检", msg)
 
     def export_to_csv(self):
         if not self.project_data.doe_matrix:

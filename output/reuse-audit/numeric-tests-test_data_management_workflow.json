@@ -1,0 +1,58 @@
+[
+  {
+    "module": "test_data_management_workflow",
+    "exit_code": 0,
+    "summary": [
+      "Ran 6 tests in 2.303s",
+      "OK"
+    ]
+  },
+  {
+    "module": "test_result_overview",
+    "exit_code": 0,
+    "summary": [
+      "Ran 7 tests in 0.508s",
+      "OK"
+    ]
+  },
+  {
+    "module": "test_configuration_workflow",
+    "exit_code": 0,
+    "summary": [
+      "Ran 9 tests in 4.400s",
+      "OK"
+    ]
+  },
+  {
+    "module": "test_workbench_analysis",
+    "exit_code": 0,
+    "summary": [
+      "Ran 11 tests in 1.985s",
+      "OK"
+    ]
+  },
+  {
+    "module": "test_reports",
+    "exit_code": 0,
+    "summary": [
+      "Ran 9 tests in 4.514s",
+      "OK"
+    ]
+  },
+  {
+    "module": "test_analysis_results",
+    "exit_code": 0,
+    "summary": [
+      "Ran 6 tests in 1.960s",
+      "OK"
+    ]
+  },
+  {
+    "module": "test_robust_results",
+    "exit_code": 0,
+    "summary": [
+      "Ran 3 tests in 0.660s",
+      "OK"
+    ]
+  }
+]

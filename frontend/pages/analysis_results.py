@@ -83,7 +83,7 @@ class AnalysisResults(QWidget):
         name = self.response.currentData()
         if not self.context or name not in self.context["models"]:
             self.model_label.setText("尚未分析")
-            self.column.addWidget(label("尚无分析结果。请先填入响应数据，再点击「仅建模与统计分析」。", "badge"))
+            self.column.addWidget(label("尚无分析结果。请先填入响应数据，再点击「建模与模型诊断」。", "badge"))
         else:
             model = self.context["models"][name]
             proxy = "predict_fn" in model
@@ -217,4 +217,4 @@ class AnalysisResults(QWidget):
         rows = [row + (coefficients[i + middle] if i + middle < len(coefficients) else ["", ""])
                 for i, row in enumerate(coefficients[:middle])]
         box = self.section("模型系数", ["模型项", "系数", "模型项", "系数"], rows)
-        box.addWidget(label("系数对应编码变量；系数区间与推断见「统计诊断与导出」。", "muted"))
+        box.addWidget(label("系数对应编码变量；系数区间与推断见「模型诊断与核验」。", "muted"))

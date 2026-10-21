@@ -1,9 +1,9 @@
 """Option panel builders for the design configuration page."""
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox,
-    QSpinBox,
 )
 from frontend.math_widgets import decorate_combo
+from frontend.numeric_inputs import numeric_input
 
 
 def _publish(owner, controls):
@@ -25,24 +25,18 @@ def screening(owner):
     row.addWidget(kind)
     row.addSpacing(24)
     row.addWidget(QLabel("报告重点主效应数："))
-    top_n = QSpinBox()
-    top_n.setRange(1, 10)
-    top_n.setValue(5)
+    top_n = numeric_input(int, 1, 10, 5)
     row.addWidget(top_n)
     row.addStretch()
     layout.addLayout(row)
 
     row = QHBoxLayout()
     row.addWidget(QLabel("中心点补充数："))
-    centers = QSpinBox()
-    centers.setRange(0, 10)
-    centers.setValue(2)
+    centers = numeric_input(int, 0, 10, 2)
     row.addWidget(centers)
     row.addSpacing(24)
     row.addWidget(QLabel("整表重复次数："))
-    repeats = QSpinBox()
-    repeats.setRange(1, 5)
-    repeats.setValue(1)
+    repeats = numeric_input(int, 1, 5, 1)
     row.addWidget(repeats)
     row.addSpacing(24)
     row.addWidget(QLabel("试验顺序："))
@@ -51,9 +45,7 @@ def screening(owner):
     row.addWidget(order)
     row.addSpacing(24)
     row.addWidget(QLabel("随机种子："))
-    seed = QSpinBox()
-    seed.setRange(0, 99999)
-    seed.setValue(123)
+    seed = numeric_input(int, 0, 99999, 123)
     row.addWidget(seed)
     row.addStretch()
     layout.addLayout(row)
@@ -100,8 +92,7 @@ def taguchi(owner):
     noise_levels.addItems(["2 水平", "3 水平"])
     options.addWidget(noise_levels)
     options.addWidget(QLabel("整表重复次数："))
-    repeats = QSpinBox()
-    repeats.setRange(1, 10)
+    repeats = numeric_input(int, 1, 10, 1)
     options.addWidget(repeats)
     options.addWidget(QLabel("试验顺序："))
     order = QComboBox()
@@ -118,9 +109,7 @@ def taguchi(owner):
     row.addWidget(snr)
     row.addSpacing(24)
     row.addWidget(QLabel("随机种子："))
-    seed = QSpinBox()
-    seed.setRange(0, 99999)
-    seed.setValue(789)
+    seed = numeric_input(int, 0, 99999, 789)
     row.addWidget(seed)
     row.addStretch()
     layout.addLayout(row)

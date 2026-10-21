@@ -1,7 +1,7 @@
 """Reusable Qt overview: information, readiness and result tables."""
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import (
-    QGroupBox, QHBoxLayout, QHeaderView, QLabel, QProgressBar,
+    QGroupBox, QHBoxLayout, QHeaderView, QPushButton,
     QScrollArea, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget,
 )
 
@@ -38,6 +38,8 @@ class SummaryTable(QTableWidget):
 
 class ResultOverview(QScrollArea):
     """One view shared by screening, Taguchi, RSM and every surrogate model."""
+    data_requested = pyqtSignal()
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWidgetResizable(True)
@@ -50,6 +52,9 @@ class ResultOverview(QScrollArea):
         row = QHBoxLayout()
         row.addStretch()
         row.addWidget(self.status_label)
+        self.data_button = QPushButton("前往数据管理")
+        self.data_button.clicked.connect(self.data_requested.emit)
+        row.addWidget(self.data_button)
         self.column.addLayout(row)
         self.info = QGroupBox("方案信息")
         info_layout = QHBoxLayout(self.info)
@@ -62,6 +67,8 @@ class ResultOverview(QScrollArea):
             info_layout.addLayout(field, 1)
             self.info_values.append((caption, value))
         self.column.addWidget(self.info)
+        self.next_step = label(role="muted")
+        self.column.addWidget(self.next_step)
         self.body = QVBoxLayout()
         self.column.addLayout(self.body)
         self.column.addStretch()
@@ -80,26 +87,12 @@ class ResultOverview(QScrollArea):
             caption.setText(name)
             value.setText(text)
         self.status_label.setText(data["status"])
+        self.next_step.setText(data["next_step"])
+        self.data_button.setVisible(data["status"] in ("尚未生成方案", "等待响应数据"))
         while self.body.count():
             old = self.body.takeAt(0).widget()
             old.hide()
             old.deleteLater()
-        readiness = self._section("数据准备")
-        self.readiness_table = SummaryTable(["响应", "数据完整度", "状态"],
-            [[name, "", "完整" if total and count == total else "待填入"]
-             for name, count, total in data["readiness"]])
-        self.progress_bars = []
-        for i, (name, count, total) in enumerate(data["readiness"]):
-            progress = QProgressBar()
-            progress.setRange(0, total or 1)
-            progress.setValue(count)
-            progress.setFormat(f"{count} / {total}")
-            progress.setAccessibleName(f"{name} 已填入 {count} / {total}")
-            self.readiness_table.setCellWidget(i, 1, progress)
-            self.progress_bars.append(progress)
-        readiness.addWidget(self.readiness_table)
-        self.next_step = label(data["next_step"], "muted")
-        readiness.addWidget(self.next_step)
         self.result_tables = []
         for section in data["sections"]:
             layout = self._section(section["title"])

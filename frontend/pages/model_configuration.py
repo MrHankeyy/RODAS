@@ -1,7 +1,7 @@
 """Inline, reusable model and experiment configuration components."""
 from PyQt6.QtWidgets import (
     QVBoxLayout, QHBoxLayout, QLabel, QGroupBox,
-    QComboBox, QSpinBox, QDoubleSpinBox, QAbstractSpinBox, QTableWidget,
+    QComboBox, QAbstractSpinBox, QTableWidget,
     QTableWidgetItem, QHeaderView, QWidget
 )
 from PyQt6.QtCore import Qt, pyqtSignal
@@ -10,6 +10,7 @@ from backend.engines.doe import factor_limits
 from backend.services.design_service import MODEL_DESIGNS
 from backend.reporting.math_format import rich_text
 from frontend.math_widgets import decorate_combo
+from frontend.numeric_inputs import numeric_input, commit_numeric_inputs
 
 
 MODEL_TITLES = {
@@ -49,10 +50,7 @@ class ModelConfiguration(QWidget):
         row.addWidget(self.doe_method_combo)
         self.sample_label = QLabel("基础样本点数：")
         row.addWidget(self.sample_label)
-        self.sample_count_spin = QSpinBox()
-        self.sample_count_spin.setRange(1, 20000)
-        self.sample_count_spin.setValue(50)
-        self.sample_count_spin.setKeyboardTracking(False)
+        self.sample_count_spin = numeric_input(int, 1, 20000, 50)
         row.addWidget(self.sample_count_spin)
         row.addStretch()
         layout.addLayout(row)
@@ -66,28 +64,23 @@ class ModelConfiguration(QWidget):
         self.alpha_mode_combo.addItem("自定义 α", "custom")
         decorate_combo(self.alpha_mode_combo)
         row.addWidget(self.alpha_mode_combo)
-        self.alpha_spin = self._dspin(.5, 5, 1)
+        self.alpha_spin = numeric_input(float, .5, 5, 1, decimals=3)
         row.addWidget(self.alpha_spin)
         row.addWidget(QLabel("中心点数量："))
-        self.centers_spin = QSpinBox()
-        self.centers_spin.setRange(0, 20)
-        self.centers_spin.setValue(3)
+        self.centers_spin = numeric_input(int, 0, 20, 3)
         row.addWidget(self.centers_spin)
         row.addStretch()
         layout.addWidget(self.structured)
         row = QHBoxLayout()
         row.addWidget(QLabel("整表重复次数："))
-        self.repeats_spin = QSpinBox()
-        self.repeats_spin.setRange(1, 10)
+        self.repeats_spin = numeric_input(int, 1, 10, 1)
         row.addWidget(self.repeats_spin)
         row.addWidget(QLabel("试验顺序："))
         self.order_combo = QComboBox()
         self.order_combo.addItems(["随机", "保持相同"])
         row.addWidget(self.order_combo)
         row.addWidget(QLabel("随机种子："))
-        self.seed_spin = QSpinBox()
-        self.seed_spin.setRange(0, 99999)
-        self.seed_spin.setValue(456 if model_key == "RSM" else 123)
+        self.seed_spin = numeric_input(int, 0, 99999, 456 if model_key == "RSM" else 123)
         row.addWidget(self.seed_spin)
         row.addStretch()
         layout.addLayout(row)
@@ -175,9 +168,7 @@ class ModelConfiguration(QWidget):
             row.addWidget(self.kernel_combo)
             row.addSpacing(20)
             row.addWidget(QLabel("多项式次数："))
-            self.poly_degree_spin = QSpinBox()
-            self.poly_degree_spin.setRange(1, 5)
-            self.poly_degree_spin.setValue(3)
+            self.poly_degree_spin = numeric_input(int, 1, 5, 3)
             self.poly_degree_spin.setEnabled(False)
             row.addWidget(self.poly_degree_spin)
             row.addStretch()
@@ -188,9 +179,9 @@ class ModelConfiguration(QWidget):
             grid = QVBoxLayout()
             c_row = QHBoxLayout()
             c_row.addWidget(QLabel("惩罚系数 C 搜索范围："))
-            self.c_min = self._dspin(0.01, 100000.0, 0.1)
-            self.c_max = self._dspin(0.1, 1000000.0, 100.0)
-            self.c_step = self._dspin(0.01, 10000.0, 10.0)
+            self.c_min = numeric_input(float, 0.01, 100000.0, 0.1, decimals=3)
+            self.c_max = numeric_input(float, 0.1, 1000000.0, 100.0, decimals=3)
+            self.c_step = numeric_input(float, 0.01, 10000.0, 10.0, decimals=3)
             c_row.addWidget(self.c_min)
             c_row.addWidget(QLabel("~"))
             c_row.addWidget(self.c_max)
@@ -201,9 +192,9 @@ class ModelConfiguration(QWidget):
 
             g_row = QHBoxLayout()
             g_row.addWidget(QLabel("核参数 g（γ）搜索范围："))
-            self.g_min = self._dspin(0.0001, 100.0, 0.01)
-            self.g_max = self._dspin(0.01, 10000.0, 10.0)
-            self.g_step = self._dspin(0.0001, 100.0, 1.0)
+            self.g_min = numeric_input(float, 0.0001, 100.0, 0.01, decimals=4)
+            self.g_max = numeric_input(float, 0.01, 10000.0, 10.0, decimals=3)
+            self.g_step = numeric_input(float, 0.0001, 100.0, 1.0, decimals=4)
             g_row.addWidget(self.g_min)
             g_row.addWidget(QLabel("~"))
             g_row.addWidget(self.g_max)
@@ -228,15 +219,11 @@ class ModelConfiguration(QWidget):
             manual_row = QHBoxLayout(self.manual_widget)
             manual_row.setContentsMargins(0, 0, 0, 0)
             manual_row.addWidget(QLabel("隐含层层数："))
-            self.hidden_layers_spin = QSpinBox()
-            self.hidden_layers_spin.setRange(1, 5)
-            self.hidden_layers_spin.setValue(1)
+            self.hidden_layers_spin = numeric_input(int, 1, 5, 1)
             manual_row.addWidget(self.hidden_layers_spin)
             manual_row.addSpacing(20)
             manual_row.addWidget(QLabel("隐含层节点数："))
-            self.hidden_nodes_spin = QSpinBox()
-            self.hidden_nodes_spin.setRange(1, 500)
-            self.hidden_nodes_spin.setValue(8)
+            self.hidden_nodes_spin = numeric_input(int, 1, 500, 8)
             manual_row.addWidget(self.hidden_nodes_spin)
             manual_row.addStretch()
             layout.addWidget(self.manual_widget)
@@ -245,20 +232,14 @@ class ModelConfiguration(QWidget):
             auto_row = QHBoxLayout(self.auto_widget)
             auto_row.setContentsMargins(0, 0, 0, 0)
             auto_row.addWidget(QLabel("隐含层节点搜索区间："))
-            self.node_min_spin = QSpinBox()
-            self.node_min_spin.setRange(1, 200)
-            self.node_min_spin.setValue(2)
-            self.node_max_spin = QSpinBox()
-            self.node_max_spin.setRange(2, 500)
-            self.node_max_spin.setValue(30)
+            self.node_min_spin = numeric_input(int, 1, 200, 2)
+            self.node_max_spin = numeric_input(int, 2, 500, 30)
             auto_row.addWidget(self.node_min_spin)
             auto_row.addWidget(QLabel("~"))
             auto_row.addWidget(self.node_max_spin)
             auto_row.addSpacing(15)
             auto_row.addWidget(QLabel("遍历步长："))
-            self.node_step_spin = QSpinBox()
-            self.node_step_spin.setRange(1, 50)
-            self.node_step_spin.setValue(2)
+            self.node_step_spin = numeric_input(int, 1, 50, 2)
             auto_row.addWidget(self.node_step_spin)
             auto_row.addStretch()
             layout.addWidget(self.auto_widget)
@@ -271,26 +252,16 @@ class ModelConfiguration(QWidget):
             row2.addWidget(self.act_combo)
             row2.addSpacing(20)
             row2.addWidget(QLabel("学习率："))
-            self.lr_spin = self._dspin(0.0001, 1.0, 0.05)
+            self.lr_spin = numeric_input(float, 0.0001, 1.0, 0.05, decimals=4)
             row2.addWidget(self.lr_spin)
             row2.addSpacing(20)
             row2.addWidget(QLabel("训练代数："))
-            self.epoch_spin = QSpinBox()
-            self.epoch_spin.setRange(10, 20000)
-            self.epoch_spin.setValue(500)
+            self.epoch_spin = numeric_input(int, 10, 20000, 500)
             row2.addWidget(self.epoch_spin)
             row2.addStretch()
             layout.addLayout(row2)
             self.net_mode_combo.currentTextChanged.connect(self._on_net_mode)
         return group
-
-    def _dspin(self, lo, hi, val):
-        spin = QDoubleSpinBox()
-        spin.setRange(lo, hi)
-        spin.setDecimals(4 if lo < 0.01 else 3)
-        spin.setValue(val)
-        spin.setSingleStep(max((hi - lo) / 100, spin.decimals() * 0.001))
-        return spin
 
     def _on_net_mode(self, text):
         manual = text == "手动设置"
@@ -365,8 +336,7 @@ class ModelConfiguration(QWidget):
 
     def collect_config(self, commit=True):
         if commit:
-            for spin in self.findChildren(QAbstractSpinBox):
-                spin.interpretText()
+            commit_numeric_inputs(self)
         model_cfg = {}
         if self.model_key == "Kriging":
             model_cfg = {

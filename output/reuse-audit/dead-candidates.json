@@ -1,0 +1,1698 @@
+{
+  "unreferenced_name_candidates": [
+    {
+      "file": "frontend/main_window.py",
+      "name": "on_test_click",
+      "line": 227,
+      "lines": 2,
+      "loads": 0,
+      "exact_string": 0
+    },
+    {
+      "file": "frontend/numeric_inputs.py",
+      "name": "stepEnabled",
+      "line": 8,
+      "lines": 2,
+      "loads": 0,
+      "exact_string": 0
+    },
+    {
+      "file": "frontend/numeric_inputs.py",
+      "name": "stepBy",
+      "line": 11,
+      "lines": 2,
+      "loads": 0,
+      "exact_string": 0
+    },
+    {
+      "file": "frontend/numeric_inputs.py",
+      "name": "wheelEvent",
+      "line": 14,
+      "lines": 2,
+      "loads": 0,
+      "exact_string": 0
+    },
+    {
+      "file": "frontend/theme.py",
+      "name": "hasHeightForWidth",
+      "line": 179,
+      "lines": 2,
+      "loads": 0,
+      "exact_string": 0
+    },
+    {
+      "file": "frontend/theme.py",
+      "name": "heightForWidth",
+      "line": 182,
+      "lines": 2,
+      "loads": 0,
+      "exact_string": 0
+    },
+    {
+      "file": "frontend/pages/optimization_page.py",
+      "name": "_responses",
+      "line": 181,
+      "lines": 2,
+      "loads": 0,
+      "exact_string": 8
+    },
+    {
+      "file": "frontend/pages/optimization_page.py",
+      "name": "_matrix",
+      "line": 184,
+      "lines": 2,
+      "loads": 0,
+      "exact_string": 0
+    },
+    {
+      "file": "frontend/pages/optimization_page.py",
+      "name": "_factors_for_doe",
+      "line": 199,
+      "lines": 2,
+      "loads": 0,
+      "exact_string": 0
+    },
+    {
+      "file": "frontend/pages/table_widgets.py",
+      "name": "paintEvent",
+      "line": 66,
+      "lines": 6,
+      "loads": 0,
+      "exact_string": 0
+    },
+    {
+      "file": "frontend/pages/welcome_page.py",
+      "name": "paintEvent",
+      "line": 64,
+      "lines": 27,
+      "loads": 0,
+      "exact_string": 0
+    },
+    {
+      "file": "backend/core/optimization.py",
+      "name": "steepest_ascent",
+      "line": 405,
+      "lines": 3,
+      "loads": 0,
+      "exact_string": 0
+    },
+    {
+      "file": "backend/core/optimization.py",
+      "name": "evop_cycle",
+      "line": 410,
+      "lines": 2,
+      "loads": 0,
+      "exact_string": 0
+    },
+    {
+      "file": "backend/core/optimization.py",
+      "name": "aofat_search",
+      "line": 414,
+      "lines": 3,
+      "loads": 0,
+      "exact_string": 0
+    },
+    {
+      "file": "backend/core/response_models.py",
+      "name": "fit_response_surface",
+      "line": 37,
+      "lines": 22,
+      "loads": 0,
+      "exact_string": 0
+    },
+    {
+      "file": "backend/core/response_models.py",
+      "name": "quadratic_optimum",
+      "line": 61,
+      "lines": 20,
+      "loads": 0,
+      "exact_string": 0
+    },
+    {
+      "file": "backend/core/response_models.py",
+      "name": "screening_from_responses",
+      "line": 83,
+      "lines": 28,
+      "loads": 0,
+      "exact_string": 0
+    },
+    {
+      "file": "backend/core/response_models.py",
+      "name": "_design_terms",
+      "line": 113,
+      "lines": 14,
+      "loads": 0,
+      "exact_string": 0
+    },
+    {
+      "file": "backend/core/response_models.py",
+      "name": "model_equation",
+      "line": 274,
+      "lines": 14,
+      "loads": 0,
+      "exact_string": 0
+    },
+    {
+      "file": "backend/reporting/report_engine.py",
+      "name": "save_archive",
+      "line": 61,
+      "lines": 3,
+      "loads": 0,
+      "exact_string": 0
+    },
+    {
+      "file": "backend/reporting/report_engine.py",
+      "name": "load_archive",
+      "line": 66,
+      "lines": 31,
+      "loads": 0,
+      "exact_string": 0
+    },
+    {
+      "file": "backend/services/design_service.py",
+      "name": "response_surface_plan",
+      "line": 53,
+      "lines": 5,
+      "loads": 0,
+      "exact_string": 0
+    },
+    {
+      "file": "backend/services/design_service.py",
+      "name": "surrogate_plan",
+      "line": 101,
+      "lines": 9,
+      "loads": 0,
+      "exact_string": 0
+    },
+    {
+      "file": "backend/services/project_service.py",
+      "name": "input_snapshot",
+      "line": 39,
+      "lines": 4,
+      "loads": 0,
+      "exact_string": 0
+    }
+  ],
+  "unused_import_candidates": [
+    {
+      "file": "frontend/theme.py",
+      "line": 4,
+      "end": 5,
+      "name": "QApplication"
+    },
+    {
+      "file": "frontend/pages/data_management_page.py",
+      "line": 2,
+      "end": 5,
+      "name": "QApplication"
+    },
+    {
+      "file": "frontend/pages/data_management_page.py",
+      "line": 2,
+      "end": 5,
+      "name": "QTableWidget"
+    },
+    {
+      "file": "frontend/pages/data_management_page.py",
+      "line": 2,
+      "end": 5,
+      "name": "QHeaderView"
+    },
+    {
+      "file": "frontend/pages/data_management_page.py",
+      "line": 2,
+      "end": 5,
+      "name": "QMessageBox"
+    },
+    {
+      "file": "frontend/pages/design_results.py",
+      "line": 2,
+      "end": 2,
+      "name": "QTextEdit"
+    },
+    {
+      "file": "frontend/pages/modeling_page.py",
+      "line": 1,
+      "end": 1,
+      "name": "QRect"
+    },
+    {
+      "file": "frontend/pages/modeling_page.py",
+      "line": 1,
+      "end": 1,
+      "name": "QSize"
+    },
+    {
+      "file": "frontend/pages/modeling_page.py",
+      "line": 2,
+      "end": 2,
+      "name": "QPainter"
+    },
+    {
+      "file": "frontend/pages/modeling_page.py",
+      "line": 2,
+      "end": 2,
+      "name": "QPen"
+    },
+    {
+      "file": "frontend/pages/modeling_page.py",
+      "line": 2,
+      "end": 2,
+      "name": "QColor"
+    },
+    {
+      "file": "frontend/pages/modeling_page.py",
+      "line": 2,
+      "end": 2,
+      "name": "QPalette"
+    },
+    {
+      "file": "frontend/pages/modeling_page.py",
+      "line": 3,
+      "end": 7,
+      "name": "QMessageBox"
+    },
+    {
+      "file": "frontend/pages/optimization_controller.py",
+      "line": 2,
+      "end": 2,
+      "name": "QMessageBox"
+    },
+    {
+      "file": "frontend/pages/optimization_controller.py",
+      "line": 4,
+      "end": 4,
+      "name": "da"
+    },
+    {
+      "file": "frontend/pages/optimization_controller.py",
+      "line": 13,
+      "end": 13,
+      "name": "WorkbenchDiagnostics"
+    },
+    {
+      "file": "frontend/pages/optimization_controller.py",
+      "line": 14,
+      "end": 14,
+      "name": "model_service"
+    },
+    {
+      "file": "frontend/pages/optimization_page.py",
+      "line": 10,
+      "end": 10,
+      "name": "annotations"
+    },
+    {
+      "file": "frontend/pages/optimization_page.py",
+      "line": 13,
+      "end": 13,
+      "name": "statistics"
+    },
+    {
+      "file": "frontend/pages/optimization_page.py",
+      "line": 14,
+      "end": 14,
+      "name": "json"
+    },
+    {
+      "file": "frontend/pages/optimization_page.py",
+      "line": 15,
+      "end": 15,
+      "name": "logging"
+    },
+    {
+      "file": "frontend/pages/optimization_page.py",
+      "line": 16,
+      "end": 16,
+      "name": "asdict"
+    },
+    {
+      "file": "frontend/pages/optimization_page.py",
+      "line": 18,
+      "end": 23,
+      "name": "QVBoxLayout"
+    },
+    {
+      "file": "frontend/pages/optimization_page.py",
+      "line": 18,
+      "end": 23,
+      "name": "QHBoxLayout"
+    },
+    {
+      "file": "frontend/pages/optimization_page.py",
+      "line": 18,
+      "end": 23,
+      "name": "QLabel"
+    },
+    {
+      "file": "frontend/pages/optimization_page.py",
+      "line": 18,
+      "end": 23,
+      "name": "QComboBox"
+    },
+    {
+      "file": "frontend/pages/optimization_page.py",
+      "line": 18,
+      "end": 23,
+      "name": "QPushButton"
+    },
+    {
+      "file": "frontend/pages/optimization_page.py",
+      "line": 18,
+      "end": 23,
+      "name": "QGroupBox"
+    },
+    {
+      "file": "frontend/pages/optimization_page.py",
+      "line": 18,
+      "end": 23,
+      "name": "QTextEdit"
+    },
+    {
+      "file": "frontend/pages/optimization_page.py",
+      "line": 18,
+      "end": 23,
+      "name": "QMessageBox"
+    },
+    {
+      "file": "frontend/pages/optimization_page.py",
+      "line": 18,
+      "end": 23,
+      "name": "QTabWidget"
+    },
+    {
+      "file": "frontend/pages/optimization_page.py",
+      "line": 18,
+      "end": 23,
+      "name": "QTableWidget"
+    },
+    {
+      "file": "frontend/pages/optimization_page.py",
+      "line": 18,
+      "end": 23,
+      "name": "QHeaderView"
+    },
+    {
+      "file": "frontend/pages/optimization_page.py",
+      "line": 18,
+      "end": 23,
+      "name": "QFrame"
+    },
+    {
+      "file": "frontend/pages/optimization_page.py",
+      "line": 18,
+      "end": 23,
+      "name": "QLineEdit"
+    },
+    {
+      "file": "frontend/pages/optimization_page.py",
+      "line": 26,
+      "end": 26,
+      "name": "engine"
+    },
+    {
+      "file": "frontend/pages/optimization_page.py",
+      "line": 29,
+      "end": 29,
+      "name": "DesignResultsPanel"
+    },
+    {
+      "file": "frontend/pages/optimization_page.py",
+      "line": 30,
+      "end": 30,
+      "name": "OptimizationWorker"
+    },
+    {
+      "file": "frontend/pages/optimization_page.py",
+      "line": 33,
+      "end": 33,
+      "name": "reports"
+    },
+    {
+      "file": "frontend/pages/optimization_page.py",
+      "line": 35,
+      "end": 35,
+      "name": "analysis_service"
+    },
+    {
+      "file": "frontend/pages/optimization_page.py",
+      "line": 42,
+      "end": 42,
+      "name": "FigureCanvas"
+    },
+    {
+      "file": "frontend/pages/optimization_page.py",
+      "line": 43,
+      "end": 43,
+      "name": "Figure"
+    },
+    {
+      "file": "frontend/pages/optimization_panels.py",
+      "line": 2,
+      "end": 7,
+      "name": "QGroupBox"
+    },
+    {
+      "file": "frontend/pages/optimization_panels.py",
+      "line": 2,
+      "end": 7,
+      "name": "QTextEdit"
+    },
+    {
+      "file": "frontend/pages/optimization_panels.py",
+      "line": 2,
+      "end": 7,
+      "name": "QMessageBox"
+    },
+    {
+      "file": "frontend/pages/optimization_panels.py",
+      "line": 2,
+      "end": 7,
+      "name": "QTabWidget"
+    },
+    {
+      "file": "frontend/pages/optimization_panels.py",
+      "line": 2,
+      "end": 7,
+      "name": "QTableWidgetItem"
+    },
+    {
+      "file": "frontend/pages/optimization_panels.py",
+      "line": 2,
+      "end": 7,
+      "name": "QFrame"
+    },
+    {
+      "file": "frontend/pages/optimization_panels.py",
+      "line": 2,
+      "end": 7,
+      "name": "QLineEdit"
+    },
+    {
+      "file": "frontend/pages/optimization_panels.py",
+      "line": 16,
+      "end": 16,
+      "name": "MathTextEdit"
+    },
+    {
+      "file": "frontend/pages/result_overview.py",
+      "line": 3,
+      "end": 6,
+      "name": "QLabel"
+    },
+    {
+      "file": "frontend/pages/workbench_diagnostics.py",
+      "line": 4,
+      "end": 6,
+      "name": "QTextEdit"
+    },
+    {
+      "file": "frontend/pages/workbench_diagnostics.py",
+      "line": 4,
+      "end": 6,
+      "name": "QMessageBox"
+    },
+    {
+      "file": "backend/core/design_evaluation.py",
+      "line": 2,
+      "end": 2,
+      "name": "annotations"
+    },
+    {
+      "file": "backend/core/design_evaluation.py",
+      "line": 3,
+      "end": 3,
+      "name": "itertools"
+    },
+    {
+      "file": "backend/core/design_evaluation.py",
+      "line": 5,
+      "end": 5,
+      "name": "random"
+    },
+    {
+      "file": "backend/core/design_evaluation.py",
+      "line": 6,
+      "end": 6,
+      "name": "statistics"
+    },
+    {
+      "file": "backend/core/design_evaluation.py",
+      "line": 7,
+      "end": 7,
+      "name": "time"
+    },
+    {
+      "file": "backend/core/doe.py",
+      "line": 2,
+      "end": 2,
+      "name": "annotations"
+    },
+    {
+      "file": "backend/core/doe.py",
+      "line": 6,
+      "end": 6,
+      "name": "statistics"
+    },
+    {
+      "file": "backend/core/doe.py",
+      "line": 7,
+      "end": 7,
+      "name": "time"
+    },
+    {
+      "file": "backend/core/doe.py",
+      "line": 14,
+      "end": 14,
+      "name": "de"
+    },
+    {
+      "file": "backend/core/doe.py",
+      "line": 15,
+      "end": 15,
+      "name": "factor_limits"
+    },
+    {
+      "file": "backend/core/factors.py",
+      "line": 2,
+      "end": 2,
+      "name": "annotations"
+    },
+    {
+      "file": "backend/core/factors.py",
+      "line": 3,
+      "end": 3,
+      "name": "itertools"
+    },
+    {
+      "file": "backend/core/factors.py",
+      "line": 5,
+      "end": 5,
+      "name": "random"
+    },
+    {
+      "file": "backend/core/factors.py",
+      "line": 6,
+      "end": 6,
+      "name": "statistics"
+    },
+    {
+      "file": "backend/core/factors.py",
+      "line": 7,
+      "end": 7,
+      "name": "time"
+    },
+    {
+      "file": "backend/core/factors.py",
+      "line": 9,
+      "end": 9,
+      "name": "_np"
+    },
+    {
+      "file": "backend/core/optimization.py",
+      "line": 2,
+      "end": 2,
+      "name": "annotations"
+    },
+    {
+      "file": "backend/core/optimization.py",
+      "line": 3,
+      "end": 3,
+      "name": "itertools"
+    },
+    {
+      "file": "backend/core/optimization.py",
+      "line": 5,
+      "end": 5,
+      "name": "random"
+    },
+    {
+      "file": "backend/core/optimization.py",
+      "line": 6,
+      "end": 6,
+      "name": "statistics"
+    },
+    {
+      "file": "backend/core/optimization.py",
+      "line": 7,
+      "end": 7,
+      "name": "time"
+    },
+    {
+      "file": "backend/core/response_models.py",
+      "line": 2,
+      "end": 2,
+      "name": "annotations"
+    },
+    {
+      "file": "backend/core/response_models.py",
+      "line": 3,
+      "end": 3,
+      "name": "itertools"
+    },
+    {
+      "file": "backend/core/response_models.py",
+      "line": 5,
+      "end": 5,
+      "name": "random"
+    },
+    {
+      "file": "backend/core/response_models.py",
+      "line": 7,
+      "end": 7,
+      "name": "time"
+    },
+    {
+      "file": "backend/core/response_models.py",
+      "line": 14,
+      "end": 14,
+      "name": "de"
+    },
+    {
+      "file": "backend/core/sampling.py",
+      "line": 2,
+      "end": 2,
+      "name": "annotations"
+    },
+    {
+      "file": "backend/core/sampling.py",
+      "line": 4,
+      "end": 4,
+      "name": "math"
+    },
+    {
+      "file": "backend/core/sampling.py",
+      "line": 6,
+      "end": 6,
+      "name": "statistics"
+    },
+    {
+      "file": "backend/core/sampling.py",
+      "line": 7,
+      "end": 7,
+      "name": "time"
+    },
+    {
+      "file": "backend/core/sampling.py",
+      "line": 14,
+      "end": 14,
+      "name": "de"
+    },
+    {
+      "file": "backend/core/sampling.py",
+      "line": 9,
+      "end": 9,
+      "name": "_np"
+    },
+    {
+      "file": "backend/core/statistics.py",
+      "line": 2,
+      "end": 2,
+      "name": "annotations"
+    },
+    {
+      "file": "backend/core/statistics.py",
+      "line": 3,
+      "end": 3,
+      "name": "itertools"
+    },
+    {
+      "file": "backend/core/statistics.py",
+      "line": 5,
+      "end": 5,
+      "name": "random"
+    },
+    {
+      "file": "backend/core/statistics.py",
+      "line": 7,
+      "end": 7,
+      "name": "time"
+    },
+    {
+      "file": "backend/core/surrogate.py",
+      "line": 2,
+      "end": 2,
+      "name": "annotations"
+    },
+    {
+      "file": "backend/core/surrogate.py",
+      "line": 3,
+      "end": 3,
+      "name": "itertools"
+    },
+    {
+      "file": "backend/core/surrogate.py",
+      "line": 5,
+      "end": 5,
+      "name": "random"
+    },
+    {
+      "file": "backend/core/surrogate.py",
+      "line": 6,
+      "end": 6,
+      "name": "statistics"
+    },
+    {
+      "file": "backend/core/surrogate.py",
+      "line": 14,
+      "end": 14,
+      "name": "de"
+    },
+    {
+      "file": "backend/engines/design_analysis.py",
+      "line": 2,
+      "end": 2,
+      "name": "finite"
+    },
+    {
+      "file": "backend/engines/design_analysis.py",
+      "line": 2,
+      "end": 2,
+      "name": "active_controls"
+    },
+    {
+      "file": "backend/engines/design_analysis.py",
+      "line": 2,
+      "end": 2,
+      "name": "screening"
+    },
+    {
+      "file": "backend/engines/design_analysis.py",
+      "line": 2,
+      "end": 2,
+      "name": "snr"
+    },
+    {
+      "file": "backend/engines/design_analysis.py",
+      "line": 2,
+      "end": 2,
+      "name": "taguchi"
+    },
+    {
+      "file": "backend/engines/doe.py",
+      "line": 2,
+      "end": 2,
+      "name": "HAS_NUMPY"
+    },
+    {
+      "file": "backend/engines/doe.py",
+      "line": 2,
+      "end": 2,
+      "name": "_np"
+    },
+    {
+      "file": "backend/engines/doe.py",
+      "line": 3,
+      "end": 3,
+      "name": "SCREENING_KINDS"
+    },
+    {
+      "file": "backend/engines/doe.py",
+      "line": 4,
+      "end": 17,
+      "name": "_gf_oa_columns"
+    },
+    {
+      "file": "backend/engines/doe.py",
+      "line": 4,
+      "end": 17,
+      "name": "_oa_levels"
+    },
+    {
+      "file": "backend/engines/doe.py",
+      "line": 4,
+      "end": 17,
+      "name": "_pb_matrix"
+    },
+    {
+      "file": "backend/engines/doe.py",
+      "line": 4,
+      "end": 17,
+      "name": "screening_coded_runs"
+    },
+    {
+      "file": "backend/engines/doe.py",
+      "line": 4,
+      "end": 17,
+      "name": "build_screening"
+    },
+    {
+      "file": "backend/engines/doe.py",
+      "line": 4,
+      "end": 17,
+      "name": "ccd_runs"
+    },
+    {
+      "file": "backend/engines/doe.py",
+      "line": 4,
+      "end": 17,
+      "name": "bbd_runs"
+    },
+    {
+      "file": "backend/engines/doe.py",
+      "line": 4,
+      "end": 17,
+      "name": "rotatable_alpha"
+    },
+    {
+      "file": "backend/engines/doe.py",
+      "line": 4,
+      "end": 17,
+      "name": "build_response_surface"
+    },
+    {
+      "file": "backend/engines/doe.py",
+      "line": 4,
+      "end": 17,
+      "name": "taguchi_arrays"
+    },
+    {
+      "file": "backend/engines/doe.py",
+      "line": 4,
+      "end": 17,
+      "name": "_levels_of_factor"
+    },
+    {
+      "file": "backend/engines/doe.py",
+      "line": 4,
+      "end": 17,
+      "name": "build_taguchi"
+    },
+    {
+      "file": "backend/engines/doe.py",
+      "line": 18,
+      "end": 24,
+      "name": "_num"
+    },
+    {
+      "file": "backend/engines/doe.py",
+      "line": 18,
+      "end": 24,
+      "name": "factor_limits"
+    },
+    {
+      "file": "backend/engines/doe.py",
+      "line": 18,
+      "end": 24,
+      "name": "simple_factors"
+    },
+    {
+      "file": "backend/engines/doe.py",
+      "line": 18,
+      "end": 24,
+      "name": "to_actual"
+    },
+    {
+      "file": "backend/engines/doe.py",
+      "line": 18,
+      "end": 24,
+      "name": "_round_row"
+    },
+    {
+      "file": "backend/engines/doe.py",
+      "line": 25,
+      "end": 30,
+      "name": "_design_matrix"
+    },
+    {
+      "file": "backend/engines/doe.py",
+      "line": 25,
+      "end": 30,
+      "name": "fit_response_surface"
+    },
+    {
+      "file": "backend/engines/doe.py",
+      "line": 25,
+      "end": 30,
+      "name": "quadratic_optimum"
+    },
+    {
+      "file": "backend/engines/doe.py",
+      "line": 25,
+      "end": 30,
+      "name": "screening_from_responses"
+    },
+    {
+      "file": "backend/engines/doe.py",
+      "line": 31,
+      "end": 37,
+      "name": "_latin_hypercube"
+    },
+    {
+      "file": "backend/engines/doe.py",
+      "line": 31,
+      "end": 37,
+      "name": "_maximin_lhs"
+    },
+    {
+      "file": "backend/engines/doe.py",
+      "line": 31,
+      "end": 37,
+      "name": "_van_der_corput"
+    },
+    {
+      "file": "backend/engines/doe.py",
+      "line": 31,
+      "end": 37,
+      "name": "_sobol_like"
+    },
+    {
+      "file": "backend/engines/doe.py",
+      "line": 31,
+      "end": 37,
+      "name": "build_samples"
+    },
+    {
+      "file": "backend/engines/doe.py",
+      "line": 38,
+      "end": 45,
+      "name": "_kernel_rbf"
+    },
+    {
+      "file": "backend/engines/doe.py",
+      "line": 38,
+      "end": 45,
+      "name": "_ann_forward"
+    },
+    {
+      "file": "backend/engines/doe.py",
+      "line": 38,
+      "end": 45,
+      "name": "train_kriging"
+    },
+    {
+      "file": "backend/engines/doe.py",
+      "line": 38,
+      "end": 45,
+      "name": "train_svr"
+    },
+    {
+      "file": "backend/engines/doe.py",
+      "line": 38,
+      "end": 45,
+      "name": "train_ann"
+    },
+    {
+      "file": "backend/engines/doe.py",
+      "line": 38,
+      "end": 45,
+      "name": "train_surrogate"
+    },
+    {
+      "file": "backend/engines/optimizer.py",
+      "line": 2,
+      "end": 2,
+      "name": "HAS_NUMPY"
+    },
+    {
+      "file": "backend/engines/optimizer.py",
+      "line": 2,
+      "end": 2,
+      "name": "_np"
+    },
+    {
+      "file": "backend/engines/optimizer.py",
+      "line": 3,
+      "end": 3,
+      "name": "de"
+    },
+    {
+      "file": "backend/engines/optimizer.py",
+      "line": 4,
+      "end": 15,
+      "name": "_sigma_of_factor"
+    },
+    {
+      "file": "backend/engines/optimizer.py",
+      "line": 4,
+      "end": 15,
+      "name": "robust_moments"
+    },
+    {
+      "file": "backend/engines/optimizer.py",
+      "line": 4,
+      "end": 15,
+      "name": "_response_ref"
+    },
+    {
+      "file": "backend/engines/optimizer.py",
+      "line": 4,
+      "end": 15,
+      "name": "_desirability"
+    },
+    {
+      "file": "backend/engines/optimizer.py",
+      "line": 4,
+      "end": 15,
+      "name": "_constraint_limits"
+    },
+    {
+      "file": "backend/engines/optimizer.py",
+      "line": 4,
+      "end": 15,
+      "name": "_response_scale"
+    },
+    {
+      "file": "backend/engines/optimizer.py",
+      "line": 4,
+      "end": 15,
+      "name": "evaluate_design"
+    },
+    {
+      "file": "backend/engines/optimizer.py",
+      "line": 4,
+      "end": 15,
+      "name": "project_responses"
+    },
+    {
+      "file": "backend/engines/optimizer.py",
+      "line": 4,
+      "end": 15,
+      "name": "self_is_constraint"
+    },
+    {
+      "file": "backend/engines/optimizer.py",
+      "line": 4,
+      "end": 15,
+      "name": "design_inputs"
+    },
+    {
+      "file": "backend/engines/optimizer.py",
+      "line": 16,
+      "end": 18,
+      "name": "_isfinite"
+    },
+    {
+      "file": "backend/engines/optimizer.py",
+      "line": 19,
+      "end": 35,
+      "name": "_dominates"
+    },
+    {
+      "file": "backend/engines/optimizer.py",
+      "line": 19,
+      "end": 35,
+      "name": "_fast_non_dominated_sort"
+    },
+    {
+      "file": "backend/engines/optimizer.py",
+      "line": 19,
+      "end": 35,
+      "name": "_crowding_distance"
+    },
+    {
+      "file": "backend/engines/optimizer.py",
+      "line": 19,
+      "end": 35,
+      "name": "_sbx_crossover"
+    },
+    {
+      "file": "backend/engines/optimizer.py",
+      "line": 19,
+      "end": 35,
+      "name": "_polynomial_mutation"
+    },
+    {
+      "file": "backend/engines/optimizer.py",
+      "line": 19,
+      "end": 35,
+      "name": "nsga2"
+    },
+    {
+      "file": "backend/engines/optimizer.py",
+      "line": 19,
+      "end": 35,
+      "name": "_pareto"
+    },
+    {
+      "file": "backend/engines/optimizer.py",
+      "line": 19,
+      "end": 35,
+      "name": "_knee_point"
+    },
+    {
+      "file": "backend/engines/optimizer.py",
+      "line": 19,
+      "end": 35,
+      "name": "robust_optimize"
+    },
+    {
+      "file": "backend/engines/optimizer.py",
+      "line": 19,
+      "end": 35,
+      "name": "_robust_result_text"
+    },
+    {
+      "file": "backend/engines/optimizer.py",
+      "line": 19,
+      "end": 35,
+      "name": "_design_bounds"
+    },
+    {
+      "file": "backend/engines/optimizer.py",
+      "line": 19,
+      "end": 35,
+      "name": "local_search"
+    },
+    {
+      "file": "backend/engines/optimizer.py",
+      "line": 19,
+      "end": 35,
+      "name": "steepest_ascent"
+    },
+    {
+      "file": "backend/engines/optimizer.py",
+      "line": 19,
+      "end": 35,
+      "name": "evop_cycle"
+    },
+    {
+      "file": "backend/engines/optimizer.py",
+      "line": 19,
+      "end": 35,
+      "name": "aofat_search"
+    },
+    {
+      "file": "backend/engines/optimizer.py",
+      "line": 36,
+      "end": 47,
+      "name": "_design_terms"
+    },
+    {
+      "file": "backend/engines/optimizer.py",
+      "line": 36,
+      "end": 47,
+      "name": "_design_row"
+    },
+    {
+      "file": "backend/engines/optimizer.py",
+      "line": 36,
+      "end": 47,
+      "name": "_quad_hess_diag"
+    },
+    {
+      "file": "backend/engines/optimizer.py",
+      "line": 36,
+      "end": 47,
+      "name": "_quad_grad"
+    },
+    {
+      "file": "backend/engines/optimizer.py",
+      "line": 36,
+      "end": 47,
+      "name": "_fit_model"
+    },
+    {
+      "file": "backend/engines/optimizer.py",
+      "line": 36,
+      "end": 47,
+      "name": "model_predict"
+    },
+    {
+      "file": "backend/engines/optimizer.py",
+      "line": 36,
+      "end": 47,
+      "name": "model_grad_x"
+    },
+    {
+      "file": "backend/engines/optimizer.py",
+      "line": 36,
+      "end": 47,
+      "name": "model_hess_diag_x"
+    },
+    {
+      "file": "backend/engines/optimizer.py",
+      "line": 36,
+      "end": 47,
+      "name": "model_equation"
+    },
+    {
+      "file": "backend/engines/optimizer.py",
+      "line": 36,
+      "end": 47,
+      "name": "build_models"
+    },
+    {
+      "file": "backend/engines/optimizer.py",
+      "line": 48,
+      "end": 62,
+      "name": "_gammaln"
+    },
+    {
+      "file": "backend/engines/optimizer.py",
+      "line": 48,
+      "end": 62,
+      "name": "_betacf"
+    },
+    {
+      "file": "backend/engines/optimizer.py",
+      "line": 48,
+      "end": 62,
+      "name": "_betai"
+    },
+    {
+      "file": "backend/engines/optimizer.py",
+      "line": 48,
+      "end": 62,
+      "name": "_f_pvalue"
+    },
+    {
+      "file": "backend/engines/optimizer.py",
+      "line": 48,
+      "end": 62,
+      "name": "anova_and_lof"
+    },
+    {
+      "file": "backend/engines/optimizer.py",
+      "line": 48,
+      "end": 62,
+      "name": "cross_validation"
+    },
+    {
+      "file": "backend/engines/optimizer.py",
+      "line": 48,
+      "end": 62,
+      "name": "validation_results"
+    },
+    {
+      "file": "backend/engines/optimizer.py",
+      "line": 48,
+      "end": 62,
+      "name": "_matrix_xy"
+    },
+    {
+      "file": "backend/engines/optimizer.py",
+      "line": 48,
+      "end": 62,
+      "name": "residual_analysis"
+    },
+    {
+      "file": "backend/engines/optimizer.py",
+      "line": 48,
+      "end": 62,
+      "name": "tolerance_contribution"
+    },
+    {
+      "file": "backend/engines/optimizer.py",
+      "line": 48,
+      "end": 62,
+      "name": "_metric_at"
+    },
+    {
+      "file": "backend/engines/optimizer.py",
+      "line": 48,
+      "end": 62,
+      "name": "parameter_design"
+    },
+    {
+      "file": "backend/engines/optimizer.py",
+      "line": 48,
+      "end": 62,
+      "name": "model_extraction"
+    },
+    {
+      "file": "backend/engines/workbench.py",
+      "line": 2,
+      "end": 2,
+      "name": "descriptive"
+    },
+    {
+      "file": "backend/engines/workbench.py",
+      "line": 2,
+      "end": 2,
+      "name": "diagnostics"
+    },
+    {
+      "file": "backend/engines/workbench.py",
+      "line": 2,
+      "end": 2,
+      "name": "point_analysis"
+    },
+    {
+      "file": "backend/engines/workbench.py",
+      "line": 2,
+      "end": 2,
+      "name": "clean_json"
+    },
+    {
+      "file": "backend/reporting/report_engine.py",
+      "line": 5,
+      "end": 5,
+      "name": "html"
+    }
+  ],
+  "simple_delegates": [
+    {
+      "file": "frontend/theme.py",
+      "name": "sizeHint",
+      "line": 176,
+      "lines": 2,
+      "loads": 4,
+      "exact_string": 0
+    },
+    {
+      "file": "frontend/theme.py",
+      "name": "heightForWidth",
+      "line": 182,
+      "lines": 2,
+      "loads": 0,
+      "exact_string": 0
+    },
+    {
+      "file": "frontend/pages/optimization_page.py",
+      "name": "init_ui",
+      "line": 61,
+      "lines": 2,
+      "loads": 4,
+      "exact_string": 0
+    },
+    {
+      "file": "frontend/pages/optimization_page.py",
+      "name": "_build_overview_tab",
+      "line": 111,
+      "lines": 2,
+      "loads": 1,
+      "exact_string": 0
+    },
+    {
+      "file": "frontend/pages/optimization_page.py",
+      "name": "_build_robust_tab",
+      "line": 114,
+      "lines": 2,
+      "loads": 1,
+      "exact_string": 0
+    },
+    {
+      "file": "frontend/pages/optimization_page.py",
+      "name": "_build_signif_tab",
+      "line": 162,
+      "lines": 2,
+      "loads": 1,
+      "exact_string": 0
+    },
+    {
+      "file": "frontend/pages/optimization_page.py",
+      "name": "_build_cv_tab",
+      "line": 165,
+      "lines": 2,
+      "loads": 1,
+      "exact_string": 0
+    },
+    {
+      "file": "frontend/pages/optimization_page.py",
+      "name": "_build_param_tab",
+      "line": 168,
+      "lines": 2,
+      "loads": 1,
+      "exact_string": 0
+    },
+    {
+      "file": "frontend/pages/optimization_page.py",
+      "name": "_build_tol_tab",
+      "line": 171,
+      "lines": 2,
+      "loads": 1,
+      "exact_string": 0
+    },
+    {
+      "file": "frontend/pages/optimization_page.py",
+      "name": "_build_model_tab",
+      "line": 174,
+      "lines": 2,
+      "loads": 1,
+      "exact_string": 0
+    },
+    {
+      "file": "frontend/pages/optimization_page.py",
+      "name": "_build_tools_tab",
+      "line": 177,
+      "lines": 2,
+      "loads": 1,
+      "exact_string": 0
+    },
+    {
+      "file": "frontend/pages/optimization_page.py",
+      "name": "run_optimization",
+      "line": 196,
+      "lines": 2,
+      "loads": 4,
+      "exact_string": 0
+    },
+    {
+      "file": "frontend/pages/optimization_page.py",
+      "name": "_factors_for_doe",
+      "line": 199,
+      "lines": 2,
+      "loads": 0,
+      "exact_string": 0
+    },
+    {
+      "file": "frontend/pages/optimization_page.py",
+      "name": "_check_inputs",
+      "line": 206,
+      "lines": 2,
+      "loads": 7,
+      "exact_string": 0
+    },
+    {
+      "file": "frontend/pages/optimization_page.py",
+      "name": "_surrogate_signature",
+      "line": 253,
+      "lines": 2,
+      "loads": 1,
+      "exact_string": 0
+    },
+    {
+      "file": "frontend/pages/optimization_page.py",
+      "name": "run_workbench",
+      "line": 286,
+      "lines": 2,
+      "loads": 2,
+      "exact_string": 0
+    },
+    {
+      "file": "frontend/pages/optimization_page.py",
+      "name": "_worker_finished",
+      "line": 289,
+      "lines": 2,
+      "loads": 2,
+      "exact_string": 0
+    },
+    {
+      "file": "frontend/pages/optimization_page.py",
+      "name": "_optimization_failed",
+      "line": 292,
+      "lines": 2,
+      "loads": 4,
+      "exact_string": 0
+    },
+    {
+      "file": "frontend/pages/optimization_page.py",
+      "name": "_optimization_ready",
+      "line": 295,
+      "lines": 2,
+      "loads": 2,
+      "exact_string": 0
+    },
+    {
+      "file": "frontend/pages/optimization_page.py",
+      "name": "_execute_workbench",
+      "line": 298,
+      "lines": 2,
+      "loads": 1,
+      "exact_string": 0
+    },
+    {
+      "file": "frontend/pages/optimization_page.py",
+      "name": "_prepare_context",
+      "line": 301,
+      "lines": 2,
+      "loads": 4,
+      "exact_string": 0
+    },
+    {
+      "file": "frontend/pages/optimization_page.py",
+      "name": "run_statistics",
+      "line": 304,
+      "lines": 2,
+      "loads": 2,
+      "exact_string": 0
+    },
+    {
+      "file": "frontend/pages/optimization_page.py",
+      "name": "_update_analysis",
+      "line": 307,
+      "lines": 2,
+      "loads": 4,
+      "exact_string": 0
+    },
+    {
+      "file": "frontend/pages/optimization_page.py",
+      "name": "_run_tool",
+      "line": 318,
+      "lines": 2,
+      "loads": 2,
+      "exact_string": 0
+    },
+    {
+      "file": "frontend/pages/result_summary.py",
+      "name": "section",
+      "line": 21,
+      "lines": 2,
+      "loads": 55,
+      "exact_string": 0
+    },
+    {
+      "file": "frontend/pages/table_widgets.py",
+      "name": "sizeHint",
+      "line": 29,
+      "lines": 2,
+      "loads": 4,
+      "exact_string": 0
+    },
+    {
+      "file": "frontend/pages/table_widgets.py",
+      "name": "section_tooltip",
+      "line": 39,
+      "lines": 2,
+      "loads": 1,
+      "exact_string": 0
+    },
+    {
+      "file": "frontend/pages/welcome_page.py",
+      "name": "brand_pixmap",
+      "line": 17,
+      "lines": 3,
+      "loads": 2,
+      "exact_string": 0
+    },
+    {
+      "file": "frontend/pages/welcome_page.py",
+      "name": "brand_icon",
+      "line": 22,
+      "lines": 2,
+      "loads": 2,
+      "exact_string": 0
+    },
+    {
+      "file": "backend/core/doe.py",
+      "name": "rotatable_alpha",
+      "line": 192,
+      "lines": 2,
+      "loads": 1,
+      "exact_string": 0
+    },
+    {
+      "file": "backend/core/statistics.py",
+      "name": "_gammaln",
+      "line": 20,
+      "lines": 2,
+      "loads": 3,
+      "exact_string": 0
+    },
+    {
+      "file": "backend/infrastructure/file_io.py",
+      "name": "read_json",
+      "line": 34,
+      "lines": 2,
+      "loads": 1,
+      "exact_string": 0
+    },
+    {
+      "file": "backend/reporting/report_engine.py",
+      "name": "inputs",
+      "line": 28,
+      "lines": 4,
+      "loads": 17,
+      "exact_string": 12
+    },
+    {
+      "file": "backend/reporting/report_engine.py",
+      "name": "fingerprint",
+      "line": 34,
+      "lines": 2,
+      "loads": 5,
+      "exact_string": 0
+    },
+    {
+      "file": "backend/reporting/report_engine.py",
+      "name": "results",
+      "line": 38,
+      "lines": 3,
+      "loads": 13,
+      "exact_string": 12
+    },
+    {
+      "file": "backend/services/analysis_service.py",
+      "name": "evaluate_point",
+      "line": 80,
+      "lines": 3,
+      "loads": 4,
+      "exact_string": 0
+    },
+    {
+      "file": "backend/services/analysis_service.py",
+      "name": "run_local_search",
+      "line": 85,
+      "lines": 5,
+      "loads": 1,
+      "exact_string": 0
+    },
+    {
+      "file": "backend/services/design_service.py",
+      "name": "_design_factors",
+      "line": 21,
+      "lines": 3,
+      "loads": 6,
+      "exact_string": 0
+    },
+    {
+      "file": "backend/services/design_service.py",
+      "name": "_noise_factors",
+      "line": 26,
+      "lines": 3,
+      "loads": 2,
+      "exact_string": 0
+    },
+    {
+      "file": "backend/services/design_service.py",
+      "name": "response_surface_plan",
+      "line": 53,
+      "lines": 5,
+      "loads": 0,
+      "exact_string": 0
+    },
+    {
+      "file": "backend/services/model_service.py",
+      "name": "active_factors",
+      "line": 13,
+      "lines": 2,
+      "loads": 3,
+      "exact_string": 2
+    },
+    {
+      "file": "backend/services/model_service.py",
+      "name": "surrogate_signature",
+      "line": 21,
+      "lines": 7,
+      "loads": 2,
+      "exact_string": 0
+    },
+    {
+      "file": "backend/services/project_service.py",
+      "name": "_input_signature",
+      "line": 19,
+      "lines": 6,
+      "loads": 3,
+      "exact_string": 0
+    },
+    {
+      "file": "backend/services/project_service.py",
+      "name": "update_definition",
+      "line": 68,
+      "lines": 2,
+      "loads": 1,
+      "exact_string": 0
+    }
+  ]
+}

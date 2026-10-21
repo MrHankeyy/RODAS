@@ -19,7 +19,7 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QComboBox, QPushButton, QGroupBox, QTextEdit, QMessageBox,
     QTabWidget, QTableWidget, QTableWidgetItem, QHeaderView,
-    QSpinBox, QDoubleSpinBox, QFrame, QLineEdit
+    QFrame, QLineEdit
 )
 from PyQt6.QtCore import pyqtSignal
 

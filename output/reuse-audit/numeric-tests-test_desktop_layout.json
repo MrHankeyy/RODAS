@@ -1,0 +1,66 @@
+[
+  {
+    "module": "test_desktop_layout",
+    "exit_code": 0,
+    "summary": [
+      "Ran 5 tests in 26.005s",
+      "OK"
+    ]
+  },
+  {
+    "module": "test_welcome_workspace",
+    "exit_code": 0,
+    "summary": [
+      "Ran 5 tests in 34.646s",
+      "OK"
+    ]
+  },
+  {
+    "module": "test_numeric_inputs",
+    "exit_code": 0,
+    "summary": [
+      "Ran 8 tests in 1.808s",
+      "OK"
+    ]
+  },
+  {
+    "module": "test_surrogate_workbench",
+    "exit_code": 0,
+    "summary": [
+      "Ran 13 tests in 8.772s",
+      "OK"
+    ]
+  },
+  {
+    "module": "test_ui_constraints",
+    "exit_code": 0,
+    "summary": [
+      "Ran 8 tests in 2.691s",
+      "OK"
+    ]
+  },
+  {
+    "module": "test_classical_doe",
+    "exit_code": 0,
+    "summary": [
+      "Ran 12 tests in 1.813s",
+      "OK"
+    ]
+  },
+  {
+    "module": "test_math_format",
+    "exit_code": 0,
+    "summary": [
+      "Ran 6 tests in 0.632s",
+      "OK"
+    ]
+  },
+  {
+    "module": "test_project_service",
+    "exit_code": 0,
+    "summary": [
+      "Ran 3 tests in 0.000s",
+      "OK"
+    ]
+  }
+]

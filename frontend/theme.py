@@ -106,9 +106,10 @@ class ResultsWorkspace(QWidget):
     """Expose a grouped result navigator for the analysis pages."""
     GROUPS = [('设计分析', [0, 1, 8, 9]), ('模型与数据', [2, 3, 6, 10]), ('取值与改进', [4, 5, 7])]
 
-    def __init__(self, tabs):
+    def __init__(self, tabs, groups=None):
         super().__init__()
         self.tabs = tabs
+        self._group_definitions = self.GROUPS if groups is None else groups
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
@@ -131,7 +132,7 @@ class ResultsWorkspace(QWidget):
         column = QVBoxLayout(content)
         column.setContentsMargins(8, 6, 8, 10)
         column.setSpacing(8)
-        for title, indices in self.GROUPS:
+        for title, indices in self._group_definitions:
             visible = [i for i in indices if self.tabs.isTabVisible(i)]
             if not visible:
                 continue

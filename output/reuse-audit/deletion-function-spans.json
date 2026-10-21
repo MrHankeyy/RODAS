@@ -1,0 +1,114 @@
+[
+  {
+    "file": "backend/reporting/report_engine.py",
+    "name": "record_operation",
+    "line": 43,
+    "end": 51,
+    "lines": 9
+  },
+  {
+    "file": "backend/reporting/report_engine.py",
+    "name": "save_archive",
+    "line": 61,
+    "end": 63,
+    "lines": 3
+  },
+  {
+    "file": "backend/reporting/report_engine.py",
+    "name": "load_archive",
+    "line": 66,
+    "end": 96,
+    "lines": 31
+  },
+  {
+    "file": "backend/services/design_service.py",
+    "name": "response_surface_plan",
+    "line": 53,
+    "end": 57,
+    "lines": 5
+  },
+  {
+    "file": "backend/services/design_service.py",
+    "name": "surrogate_plan",
+    "line": 101,
+    "end": 109,
+    "lines": 9
+  },
+  {
+    "file": "backend/services/project_service.py",
+    "name": "input_snapshot",
+    "line": 39,
+    "end": 42,
+    "lines": 4
+  },
+  {
+    "file": "frontend/main_window.py",
+    "name": "on_test_click",
+    "line": 227,
+    "end": 228,
+    "lines": 2
+  },
+  {
+    "file": "frontend/pages/optimization_page.py",
+    "name": "_responses",
+    "line": 181,
+    "end": 182,
+    "lines": 2
+  },
+  {
+    "file": "frontend/pages/optimization_page.py",
+    "name": "_matrix",
+    "line": 184,
+    "end": 185,
+    "lines": 2
+  },
+  {
+    "file": "frontend/pages/optimization_page.py",
+    "name": "_factors_for_doe",
+    "line": 199,
+    "end": 200,
+    "lines": 2
+  },
+  {
+    "file": "frontend/pages/data_management_page.py",
+    "name": "simple_analysis",
+    "line": 144,
+    "end": 154,
+    "lines": 11
+  },
+  {
+    "file": "backend/core/response_models.py",
+    "name": "_design_terms",
+    "line": 113,
+    "end": 126,
+    "lines": 14
+  },
+  {
+    "file": "backend/core/response_models.py",
+    "name": "model_equation",
+    "line": 274,
+    "end": 287,
+    "lines": 14
+  },
+  {
+    "file": "backend/core/optimization.py",
+    "name": "steepest_ascent",
+    "line": 405,
+    "end": 407,
+    "lines": 3
+  },
+  {
+    "file": "backend/core/optimization.py",
+    "name": "evop_cycle",
+    "line": 410,
+    "end": 411,
+    "lines": 2
+  },
+  {
+    "file": "backend/core/optimization.py",
+    "name": "aofat_search",
+    "line": 414,
+    "end": 416,
+    "lines": 3
+  }
+]

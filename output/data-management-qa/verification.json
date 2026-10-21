@@ -1,0 +1,130 @@
+{
+  "formal_files": 59,
+  "formal_lines": 8554,
+  "before_lines": 8383,
+  "tests_passed": 111,
+  "test_modules": 15,
+  "test_execution": "isolated module processes",
+  "modules": [
+    {
+      "module": "test_data_management_workflow",
+      "exit_code": 0,
+      "summary": [
+        "Ran 6 tests in 2.303s",
+        "OK"
+      ]
+    },
+    {
+      "module": "test_result_overview",
+      "exit_code": 0,
+      "summary": [
+        "Ran 7 tests in 0.508s",
+        "OK"
+      ]
+    },
+    {
+      "module": "test_configuration_workflow",
+      "exit_code": 0,
+      "summary": [
+        "Ran 9 tests in 4.400s",
+        "OK"
+      ]
+    },
+    {
+      "module": "test_workbench_analysis",
+      "exit_code": 0,
+      "summary": [
+        "Ran 11 tests in 1.985s",
+        "OK"
+      ]
+    },
+    {
+      "module": "test_reports",
+      "exit_code": 0,
+      "summary": [
+        "Ran 9 tests in 4.514s",
+        "OK"
+      ]
+    },
+    {
+      "module": "test_analysis_results",
+      "exit_code": 0,
+      "summary": [
+        "Ran 6 tests in 1.960s",
+        "OK"
+      ]
+    },
+    {
+      "module": "test_robust_results",
+      "exit_code": 0,
+      "summary": [
+        "Ran 3 tests in 0.660s",
+        "OK"
+      ]
+    },
+    {
+      "module": "test_desktop_layout",
+      "exit_code": 0,
+      "summary": [
+        "Ran 5 tests in 26.005s",
+        "OK"
+      ]
+    },
+    {
+      "module": "test_welcome_workspace",
+      "exit_code": 0,
+      "summary": [
+        "Ran 5 tests in 34.646s",
+        "OK"
+      ]
+    },
+    {
+      "module": "test_numeric_inputs",
+      "exit_code": 0,
+      "summary": [
+        "Ran 8 tests in 1.808s",
+        "OK"
+      ]
+    },
+    {
+      "module": "test_surrogate_workbench",
+      "exit_code": 0,
+      "summary": [
+        "Ran 13 tests in 8.772s",
+        "OK"
+      ]
+    },
+    {
+      "module": "test_ui_constraints",
+      "exit_code": 0,
+      "summary": [
+        "Ran 8 tests in 2.691s",
+        "OK"
+      ]
+    },
+    {
+      "module": "test_classical_doe",
+      "exit_code": 0,
+      "summary": [
+        "Ran 12 tests in 1.813s",
+        "OK"
+      ]
+    },
+    {
+      "module": "test_math_format",
+      "exit_code": 0,
+      "summary": [
+        "Ran 6 tests in 0.632s",
+        "OK"
+      ]
+    },
+    {
+      "module": "test_project_service",
+      "exit_code": 0,
+      "summary": [
+        "Ran 3 tests in 0.000s",
+        "OK"
+      ]
+    }
+  ]
+}

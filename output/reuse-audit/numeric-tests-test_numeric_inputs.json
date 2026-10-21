@@ -1,0 +1,50 @@
+[
+  {
+    "module": "test_numeric_inputs",
+    "exit_code": 0,
+    "summary": [
+      "Ran 8 tests in 2.142s",
+      "OK"
+    ]
+  },
+  {
+    "module": "test_configuration_workflow",
+    "exit_code": 0,
+    "summary": [
+      "Ran 9 tests in 4.529s",
+      "OK"
+    ]
+  },
+  {
+    "module": "test_desktop_layout",
+    "exit_code": 0,
+    "summary": [
+      "Ran 5 tests in 12.512s",
+      "OK"
+    ]
+  },
+  {
+    "module": "test_welcome_workspace",
+    "exit_code": 0,
+    "summary": [
+      "Ran 5 tests in 29.297s",
+      "OK"
+    ]
+  },
+  {
+    "module": "test_ui_constraints",
+    "exit_code": 0,
+    "summary": [
+      "Ran 8 tests in 4.653s",
+      "OK"
+    ]
+  },
+  {
+    "module": "test_surrogate_workbench",
+    "exit_code": 0,
+    "summary": [
+      "Ran 13 tests in 12.063s",
+      "OK"
+    ]
+  }
+]

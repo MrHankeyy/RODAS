@@ -2,7 +2,7 @@
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox, QPushButton,
     QGroupBox, QTextEdit, QMessageBox, QTabWidget, QTableWidget,
-    QTableWidgetItem, QHeaderView, QSpinBox, QDoubleSpinBox, QFrame,
+    QTableWidgetItem, QHeaderView, QFrame,
     QLineEdit,
 )
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
@@ -14,6 +14,7 @@ from frontend.pages.analysis_results import AnalysisResults
 from frontend.pages.robust_results import RobustResults
 from backend.reporting.math_format import rich_text
 from frontend.math_widgets import MathTextEdit
+from frontend.numeric_inputs import numeric_input
 from frontend.pages.workbench_diagnostics import WorkbenchDiagnostics
 
 
@@ -32,7 +33,7 @@ def build(owner):
         owner.run_all_btn = QPushButton("执行稳定性设计与鲁棒优化")
         owner.run_all_btn.setMinimumWidth(225)
         owner.run_all_btn.clicked.connect(owner._run_primary_action)
-        owner.stats_btn = QPushButton("仅建模与统计分析")
+        owner.stats_btn = QPushButton("建模与模型诊断")
         owner.stats_btn.clicked.connect(owner.run_statistics)
         top.addWidget(owner.stats_btn)
         top.addWidget(owner.run_all_btn)
@@ -62,7 +63,7 @@ def build(owner):
         owner.tabs.addTab(owner.screening_panel, "筛选主效应")
         owner.tabs.addTab(owner.taguchi_panel, "田口稳健分析")
         owner.diagnostics_panel = WorkbenchDiagnostics()
-        owner.tabs.addTab(owner.diagnostics_panel, "统计诊断与导出")
+        owner.tabs.addTab(owner.diagnostics_panel, "模型诊断与核验")
         from frontend.theme import ResultsWorkspace, primary
         owner.results_workspace = ResultsWorkspace(owner.tabs)
         main_layout.addWidget(owner.results_workspace, 1)
@@ -95,30 +96,27 @@ def build_robust_tab(owner):
         controls.addWidget(owner.robust_mode_combo)
         controls.addSpacing(16)
         controls.addWidget(QLabel("种群数："))
-        owner.pop_spin = QSpinBox(); owner.pop_spin.setRange(20, 300); owner.pop_spin.setValue(80)
+        owner.pop_spin = numeric_input(int, 20, 300, 80)
         controls.addWidget(owner.pop_spin)
         controls.addSpacing(8)
         controls.addWidget(QLabel("代数："))
-        owner.gen_spin = QSpinBox(); owner.gen_spin.setRange(30, 1000); owner.gen_spin.setValue(160)
+        owner.gen_spin = numeric_input(int, 30, 1000, 160)
         controls.addWidget(owner.gen_spin)
         controls.addStretch()
         layout.addLayout(controls)
 
         controls2 = QHBoxLayout()
         controls2.addWidget(QLabel("均值权重 λ："))
-        owner.weight_spin = QDoubleSpinBox(); owner.weight_spin.setRange(0.0, 1.0)
-        owner.weight_spin.setSingleStep(0.05); owner.weight_spin.setValue(0.5)
+        owner.weight_spin = numeric_input(float, 0.0, 1.0, 0.5)
         controls2.addWidget(owner.weight_spin)
         controls2.addSpacing(16)
         controls2.addWidget(QLabel("约束安全系数 k："))
-        owner.k_constraint_spin = QDoubleSpinBox(); owner.k_constraint_spin.setRange(1.0, 10.0)
-        owner.k_constraint_spin.setSingleStep(0.5); owner.k_constraint_spin.setValue(6.0)
+        owner.k_constraint_spin = numeric_input(float, 1.0, 10.0, 6.0)
         owner.k_constraint_spin.setToolTip(rich_text("在所有优化模式中执行已勾选约束。例如望小约束：均值 + k×标准差 ≤ 上限。"))
         controls2.addWidget(owner.k_constraint_spin)
         controls2.addSpacing(8)
         controls2.addWidget(QLabel("输入不确定性系数 k："))
-        owner.k_design_spin = QDoubleSpinBox(); owner.k_design_spin.setRange(1.0, 10.0)
-        owner.k_design_spin.setSingleStep(0.5); owner.k_design_spin.setValue(6.0)
+        owner.k_design_spin = numeric_input(float, 1.0, 10.0, 6.0)
         owner.k_design_spin.setToolTip(rich_text("设计区间因子：标准差=(上限−下限)/(2k)。k 越大，扰动越小；此参数不收缩搜索边界。概率因子采用已填写的方差。"))
         controls2.addWidget(owner.k_design_spin)
         controls2.addStretch()
@@ -182,10 +180,10 @@ def build_tools_tab(owner):
         owner.tool_combo = QComboBox()
         owner.tool_combo.addItems(["最陡上升", "EVOP 演化操作", "自适应 AOFAT"])
         head.addWidget(QLabel("步数"))
-        owner.tool_steps = QSpinBox(); owner.tool_steps.setRange(1,100); owner.tool_steps.setValue(12)
+        owner.tool_steps = numeric_input(int, 1, 100, 12)
         head.addWidget(owner.tool_steps)
         head.addWidget(QLabel("步长/因子跨度"))
-        owner.tool_step = QDoubleSpinBox(); owner.tool_step.setRange(.001,.5); owner.tool_step.setDecimals(3); owner.tool_step.setValue(.1)
+        owner.tool_step = numeric_input(float, .001, .5, .1, decimals=3)
         head.addWidget(owner.tool_step)
         head.addStretch()
         layout.addLayout(head)
@@ -194,7 +192,7 @@ def build_tools_tab(owner):
         head.addWidget(owner.tool_combo)
         owner.tool_start = QComboBox(); owner.tool_start.addItems(["优化返回点", "手动核验点", "区间中心"])
         head.addWidget(owner.tool_start)
-        owner.tool_weight = QDoubleSpinBox(); owner.tool_weight.setRange(0,1); owner.tool_weight.setSingleStep(.05); owner.tool_weight.setValue(.5)
+        owner.tool_weight = numeric_input(float, 0, 1, .5)
         head.addWidget(QLabel("均值权重 λ")); head.addWidget(owner.tool_weight)
         head.addStretch()
         owner.run_tool_btn = QPushButton("运行工具")

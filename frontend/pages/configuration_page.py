@@ -12,6 +12,7 @@ from backend.services import design_service
 from backend.services.project_service import ProjectService
 from backend.reporting.math_format import rich_text
 from frontend.notifications import Notice
+from frontend.numeric_inputs import commit_numeric_inputs
 from frontend.pages import configuration_panels
 from frontend.pages.model_configuration import ModelConfiguration, MODEL_TITLES
 
@@ -237,6 +238,8 @@ class ConfigurationPage(QWidget):
         raise ValueError("因子数量超过当前正交表的容量")
 
     def _build_plan(self, preview=False):
+        if not preview and self.method_combo.currentIndex() != 2:
+            commit_numeric_inputs(self.dynamic_params_widget.currentWidget())
         method = self._selected_method()
         if "筛选" in method:
             return design_service.screening_plan(self.project_data, method,

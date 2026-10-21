@@ -8,6 +8,7 @@ from backend.reporting import report_engine as reports
 import logging
 
 from frontend.notifications import Notice
+from frontend.numeric_inputs import commit_numeric_inputs
 from frontend.pages.qt_tasks import OptimizationWorker
 from frontend.pages.workbench_diagnostics import WorkbenchDiagnostics
 from backend.services import analysis_service, model_service
@@ -55,6 +56,7 @@ class OptimizationController:
 
     def _check_inputs(self):
         page = self.page
+        commit_numeric_inputs(page)
         page.project_service.ensure_current()
         signature = page.project_service.input_signature()
         if signature != page._input_signature:
@@ -265,7 +267,7 @@ class OptimizationController:
                 or {}).get("point")
             if not start:
                 Notice.warning(
-                    page, "缺少起点", "请先在统计诊断页计算手动设计点。")
+                    page, "缺少起点", "请先在模型诊断页计算手动设计点。")
                 return
         elif page.tool_start.currentText() == "区间中心":
             start = None
