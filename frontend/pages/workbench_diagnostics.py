@@ -13,6 +13,7 @@ from backend.services import analysis_service
 from backend.services.project_service import ProjectService
 from backend.reporting.math_format import rich_text
 from frontend.math_widgets import install_delegate, MathTextEdit, decorate_item
+from frontend.workspace import dialog_path
 
 
 class WorkbenchDiagnostics(QWidget):
@@ -169,7 +170,7 @@ class WorkbenchDiagnostics(QWidget):
                 self, "暂无表格", "请切换到有结果的统计表后导出。")
             return
         path, _ = QFileDialog.getSaveFileName(
-            self, "导出当前统计表", "", "CSV (*.csv)")
+            self, "导出当前统计表", dialog_path(self), "CSV (*.csv)")
         if not path:
             return
         headers = [
@@ -191,7 +192,7 @@ class WorkbenchDiagnostics(QWidget):
         if not self.context:
             return
         path, _ = QFileDialog.getSaveFileName(
-            self, "导出完整统计", "", "JSON (*.json)")
+            self, "导出完整统计", dialog_path(self), "JSON (*.json)")
         if not path:
             return
         try:
@@ -203,7 +204,7 @@ class WorkbenchDiagnostics(QWidget):
 
     def export_plot(self):
         if not self.context:return
-        path,_=QFileDialog.getSaveFileName(self,'导出当前响应的诊断图','','PNG (*.png);;SVG (*.svg)')
+        path,_=QFileDialog.getSaveFileName(self,'导出当前响应的诊断图',dialog_path(self),'PNG (*.png);;SVG (*.svg)')
         if not path:return
         try:self.figure.savefig(path,dpi=180,bbox_inches='tight')
         except (OSError,ValueError) as exc:Notice.warning(self,'导出失败',str(exc))

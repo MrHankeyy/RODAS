@@ -4,6 +4,7 @@ from backend.reporting import report_engine as reports
 from backend.infrastructure import file_io
 from frontend.notifications import Notice
 from backend.services.project_service import ProjectService
+from frontend.workspace import dialog_path
 
 class AnalysisPage(QWidget):
     def __init__(self, project_data):
@@ -76,7 +77,7 @@ class AnalysisPage(QWidget):
             Notice.warning(self, "暂无报告", "请先完成当前输入的分析或优化。")
             return
         path, _ = QFileDialog.getSaveFileName(
-            self, "导出当前结果", "设计结果报告." + kind,
+            self, "导出当前结果", dialog_path(self, "设计结果报告." + kind),
             kind.upper() + " (*." + kind + ")")
         if not path:
             return

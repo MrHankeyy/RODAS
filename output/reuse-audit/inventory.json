@@ -1,0 +1,798 @@
+{
+  "scope": {
+    "files": 56,
+    "physical_lines": 8388,
+    "frontend_files": 26
+  },
+  "constructors": {
+    "QComboBox": [
+      {
+        "file": "frontend/main_window.py",
+        "line": 174
+      },
+      {
+        "file": "frontend/pages/analysis_results.py",
+        "line": 28
+      },
+      {
+        "file": "frontend/pages/configuration_page.py",
+        "line": 41
+      },
+      {
+        "file": "frontend/pages/configuration_page.py",
+        "line": 46
+      },
+      {
+        "file": "frontend/pages/configuration_panels.py",
+        "line": 20
+      },
+      {
+        "file": "frontend/pages/configuration_panels.py",
+        "line": 49
+      },
+      {
+        "file": "frontend/pages/configuration_panels.py",
+        "line": 77
+      },
+      {
+        "file": "frontend/pages/configuration_panels.py",
+        "line": 82
+      },
+      {
+        "file": "frontend/pages/configuration_panels.py",
+        "line": 89
+      },
+      {
+        "file": "frontend/pages/configuration_panels.py",
+        "line": 99
+      },
+      {
+        "file": "frontend/pages/configuration_panels.py",
+        "line": 107
+      },
+      {
+        "file": "frontend/pages/configuration_panels.py",
+        "line": 114
+      },
+      {
+        "file": "frontend/pages/design_results.py",
+        "line": 17
+      },
+      {
+        "file": "frontend/pages/design_results.py",
+        "line": 22
+      },
+      {
+        "file": "frontend/pages/model_configuration.py",
+        "line": 47
+      },
+      {
+        "file": "frontend/pages/model_configuration.py",
+        "line": 63
+      },
+      {
+        "file": "frontend/pages/model_configuration.py",
+        "line": 84
+      },
+      {
+        "file": "frontend/pages/model_configuration.py",
+        "line": 157
+      },
+      {
+        "file": "frontend/pages/model_configuration.py",
+        "line": 162
+      },
+      {
+        "file": "frontend/pages/model_configuration.py",
+        "line": 173
+      },
+      {
+        "file": "frontend/pages/model_configuration.py",
+        "line": 221
+      },
+      {
+        "file": "frontend/pages/model_configuration.py",
+        "line": 269
+      },
+      {
+        "file": "frontend/pages/modeling_page.py",
+        "line": 190
+      },
+      {
+        "file": "frontend/pages/modeling_page.py",
+        "line": 302
+      },
+      {
+        "file": "frontend/pages/modeling_page.py",
+        "line": 306
+      },
+      {
+        "file": "frontend/pages/optimization_panels.py",
+        "line": 93
+      },
+      {
+        "file": "frontend/pages/optimization_panels.py",
+        "line": 182
+      },
+      {
+        "file": "frontend/pages/optimization_panels.py",
+        "line": 195
+      },
+      {
+        "file": "frontend/pages/workbench_diagnostics.py",
+        "line": 25
+      }
+    ],
+    "QLineEdit": [
+      {
+        "file": "frontend/pages/analysis_page.py",
+        "line": 26
+      },
+      {
+        "file": "frontend/pages/modeling_page.py",
+        "line": 194
+      },
+      {
+        "file": "frontend/pages/modeling_page.py",
+        "line": 311
+      },
+      {
+        "file": "frontend/pages/modeling_page.py",
+        "line": 315
+      },
+      {
+        "file": "frontend/pages/modeling_page.py",
+        "line": 181
+      },
+      {
+        "file": "frontend/pages/modeling_page.py",
+        "line": 198
+      },
+      {
+        "file": "frontend/pages/modeling_page.py",
+        "line": 285
+      },
+      {
+        "file": "frontend/pages/modeling_page.py",
+        "line": 293
+      }
+    ],
+    "SummaryTable": [
+      {
+        "file": "frontend/pages/analysis_results.py",
+        "line": 70
+      },
+      {
+        "file": "frontend/pages/result_overview.py",
+        "line": 88
+      },
+      {
+        "file": "frontend/pages/result_overview.py",
+        "line": 107
+      },
+      {
+        "file": "frontend/pages/robust_results.py",
+        "line": 49
+      }
+    ],
+    "ModelConfiguration": [
+      {
+        "file": "frontend/pages/configuration_page.py",
+        "line": 57
+      }
+    ],
+    "QSpinBox": [
+      {
+        "file": "frontend/pages/configuration_panels.py",
+        "line": 28
+      },
+      {
+        "file": "frontend/pages/configuration_panels.py",
+        "line": 37
+      },
+      {
+        "file": "frontend/pages/configuration_panels.py",
+        "line": 43
+      },
+      {
+        "file": "frontend/pages/configuration_panels.py",
+        "line": 54
+      },
+      {
+        "file": "frontend/pages/configuration_panels.py",
+        "line": 103
+      },
+      {
+        "file": "frontend/pages/configuration_panels.py",
+        "line": 121
+      },
+      {
+        "file": "frontend/pages/model_configuration.py",
+        "line": 52
+      },
+      {
+        "file": "frontend/pages/model_configuration.py",
+        "line": 72
+      },
+      {
+        "file": "frontend/pages/model_configuration.py",
+        "line": 80
+      },
+      {
+        "file": "frontend/pages/model_configuration.py",
+        "line": 88
+      },
+      {
+        "file": "frontend/pages/model_configuration.py",
+        "line": 178
+      },
+      {
+        "file": "frontend/pages/model_configuration.py",
+        "line": 231
+      },
+      {
+        "file": "frontend/pages/model_configuration.py",
+        "line": 237
+      },
+      {
+        "file": "frontend/pages/model_configuration.py",
+        "line": 248
+      },
+      {
+        "file": "frontend/pages/model_configuration.py",
+        "line": 251
+      },
+      {
+        "file": "frontend/pages/model_configuration.py",
+        "line": 259
+      },
+      {
+        "file": "frontend/pages/model_configuration.py",
+        "line": 278
+      },
+      {
+        "file": "frontend/pages/optimization_panels.py",
+        "line": 98
+      },
+      {
+        "file": "frontend/pages/optimization_panels.py",
+        "line": 102
+      },
+      {
+        "file": "frontend/pages/optimization_panels.py",
+        "line": 185
+      }
+    ],
+    "ExcelLikeTableWidget": [
+      {
+        "file": "frontend/pages/data_management_page.py",
+        "line": 52
+      }
+    ],
+    "QTableWidget": [
+      {
+        "file": "frontend/pages/design_results.py",
+        "line": 31
+      },
+      {
+        "file": "frontend/pages/design_results.py",
+        "line": 36
+      },
+      {
+        "file": "frontend/pages/model_configuration.py",
+        "line": 35
+      },
+      {
+        "file": "frontend/pages/modeling_page.py",
+        "line": 45
+      },
+      {
+        "file": "frontend/pages/modeling_page.py",
+        "line": 248
+      },
+      {
+        "file": "frontend/pages/optimization_panels.py",
+        "line": 126
+      },
+      {
+        "file": "frontend/pages/optimization_panels.py",
+        "line": 169
+      },
+      {
+        "file": "frontend/pages/optimization_panels.py",
+        "line": 208
+      },
+      {
+        "file": "frontend/pages/workbench_diagnostics.py",
+        "line": 49
+      },
+      {
+        "file": "frontend/pages/workbench_diagnostics.py",
+        "line": 33
+      }
+    ],
+    "QDoubleSpinBox": [
+      {
+        "file": "frontend/pages/model_configuration.py",
+        "line": 288
+      },
+      {
+        "file": "frontend/pages/optimization_panels.py",
+        "line": 109
+      },
+      {
+        "file": "frontend/pages/optimization_panels.py",
+        "line": 114
+      },
+      {
+        "file": "frontend/pages/optimization_panels.py",
+        "line": 120
+      },
+      {
+        "file": "frontend/pages/optimization_panels.py",
+        "line": 188
+      },
+      {
+        "file": "frontend/pages/optimization_panels.py",
+        "line": 197
+      },
+      {
+        "file": "frontend/pages/workbench_diagnostics.py",
+        "line": 90
+      }
+    ],
+    "ResultTabs": [
+      {
+        "file": "frontend/pages/optimization_panels.py",
+        "line": 42
+      }
+    ],
+    "DesignResultsPanel": [
+      {
+        "file": "frontend/pages/optimization_panels.py",
+        "line": 60
+      },
+      {
+        "file": "frontend/pages/optimization_panels.py",
+        "line": 61
+      }
+    ],
+    "ResultsWorkspace": [
+      {
+        "file": "frontend/pages/optimization_panels.py",
+        "line": 67
+      }
+    ],
+    "ResultOverview": [
+      {
+        "file": "frontend/pages/optimization_panels.py",
+        "line": 85
+      }
+    ],
+    "RobustResults": [
+      {
+        "file": "frontend/pages/optimization_panels.py",
+        "line": 141
+      }
+    ],
+    "AnalysisResults": [
+      {
+        "file": "frontend/pages/optimization_panels.py",
+        "line": 146
+      },
+      {
+        "file": "frontend/pages/optimization_panels.py",
+        "line": 151
+      },
+      {
+        "file": "frontend/pages/optimization_panels.py",
+        "line": 176
+      }
+    ]
+  },
+  "helper_calls": {
+    "polish_tables": [
+      {
+        "file": "frontend/main_window.py",
+        "line": 73
+      },
+      {
+        "file": "frontend/pages/modeling_page.py",
+        "line": 100
+      }
+    ],
+    "install_delegate": [
+      {
+        "file": "frontend/math_widgets.py",
+        "line": 34
+      },
+      {
+        "file": "frontend/pages/design_results.py",
+        "line": 55
+      },
+      {
+        "file": "frontend/pages/result_overview.py",
+        "line": 27
+      },
+      {
+        "file": "frontend/pages/workbench_diagnostics.py",
+        "line": 56
+      }
+    ],
+    "dialog_path": [
+      {
+        "file": "frontend/pages/analysis_page.py",
+        "line": 80
+      },
+      {
+        "file": "frontend/pages/data_management_page.py",
+        "line": 161
+      },
+      {
+        "file": "frontend/pages/data_management_page.py",
+        "line": 176
+      },
+      {
+        "file": "frontend/pages/workbench_diagnostics.py",
+        "line": 173
+      },
+      {
+        "file": "frontend/pages/workbench_diagnostics.py",
+        "line": 195
+      },
+      {
+        "file": "frontend/pages/workbench_diagnostics.py",
+        "line": 207
+      }
+    ],
+    "blockSignals": [
+      {
+        "file": "frontend/pages/analysis_results.py",
+        "line": 55
+      },
+      {
+        "file": "frontend/pages/analysis_results.py",
+        "line": 63
+      },
+      {
+        "file": "frontend/pages/configuration_page.py",
+        "line": 212
+      },
+      {
+        "file": "frontend/pages/configuration_page.py",
+        "line": 217
+      },
+      {
+        "file": "frontend/pages/design_results.py",
+        "line": 69
+      },
+      {
+        "file": "frontend/pages/design_results.py",
+        "line": 74
+      },
+      {
+        "file": "frontend/pages/design_results.py",
+        "line": 103
+      },
+      {
+        "file": "frontend/pages/design_results.py",
+        "line": 106
+      },
+      {
+        "file": "frontend/pages/model_configuration.py",
+        "line": 115
+      },
+      {
+        "file": "frontend/pages/model_configuration.py",
+        "line": 129
+      },
+      {
+        "file": "frontend/pages/optimization_page.py",
+        "line": 120
+      },
+      {
+        "file": "frontend/pages/optimization_page.py",
+        "line": 132
+      },
+      {
+        "file": "frontend/pages/workbench_diagnostics.py",
+        "line": 81
+      },
+      {
+        "file": "frontend/pages/workbench_diagnostics.py",
+        "line": 84
+      }
+    ],
+    "decorate_combo": [
+      {
+        "file": "frontend/pages/configuration_panels.py",
+        "line": 24
+      },
+      {
+        "file": "frontend/pages/model_configuration.py",
+        "line": 67
+      }
+    ],
+    "setRange": [
+      {
+        "file": "frontend/pages/configuration_panels.py",
+        "line": 29
+      },
+      {
+        "file": "frontend/pages/configuration_panels.py",
+        "line": 38
+      },
+      {
+        "file": "frontend/pages/configuration_panels.py",
+        "line": 44
+      },
+      {
+        "file": "frontend/pages/configuration_panels.py",
+        "line": 55
+      },
+      {
+        "file": "frontend/pages/configuration_panels.py",
+        "line": 104
+      },
+      {
+        "file": "frontend/pages/configuration_panels.py",
+        "line": 122
+      },
+      {
+        "file": "frontend/pages/model_configuration.py",
+        "line": 53
+      },
+      {
+        "file": "frontend/pages/model_configuration.py",
+        "line": 73
+      },
+      {
+        "file": "frontend/pages/model_configuration.py",
+        "line": 81
+      },
+      {
+        "file": "frontend/pages/model_configuration.py",
+        "line": 89
+      },
+      {
+        "file": "frontend/pages/model_configuration.py",
+        "line": 289
+      },
+      {
+        "file": "frontend/pages/model_configuration.py",
+        "line": 179
+      },
+      {
+        "file": "frontend/pages/model_configuration.py",
+        "line": 232
+      },
+      {
+        "file": "frontend/pages/model_configuration.py",
+        "line": 238
+      },
+      {
+        "file": "frontend/pages/model_configuration.py",
+        "line": 249
+      },
+      {
+        "file": "frontend/pages/model_configuration.py",
+        "line": 252
+      },
+      {
+        "file": "frontend/pages/model_configuration.py",
+        "line": 260
+      },
+      {
+        "file": "frontend/pages/model_configuration.py",
+        "line": 279
+      },
+      {
+        "file": "frontend/pages/optimization_panels.py",
+        "line": 98
+      },
+      {
+        "file": "frontend/pages/optimization_panels.py",
+        "line": 102
+      },
+      {
+        "file": "frontend/pages/optimization_panels.py",
+        "line": 109
+      },
+      {
+        "file": "frontend/pages/optimization_panels.py",
+        "line": 114
+      },
+      {
+        "file": "frontend/pages/optimization_panels.py",
+        "line": 120
+      },
+      {
+        "file": "frontend/pages/optimization_panels.py",
+        "line": 185
+      },
+      {
+        "file": "frontend/pages/optimization_panels.py",
+        "line": 188
+      },
+      {
+        "file": "frontend/pages/optimization_panels.py",
+        "line": 197
+      },
+      {
+        "file": "frontend/pages/result_overview.py",
+        "line": 94
+      },
+      {
+        "file": "frontend/pages/workbench_diagnostics.py",
+        "line": 92
+      }
+    ],
+    "setColumnCount": [
+      {
+        "file": "frontend/pages/data_management_page.py",
+        "line": 90
+      },
+      {
+        "file": "frontend/pages/design_results.py",
+        "line": 56
+      },
+      {
+        "file": "frontend/pages/workbench_diagnostics.py",
+        "line": 58
+      }
+    ],
+    "setItem": [
+      {
+        "file": "frontend/pages/data_management_page.py",
+        "line": 113
+      },
+      {
+        "file": "frontend/pages/design_results.py",
+        "line": 62
+      },
+      {
+        "file": "frontend/pages/model_configuration.py",
+        "line": 125
+      },
+      {
+        "file": "frontend/pages/model_configuration.py",
+        "line": 128
+      },
+      {
+        "file": "frontend/pages/optimization_page.py",
+        "line": 130
+      },
+      {
+        "file": "frontend/pages/optimization_page.py",
+        "line": 131
+      },
+      {
+        "file": "frontend/pages/result_overview.py",
+        "line": 34
+      },
+      {
+        "file": "frontend/pages/workbench_diagnostics.py",
+        "line": 63
+      }
+    ],
+    "setKeyboardTracking": [
+      {
+        "file": "frontend/pages/model_configuration.py",
+        "line": 55
+      }
+    ],
+    "_dspin": [
+      {
+        "file": "frontend/pages/model_configuration.py",
+        "line": 69
+      },
+      {
+        "file": "frontend/pages/model_configuration.py",
+        "line": 191
+      },
+      {
+        "file": "frontend/pages/model_configuration.py",
+        "line": 192
+      },
+      {
+        "file": "frontend/pages/model_configuration.py",
+        "line": 193
+      },
+      {
+        "file": "frontend/pages/model_configuration.py",
+        "line": 204
+      },
+      {
+        "file": "frontend/pages/model_configuration.py",
+        "line": 205
+      },
+      {
+        "file": "frontend/pages/model_configuration.py",
+        "line": 206
+      },
+      {
+        "file": "frontend/pages/model_configuration.py",
+        "line": 274
+      }
+    ],
+    "setDecimals": [
+      {
+        "file": "frontend/pages/model_configuration.py",
+        "line": 290
+      },
+      {
+        "file": "frontend/pages/optimization_panels.py",
+        "line": 188
+      },
+      {
+        "file": "frontend/pages/workbench_diagnostics.py",
+        "line": 91
+      }
+    ],
+    "setSingleStep": [
+      {
+        "file": "frontend/pages/model_configuration.py",
+        "line": 292
+      },
+      {
+        "file": "frontend/pages/optimization_panels.py",
+        "line": 110
+      },
+      {
+        "file": "frontend/pages/optimization_panels.py",
+        "line": 115
+      },
+      {
+        "file": "frontend/pages/optimization_panels.py",
+        "line": 121
+      },
+      {
+        "file": "frontend/pages/optimization_panels.py",
+        "line": 197
+      },
+      {
+        "file": "frontend/pages/workbench_diagnostics.py",
+        "line": 93
+      }
+    ]
+  },
+  "table_population_methods": [
+    {
+      "file": "frontend/pages/data_management_page.py",
+      "name": "load_doe_matrix",
+      "line": 79,
+      "lines": 40
+    },
+    {
+      "file": "frontend/pages/design_results.py",
+      "name": "fill",
+      "line": 54,
+      "lines": 10
+    },
+    {
+      "file": "frontend/pages/model_configuration.py",
+      "name": "set_factors",
+      "line": 110,
+      "lines": 21
+    },
+    {
+      "file": "frontend/pages/optimization_page.py",
+      "name": "_on_robust_mode",
+      "line": 117,
+      "lines": 18
+    },
+    {
+      "file": "frontend/pages/result_overview.py",
+      "name": "__init__",
+      "line": 22,
+      "lines": 15
+    },
+    {
+      "file": "frontend/pages/workbench_diagnostics.py",
+      "name": "fill",
+      "line": 55,
+      "lines": 10
+    }
+  ],
+  "exact_function_body_duplicates": []
+}

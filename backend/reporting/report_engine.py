@@ -303,7 +303,7 @@ def render_html(report,section_ids=None):
                     chunks.append('<table width="100%" cellspacing="0" cellpadding="4"><thead><tr>'+''.join(f'<th>{esc(k)}</th>' for k in columns)+'</tr></thead><tbody>')
                     for row in rows:chunks.append('<tr>'+''.join(f'<td>{esc(row.get(k))}</td>' for k in columns)+'</tr>')
                     chunks.append('</tbody></table><br/>')
-    chunks.append('<p class="meta">RAMS · 可追溯分析报告 · 计算结论需按确认计划复核</p></body></html>')
+    chunks.append('<p class="meta">RODAS · 可追溯分析报告 · 计算结论需按确认计划复核</p></body></html>')
     return ''.join(chunks)
 
 

@@ -6,11 +6,23 @@ from PyQt6.QtWidgets import (QApplication, QWidget, QHBoxLayout, QVBoxLayout,
 
 STYLE = """QWidget { color:#26364a; font-size:13px; }
 QMainWindow, QDialog { background:#eef1f5; }
-QWidget#appChrome { background:#23364d; }
-QLabel#brand { color:white; font-size:18px; font-weight:600; }
-QPushButton[workflow="true"] { background:transparent; color:#c7d3e1; border:0; border-bottom:3px solid transparent; border-radius:0; padding:13px 18px; }
-QPushButton[workflow="true"]:hover { background:#304962; color:white; }
-QPushButton[workflow="true"][active="true"] { color:white; background:#304962; border-bottom:3px solid #6db9f2; font-weight:600; }
+QWidget#appChrome { background:#fff; border-bottom:1px solid #e2e8f0; }
+QPushButton#brand { color:#173b64; font-size:18px; font-weight:600; border:0; border-bottom:3px solid transparent; border-radius:0; background:transparent; padding:13px 10px; }
+QPushButton#brand[active="true"] { border-bottom-color:#168cb4; }
+QPushButton[workflow="true"] { background:transparent; color:#6c7c8f; font-size:18px; font-weight:500; border:0; border-bottom:3px solid transparent; border-radius:0; padding:13px 12px; }
+QPushButton[workflow="true"]:hover, QPushButton#brand:hover { background:#edf4fa; color:#173b64; }
+QPushButton[workflow="true"][active="true"] { color:#173b64; background:#edf4fa; border-bottom:3px solid #168cb4; font-weight:600; }
+QWidget#welcomePage { background:#fff; }
+QLabel#welcomeTitle { font-size:21px; font-weight:500; color:#21354d; }
+QWidget#welcomeDivider { background:#e2e8f0; }
+QPushButton#welcomeAction { background:#fff; border:1px solid #e2e8f0; border-radius:6px; padding:0; min-height:108px; }
+QPushButton#welcomeAction:hover { background:#edf4fa; border-color:#168cb4; }
+QPushButton#welcomeAction:pressed { background:#e3eff7; }
+QLabel#welcomeActionLabel { font-size:14px; font-weight:500; color:#21354d; }
+QStatusBar { background:#f4f6f9; border-top:1px solid #e2e8f0; padding:4px 12px; }
+QStatusBar::item { border:0; }
+QPushButton#workingDirectory { text-align:left; color:#65768a; background:transparent; border:0; padding:2px 8px; font-size:12px; }
+QPushButton#workingDirectory:hover { color:#173b64; background:#edf4fa; }
 QWidget#pageHeading { background:#fff; border-bottom:1px solid #d7dee7; }
 QLabel[role="heading"] { font-size:20px; font-weight:600; color:#20374f; }
 QLabel[role="muted"] { color:#65768a; }

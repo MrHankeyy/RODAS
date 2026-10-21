@@ -9,6 +9,7 @@ from backend.infrastructure import file_io
 from backend.domain.models import ProjectData
 from backend.services.project_service import ProjectService
 from frontend.pages.table_widgets import ExcelLikeTableWidget
+from frontend.workspace import dialog_path
 
 class DataManagementPage(QWidget):
     def __init__(self, project_data: ProjectData):
@@ -157,7 +158,7 @@ class DataManagementPage(QWidget):
             Notice.warning(self, "警告", "没有可导出的数据！")
             return
         file_path, _ = QFileDialog.getSaveFileName(
-            self, "导出CSV", "", "CSV Files (*.csv)")
+            self, "导出CSV", dialog_path(self), "CSV Files (*.csv)")
         if not file_path:
             return
         try:
@@ -172,7 +173,7 @@ class DataManagementPage(QWidget):
     def import_from_csv(self):
         """导入外部算好的 CSV (如流体仿真自动生成的带结果列的文件)"""
         file_path, _ = QFileDialog.getOpenFileName(
-            self, "导入测试结果 CSV", "", "CSV Files (*.csv)")
+            self, "导入测试结果 CSV", dialog_path(self), "CSV Files (*.csv)")
         if not file_path:
             return
         try:
