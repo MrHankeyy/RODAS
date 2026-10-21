@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from dataclasses import asdict
 from backend.infrastructure import file_io
 from backend.services.project_service import ProjectService
-from backend.reporting.math_format import formula_html, rich_text
+from backend.reporting.math_format import PLOT_STYLE, formula_html, rich_text
 
 
 def serializable(value):
@@ -264,7 +264,7 @@ def chart_png(block):
     from matplotlib.figure import Figure
     from matplotlib.backends.backend_agg import FigureCanvasAgg
     import matplotlib
-    with matplotlib.rc_context({'font.sans-serif':['Microsoft YaHei','SimHei','DejaVu Sans'],'axes.unicode_minus':False}):
+    with matplotlib.rc_context(PLOT_STYLE):
         fig=Figure(figsize=(7.2,3.3),dpi=125,layout='constrained');FigureCanvasAgg(fig);ax=fig.add_subplot()
         x,y=block['x'],block['y']
         if block['kind']=='bar':ax.bar(x,y,color='#245f9e');ax.axhline(0,color='gray',lw=.6);ax.tick_params(axis='x',rotation=25)

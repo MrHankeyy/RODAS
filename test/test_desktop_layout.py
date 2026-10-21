@@ -52,7 +52,7 @@ class DesktopLayoutTests(unittest.TestCase):
         self.window.on_switch_module('方案配置', 1)
         page = self.window.page_CFG
         self.assertFalse(hasattr(page, 'info_group'))
-        page.method_combo.setCurrentIndex(2)
+        page.dynamic_params_widget.setCurrentIndex(2)
         for model in range(4):
             page.model_combo.setCurrentIndex(model)
             APP.processEvents()
@@ -67,14 +67,14 @@ class DesktopLayoutTests(unittest.TestCase):
                     APP.processEvents()
                     self.assertEqual((page.model_stack.width(), editor.width()), expected)
 
-    def test_factor_tabs_preserve_rows_and_show_counts(self):
+    def test_model_sections_preserve_rows_without_counts(self):
         page = self.window.page_MOD
         page.add_design_factor_row()
         page.add_environment_factor_row()
         page.environment_factor_table.cellWidget(0, 0).setText('温度')
-        page.factor_tabs.setCurrentIndex(1)
-        self.assertEqual(page.factor_tabs.tabText(1), '环境因子  1')
-        page.factor_tabs.setCurrentIndex(0)
+        page.model_tabs.setCurrentIndex(2)
+        self.assertEqual(page.model_tabs.tabText(2), '环境因子')
+        page.model_tabs.setCurrentIndex(1)
         self.assertEqual(page.environment_factor_table.cellWidget(0, 0).text(), '温度')
         self.assertEqual(
             page.design_factor_table.horizontalHeader().section_tooltip(5),

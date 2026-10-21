@@ -38,7 +38,7 @@ w.project_data.__dict__.update(p.__dict__)
 w.page_CFG.update_info_display()
 capture('02-config')
 for i in (1, 2):
-    w.page_CFG.method_combo.setCurrentIndex(i)
+    w.page_CFG.dynamic_params_widget.setCurrentIndex(i)
     capture(f'02-config-method{i}')
 w.on_switch_module('数据管理', 2)
 w.page_DM.load_doe_matrix()

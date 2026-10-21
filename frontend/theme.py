@@ -40,7 +40,8 @@ QGroupBox::title { subcontrol-origin:margin; left:12px; padding:0 5px; }
 QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox { background:#fff; border:1px solid #bdcbd8; border-radius:3px; padding:4px 7px; min-height:20px; selection-background-color:#d7eafa; selection-color:#173951; }
 QLineEdit:focus, QComboBox:focus, QSpinBox:focus, QDoubleSpinBox:focus { border-color:#2477b5; }
 QLineEdit:disabled, QComboBox:disabled, QSpinBox:disabled, QDoubleSpinBox:disabled { background:#f2f4f6; color:#96a2ae; border-color:#e0e5ea; }
-QComboBox { padding-right:22px; }
+/* Use list popups; menu popups align the selected item over the control. */
+QComboBox { padding-right:22px; combobox-popup:0; }
 QComboBox::drop-down { width:20px; border:0; border-left:1px solid #e2e7ed; }
 QComboBox QAbstractItemView { background:white; selection-background-color:#dcecf8; selection-color:#20374f; }
 QTextEdit, QTextBrowser, QTableWidget { background:#fff; border:1px solid #d5dee7; selection-background-color:#dcecf8; selection-color:#193d59; }

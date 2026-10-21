@@ -34,15 +34,14 @@ from backend.reporting import report_engine as reports
 from backend.domain.models import ProjectData
 from backend.services import analysis_service, model_service
 from backend.services.project_service import ProjectService
-from backend.reporting.math_format import rich_text
+from backend.reporting.math_format import PLOT_STYLE, rich_text
 from frontend.math_widgets import MathTextEdit
 
 import matplotlib
 matplotlib.use('Qt5Agg')
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
-matplotlib.rcParams['font.sans-serif'] = ['Microsoft YaHei', 'SimHei', 'Arial Unicode MS', 'DejaVu Sans']
-matplotlib.rcParams['axes.unicode_minus'] = False
+matplotlib.rcParams.update(PLOT_STYLE)
 
 
 class OptimizationPage(QWidget):
@@ -156,7 +155,7 @@ class OptimizationPage(QWidget):
     def _new_text(self):
         text = MathTextEdit()
         text.setReadOnly(True)
-        text.setStyleSheet("font-family:Consolas,'Microsoft YaHei';font-size:13px;")
+        text.setStyleSheet("font-family:'Microsoft YaHei';font-size:13px;")
         return text
 
     def _build_signif_tab(self):

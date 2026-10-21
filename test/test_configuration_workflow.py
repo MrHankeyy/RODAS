@@ -79,8 +79,8 @@ class ConfigurationWorkflowTests(unittest.TestCase):
     def test_keyboard_entry_drafts_and_generated_config_restore(self):
         p = project()
         page = ConfigurationPage(p)
-        self.assertEqual(page.method_combo.count(), 3)
-        page.method_combo.setCurrentIndex(2)
+        self.assertEqual(page.dynamic_params_widget.count(), 3)
+        page.dynamic_params_widget.setCurrentIndex(2)
         page.model_combo.setCurrentIndex(3)
         editor = page.model_editors["ANN"]
         editor.sample_count_spin.lineEdit().selectAll()

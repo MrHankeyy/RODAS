@@ -4,7 +4,7 @@ from copy import deepcopy
 from PyQt6.QtCore import QTimer
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox, QPushButton,
-    QGroupBox, QStackedWidget, QSizePolicy, QAbstractSpinBox, QSpinBox,
+    QStackedWidget, QScrollArea, QAbstractSpinBox, QSpinBox,
 )
 
 from backend.domain.models import ProjectData
@@ -15,6 +15,7 @@ from frontend.notifications import Notice
 from frontend.numeric_inputs import commit_numeric_inputs
 from frontend.pages import configuration_panels
 from frontend.pages.model_configuration import ModelConfiguration, MODEL_TITLES
+from frontend.theme import ResultTabs, ResultsWorkspace
 
 
 class ConfigurationPage(QWidget):
@@ -35,21 +36,18 @@ class ConfigurationPage(QWidget):
         main = QVBoxLayout(self)
         main.setContentsMargins(12, 12, 12, 12)
         main.setSpacing(12)
-        group = QGroupBox("方案配置")
-        column = QVBoxLayout(group)
+        self.dynamic_params_widget = ResultTabs()
+        self.results_workspace = ResultsWorkspace(self.dynamic_params_widget, [("方案类型", [0, 1, 2])])
+        model_page = QWidget()
+        column = QVBoxLayout(model_page)
+        column.setContentsMargins(10, 12, 10, 10)
         row = QHBoxLayout()
-        row.addWidget(QLabel("方案类型："))
-        self.method_combo = QComboBox()
-        self.method_combo.addItems(["因子筛选分析", "田口稳健设计", "代理建模与鲁棒优化"])
-        row.addWidget(self.method_combo, 1)
         self.model_label = QLabel("模型类型：")
         row.addWidget(self.model_label)
         self.model_combo = QComboBox()
         self.model_combo.addItems([MODEL_TITLES[key] for key in self.MODEL_KEYS])
         row.addWidget(self.model_combo, 1)
         column.addLayout(row)
-        self.dynamic_params_widget = QStackedWidget()
-        self.dynamic_params_widget.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
         self.screening_widget = configuration_panels.screening(self)
         self.taguchi_widget = configuration_panels.taguchi(self)
         self.model_stack = QStackedWidget()
@@ -58,20 +56,26 @@ class ConfigurationPage(QWidget):
             editor = ModelConfiguration(key, self._design_factors(), config=self._saved_config(key))
             self.model_editors[key] = editor
             self.model_stack.addWidget(editor)
-        for widget in (self.screening_widget, self.taguchi_widget, self.model_stack):
-            self.dynamic_params_widget.addWidget(widget)
-        column.addWidget(self.dynamic_params_widget)
+        column.addWidget(self.model_stack)
+        for widget in (self.screening_widget, self.taguchi_widget, model_page):
+            widget.layout().setContentsMargins(10, 12, 10, 10)
+            widget.layout().addStretch()
+        for widget, title in ((self.screening_widget, "因子筛选分析"),
+                              (self.taguchi_widget, "田口稳健设计"),
+                              (model_page, "代理建模与鲁棒优化")):
+            scroll = QScrollArea()
+            scroll.setWidgetResizable(True)
+            scroll.setWidget(widget)
+            self.dynamic_params_widget.addTab(scroll, title)
+        self.results_workspace.refresh()
         self.preview_label = QLabel()
         self.preview_label.setWordWrap(True)
         self.preview_label.setProperty("role", "muted")
-        column.addWidget(self.preview_label)
         self.config_status = QLabel("尚未生成试验方案")
         self.config_status.setWordWrap(True)
         self.config_status.setProperty("role", "badge")
-        column.addWidget(self.config_status)
-        main.addWidget(group)
         row = QHBoxLayout()
-        row.addStretch()
+        row.addWidget(self.config_status, 1)
         self.refresh_btn = QPushButton("刷新问题定义")
         self.refresh_btn.clicked.connect(self.update_info_display)
         row.addWidget(self.refresh_btn)
@@ -81,9 +85,10 @@ class ConfigurationPage(QWidget):
         self.gen_btn.clicked.connect(self.on_generate_clicked)
         row.addWidget(self.gen_btn)
         main.addLayout(row)
-        main.addStretch()
+        main.addWidget(self.preview_label)
+        main.addWidget(self.results_workspace, 1)
         self._on_taguchi_levels()
-        self.method_combo.currentIndexChanged.connect(self._on_selection_changed)
+        self.dynamic_params_widget.currentChanged.connect(self._on_selection_changed)
         self.model_combo.currentIndexChanged.connect(self._on_selection_changed)
         for editor in self.model_editors.values():
             editor.changed.connect(self._configuration_changed)
@@ -99,7 +104,7 @@ class ConfigurationPage(QWidget):
         self._on_selection_changed()
         if self.project_data.doe_matrix:
             key = self.MODEL_KEYS[self.model_combo.currentIndex()]
-            saved = self._saved_config(key) if self.method_combo.currentIndex() == 2 else None
+            saved = self._saved_config(key) if self.dynamic_params_widget.currentIndex() == 2 else None
             if saved and saved.get("doe_method") not in design_service.MODEL_DESIGNS[key]:
                 self.config_status.setText("原方案使用了当前不支持的搭配；当前已选默认试验设计，重新生成后生效")
             else:
@@ -121,7 +126,7 @@ class ConfigurationPage(QWidget):
         return None
 
     def _selected_method(self):
-        category = self.method_combo.currentIndex()
+        category = self.dynamic_params_widget.currentIndex()
         if category == 0:
             return "两水平筛选设计（全因子/部分析因/PB）"
         if category == 1:
@@ -132,7 +137,7 @@ class ConfigurationPage(QWidget):
     def _restore_classical_settings(self):
         params = self.project_data.design_params
         meta = params.get("meta", {})
-        if self.method_combo.currentIndex() == 0:
+        if self.dynamic_params_widget.currentIndex() == 0:
             kind = meta.get("kind", "")
             self.screen_kind_combo.setCurrentIndex(1 if "1/2" in kind else 2 if "1/4" in kind else 3 if "Plackett" in kind else 0)
             self.f_topn_spin.setValue(params.get("top_n", 5))
@@ -140,7 +145,7 @@ class ConfigurationPage(QWidget):
             self.f_repeat_spin.setValue(meta.get("replicates", 1))
             self.f_seed_spin.setValue(params.get("seed", 123))
             self.f_order_combo.setCurrentIndex(0 if params.get("randomize", True) else 1)
-        elif self.method_combo.currentIndex() == 1:
+        elif self.dynamic_params_widget.currentIndex() == 1:
             self.t_levels_combo.setCurrentIndex(0 if meta.get("levels", 2) == 2 else 1)
             self.t_noise_levels_combo.setCurrentIndex(0 if meta.get("noise_level_count", 2) in (0, 2) else 1)
             for combo, key in ((self.t_inner_combo, "inner_label"), (self.t_outer_combo, "outer_label")):
@@ -153,27 +158,21 @@ class ConfigurationPage(QWidget):
 
     def _select_method(self, method):
         if "筛选" in method:
-            self.method_combo.setCurrentIndex(0)
+            self.dynamic_params_widget.setCurrentIndex(0)
         elif "田口" in method:
-            self.method_combo.setCurrentIndex(1)
+            self.dynamic_params_widget.setCurrentIndex(1)
         else:
             key = "RSM" if "响应曲面" in method else "Kriging" if "Kriging" in method else "SVR" if "SVR" in method else "ANN"
             self.model_combo.setCurrentIndex(self.MODEL_KEYS.index(key))
-            self.method_combo.setCurrentIndex(2)
+            self.dynamic_params_widget.setCurrentIndex(2)
 
     def _on_selection_changed(self, *_args):
-        model = self.method_combo.currentIndex() == 2
-        self.model_label.setVisible(model)
-        self.model_combo.setVisible(model)
         self.model_stack.setCurrentIndex(self.model_combo.currentIndex())
-        self.dynamic_params_widget.setCurrentIndex(self.method_combo.currentIndex())
         self._configuration_changed()
 
     def _fit_dynamic_params(self):
         editor = self.model_stack.currentWidget()
         self.model_stack.setFixedHeight(editor.sizeHint().height() + 2)
-        current = self.dynamic_params_widget.currentWidget()
-        self.dynamic_params_widget.setFixedHeight(current.sizeHint().height() + 2)
 
     def _configuration_changed(self, *_args):
         self._fit_dynamic_params()
@@ -185,7 +184,7 @@ class ConfigurationPage(QWidget):
 
     def _draft_state(self):
         widget = self.dynamic_params_widget.currentWidget()
-        if self.method_combo.currentIndex() == 2:
+        if self.dynamic_params_widget.currentIndex() == 2:
             widget = self.model_stack.currentWidget()
         controls = ([c.currentText() for c in widget.findChildren(QComboBox)],
                     [c.text() for c in widget.findChildren(QAbstractSpinBox)])
@@ -238,7 +237,7 @@ class ConfigurationPage(QWidget):
         raise ValueError("因子数量超过当前正交表的容量")
 
     def _build_plan(self, preview=False):
-        if not preview and self.method_combo.currentIndex() != 2:
+        if not preview and self.dynamic_params_widget.currentIndex() != 2:
             commit_numeric_inputs(self.dynamic_params_widget.currentWidget())
         method = self._selected_method()
         if "筛选" in method:

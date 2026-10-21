@@ -3,11 +3,12 @@ from PyQt6.QtGui import QPainter, QPen, QColor, QPalette
 from PyQt6.QtWidgets import (
     QWidget, QPushButton, QLabel, QVBoxLayout, QHBoxLayout,
         QTableWidget, QComboBox, QLineEdit, QHeaderView, QGroupBox,
-    QCheckBox, QMessageBox, QTabWidget, QSplitter
+    QCheckBox, QMessageBox
 )
 from backend.domain.models import ResponseItem, FactorItem, ProjectData
 from backend.services.project_service import ProjectService
 from frontend.pages.table_widgets import MultiLevelHeader
+from frontend.theme import ResultTabs, ResultsWorkspace
 
 
 FIXED_VALUE_HELP = (
@@ -59,27 +60,16 @@ class ModelingPage(QWidget):
         response_layout.addWidget(self.response_table)
 
         response_group.setLayout(response_layout)
-        sections = QSplitter(Qt.Orientation.Vertical)
-        sections.addWidget(response_group)
+        self.model_tabs = ResultTabs()
+        self.model_tabs.addTab(response_group, "响应")
 
         # ========= 因子区 =========
-        factor_group = QGroupBox("因子")
-        factor_group.setObjectName("factor_group")
-        factor_layout = QVBoxLayout()
-        factor_layout.setContentsMargins(10, 12, 10, 10)
-
         self.design_factor_table = self._create_factor_table("设计因子")
         self.environment_factor_table = self._create_factor_table("环境因子")
-        self.factor_tabs = QTabWidget()
-        self.factor_tabs.addTab(self._factor_section("可调整的设计输入", self.design_factor_table, self.add_design_factor_row), "设计因子")
-        self.factor_tabs.addTab(self._factor_section("使用工况与环境扰动", self.environment_factor_table, self.add_environment_factor_row), "环境因子")
-        factor_layout.addWidget(self.factor_tabs)
-
-        factor_group.setLayout(factor_layout)
-        sections.addWidget(factor_group)
-        sections.setChildrenCollapsible(False)
-        sections.setSizes([230, 330])
-        main_layout.addWidget(sections, 1)
+        self.model_tabs.addTab(self._factor_section("可调整的设计输入", self.design_factor_table, self.add_design_factor_row), "设计因子")
+        self.model_tabs.addTab(self._factor_section("使用工况与环境扰动", self.environment_factor_table, self.add_environment_factor_row), "环境因子")
+        self.results_workspace = ResultsWorkspace(self.model_tabs, [("业务建模", [0, 1, 2])])
+        main_layout.addWidget(self.results_workspace, 1)
 
         # ========= 操作按钮区 =========
         btn_layout = QHBoxLayout()
@@ -109,15 +99,6 @@ class ModelingPage(QWidget):
             for column, width in ((5,130),(6,80),(7,80)):
                 table.horizontalHeader().setSectionResizeMode(column, QHeaderView.ResizeMode.Fixed)
                 table.setColumnWidth(column, width)
-        for table in (self.design_factor_table, self.environment_factor_table):
-            table.model().rowsInserted.connect(self._update_factor_counts)
-            table.model().rowsRemoved.connect(self._update_factor_counts)
-        self._update_factor_counts()
-
-    def _update_factor_counts(self, *_args):
-        self.factor_tabs.setTabText(0, f"设计因子  {self.design_factor_table.rowCount()}")
-        self.factor_tabs.setTabText(1, f"环境因子  {self.environment_factor_table.rowCount()}")
-
 
     def on_save_clicked(self):
         errors = self._validate_response_inputs()
@@ -259,7 +240,7 @@ class ModelingPage(QWidget):
     def _factor_section(self, title, table, add_handler):
         section = QWidget()
         layout = QVBoxLayout(section)
-        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setContentsMargins(10, 12, 10, 10)
         header = QHBoxLayout()
         label = QLabel(title)
         label.setStyleSheet("font-size: 13px; font-weight: bold; color: #34495e;")
