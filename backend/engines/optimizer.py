@@ -52,6 +52,7 @@ from backend.core.statistics import (
     _f_pvalue,
     anova_and_lof,
     cross_validation,
+    validation_results,
     _matrix_xy,
     residual_analysis,
     tolerance_contribution,

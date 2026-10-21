@@ -8,6 +8,8 @@ from PyQt6.QtCore import Qt, pyqtSignal
 
 from backend.engines.doe import factor_limits
 from backend.services.design_service import MODEL_DESIGNS
+from backend.reporting.math_format import rich_text
+from frontend.math_widgets import decorate_combo
 
 
 MODEL_TITLES = {
@@ -62,6 +64,7 @@ class ModelConfiguration(QWidget):
         self.alpha_mode_combo.addItem("面心（α=1）", "face")
         self.alpha_mode_combo.addItem("可旋转", "rotatable")
         self.alpha_mode_combo.addItem("自定义 α", "custom")
+        decorate_combo(self.alpha_mode_combo)
         row.addWidget(self.alpha_mode_combo)
         self.alpha_spin = self._dspin(.5, 5, 1)
         row.addWidget(self.alpha_spin)
@@ -134,10 +137,10 @@ class ModelConfiguration(QWidget):
         self.sample_count_spin.setVisible(not structured)
         self.alpha_mode_combo.setEnabled(design == "CCD")
         self.alpha_spin.setEnabled(design == "CCD" and self.alpha_mode_combo.currentData() == "custom")
-        self.design_hint.setText(
+        self.design_hint.setText(rich_text(
             "CCD 的低高水平对应编码 ±1；α>1 时轴点会超出这些水平。" if design == "CCD" else
             "BBD 使用三水平的成对组合，不包含立方体顶点。" if design == "BBD" else
-            "生成时检查样本数量与模型设置。")
+            "生成时检查样本数量与模型设置。"))
 
     def _build_model_group(self):
         group = QGroupBox("模型设置")

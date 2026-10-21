@@ -63,7 +63,8 @@ QToolTip { background:#253a50; color:white; border:0; padding:6px; }
 
 def install_theme(app):
     from pathlib import Path
-    app.setStyle('Fusion')
+    if app.style().objectName().lower() != 'fusion':
+        app.setStyle('Fusion')
     app.setFont(QFont('Microsoft YaHei', 10))
     icons = (Path(__file__).resolve().parents[1] / 'assets' / 'ui').as_posix()
     app.setStyleSheet(STYLE + f'''

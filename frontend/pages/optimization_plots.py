@@ -17,7 +17,7 @@ def pareto(figure, canvas, robust):
                    for ratio in ratios])
         axes.axvline(
             1, color="#c73545", linestyle="--", label="允许上限")
-        axes.set_xlabel("传播标准差 / 允许最大标准差（≤ 1 为通过）")
+        axes.set_xlabel(r"$\sigma / \sigma_{\max}$（≤ 1 为通过）")
         axes.set_title("候选点独立波动约束核验")
         axes.legend(fontsize=8)
     elif scatter:
@@ -46,7 +46,7 @@ def pareto(figure, canvas, robust):
                 [best["obj"][0]], [best["obj"][1]], s=60,
                 marker="D", color="#16a34a", label="推荐解")
         axes.set_xlabel("均值损失（1 − 望性）")
-        axes.set_ylabel("归一化标准差 σ")
+        axes.set_ylabel(r"归一化标准差 $\sigma$")
         axes.set_title("鲁棒优化 帕累托前沿")
         axes.grid(alpha=0.3)
         axes.legend(fontsize=8)
@@ -60,24 +60,6 @@ def pareto(figure, canvas, robust):
     else:
         axes.text(
             0.5, 0.5, "暂无可行前沿数据", ha="center", va="center")
-    canvas.draw()
-
-
-def residual(figure, canvas, residual_data):
-    figure.clear()
-    axes = figure.add_subplot(111)
-    if residual_data:
-        for name, values in residual_data.items():
-            axes.scatter(
-                values["predicted"], values["residual"], s=16,
-                alpha=0.6, label=name)
-        axes.axhline(0, color="gray", ls="--")
-        axes.set_xlabel("模型预测值")
-        axes.set_ylabel("残差")
-        axes.set_title("残差 vs 预测")
-        axes.legend(fontsize=8)
-    else:
-        axes.text(0.5, 0.5, "暂无残差", ha="center", va="center")
     canvas.draw()
 
 
@@ -98,7 +80,7 @@ def factor_effects(figure, canvas, plots):
             label="均值望性")
         axes.plot(
             plot["x"], plot["std"], "-s", color="#dc2626",
-            label="σ 归一")
+            label=r"$\sigma$ 归一")
         failed = [
             item for item, feasible in enumerate(plot.get("feasible", []))
             if not feasible]

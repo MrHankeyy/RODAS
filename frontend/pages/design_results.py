@@ -3,6 +3,7 @@ from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox
 import math
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
+from frontend.math_widgets import MathTextEdit, install_delegate, decorate_item
 
 
 class DesignResultsPanel(QWidget):
@@ -23,7 +24,7 @@ class DesignResultsPanel(QWidget):
         row.addStretch()
         self.factor_combo.setVisible(family == "taguchi")
         layout.addLayout(row)
-        self.summary = QTextEdit()
+        self.summary = MathTextEdit()
         self.summary.setReadOnly(True)
         self.summary.setMaximumHeight(125)
         layout.addWidget(self.summary)
@@ -51,13 +52,15 @@ class DesignResultsPanel(QWidget):
 
     @staticmethod
     def fill(table, headers, rows):
+        install_delegate(table)
         table.setColumnCount(len(headers))
         table.setHorizontalHeaderLabels(headers)
         table.setRowCount(len(rows))
         for i, row in enumerate(rows):
             for j, value in enumerate(row):
                 text = "—" if value is None else f"{value:.5g}" if isinstance(value, float) else str(value)
-                table.setItem(i, j, QTableWidgetItem(text))
+                table.setItem(i, j, decorate_item(QTableWidgetItem(text), value))
+        table.resizeRowsToContents()
 
     def set_result(self, result):
         self.result = result or {}

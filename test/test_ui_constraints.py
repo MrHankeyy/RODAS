@@ -107,8 +107,12 @@ class ConstraintTests(unittest.TestCase):
                 time.sleep(.01)
             self.assertIsNone(page._worker)
             self.assertTrue(p.workbench_result['optimization']['best'])
+            self.assertIn('constraints', page.robust_results.tables)
             self.assertTrue(any('代' in m[2] for m in messages))
             self.assertTrue(page.isEnabled())
+            page.k_design_spin.setValue(7)
+            self.assertFalse(page.robust_results.tables)
+            self.assertTrue(page.robust_results.plot.isHidden())
         finally:
             bus.posted.disconnect(receive)
             if getattr(page, '_worker', None):

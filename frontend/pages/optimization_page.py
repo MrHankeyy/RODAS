@@ -34,6 +34,8 @@ from backend.reporting import report_engine as reports
 from backend.domain.models import ProjectData
 from backend.services import analysis_service, model_service
 from backend.services.project_service import ProjectService
+from backend.reporting.math_format import rich_text
+from frontend.math_widgets import MathTextEdit
 
 import matplotlib
 matplotlib.use('Qt5Agg')
@@ -65,7 +67,7 @@ class OptimizationPage(QWidget):
             self._oe_context = None
             self._robust_res = {}
             self.project_service.clear_workbench()
-            self.robust_text.clear()
+            self.robust_results.clear()
             self.status_label.setText(
                 "优化参数已改变；已有优化结果属于先前设置，请重新执行。")
 
@@ -149,10 +151,10 @@ class OptimizationPage(QWidget):
     def _update_uncertainty_label(self, *_args):
         sigmas = [f"{f.name}: σ={oe._sigma_of_factor(f, self.k_design_spin.value()):.6g}"
                   for f in self.project_data.factors if f.name]
-        self.uncertainty_label.setText("当前输入标准差（区间设计因子 σ=区间宽度/(2k)）：" + "；".join(sigmas))
+        self.uncertainty_label.setText(rich_text("当前输入标准差（区间设计因子 σ=区间宽度/(2k)）：" + "；".join(sigmas)))
 
     def _new_text(self):
-        text = QTextEdit()
+        text = MathTextEdit()
         text.setReadOnly(True)
         text.setStyleSheet("font-family:Consolas,'Microsoft YaHei';font-size:13px;")
         return text
@@ -308,10 +310,6 @@ class OptimizationPage(QWidget):
     def _plot_pareto(self, robust):
         optimization_plots.pareto(
             self.pareto_fig, self.pareto_canvas, robust)
-
-    def _plot_residual(self, residual_data):
-        optimization_plots.residual(
-            self.resid_fig, self.resid_canvas, residual_data)
 
     def _plot_factor(self, plots):
         optimization_plots.factor_effects(

@@ -10,6 +10,10 @@ from matplotlib.figure import Figure
 
 from frontend.pages.design_results import DesignResultsPanel
 from frontend.pages.result_overview import ResultOverview
+from frontend.pages.analysis_results import AnalysisResults
+from frontend.pages.robust_results import RobustResults
+from backend.reporting.math_format import rich_text
+from frontend.math_widgets import MathTextEdit
 from frontend.pages.workbench_diagnostics import WorkbenchDiagnostics
 
 
@@ -109,13 +113,13 @@ def build_robust_tab(owner):
         controls2.addWidget(QLabel("约束安全系数 k："))
         owner.k_constraint_spin = QDoubleSpinBox(); owner.k_constraint_spin.setRange(1.0, 10.0)
         owner.k_constraint_spin.setSingleStep(0.5); owner.k_constraint_spin.setValue(6.0)
-        owner.k_constraint_spin.setToolTip("在所有优化模式中执行已勾选约束。例如望小约束：均值 + k×标准差 ≤ 上限。")
+        owner.k_constraint_spin.setToolTip(rich_text("在所有优化模式中执行已勾选约束。例如望小约束：均值 + k×标准差 ≤ 上限。"))
         controls2.addWidget(owner.k_constraint_spin)
         controls2.addSpacing(8)
         controls2.addWidget(QLabel("输入不确定性系数 k："))
         owner.k_design_spin = QDoubleSpinBox(); owner.k_design_spin.setRange(1.0, 10.0)
         owner.k_design_spin.setSingleStep(0.5); owner.k_design_spin.setValue(6.0)
-        owner.k_design_spin.setToolTip("设计区间因子：标准差=(上限−下限)/(2k)。k 越大，扰动越小；此参数不收缩搜索边界。概率因子采用已填写的方差。")
+        owner.k_design_spin.setToolTip(rich_text("设计区间因子：标准差=(上限−下限)/(2k)。k 越大，扰动越小；此参数不收缩搜索边界。概率因子采用已填写的方差。"))
         controls2.addWidget(owner.k_design_spin)
         controls2.addStretch()
         layout.addLayout(controls2)
@@ -134,28 +138,18 @@ def build_robust_tab(owner):
         owner._on_robust_mode(owner.robust_mode_combo.currentText())
         owner.pareto_fig = Figure(figsize=(5, 3.6), dpi=100, layout="constrained")
         owner.pareto_canvas = FigureCanvas(owner.pareto_fig)
-        owner.pareto_canvas.setMinimumHeight(170)
-        layout.addWidget(owner.pareto_canvas, 1)
-        owner.robust_text = QTextEdit()
-        owner.robust_text.setReadOnly(True)
-        owner.robust_text.setMinimumHeight(85)
-        owner.robust_text.setMaximumHeight(125)
-        owner.robust_text.setStyleSheet("padding:6px; background:#f7f9fb;")
-        layout.addWidget(owner.robust_text)
+        owner.robust_results = RobustResults(owner.pareto_canvas)
+        layout.addWidget(owner.robust_results, 1)
 
 def build_signif_tab(owner):
         layout = QVBoxLayout(owner.tab_signif)
-        owner.signif_text = owner._new_text()
-        layout.addWidget(owner.signif_text)
+        owner.signif_panel = AnalysisResults("significance")
+        layout.addWidget(owner.signif_panel)
 
 def build_cv_tab(owner):
         layout = QVBoxLayout(owner.tab_cv)
-        owner.cv_text = owner._new_text()
-        owner.cv_text.setMaximumHeight(145)
-        layout.addWidget(owner.cv_text)
-        owner.resid_fig = Figure(figsize=(5, 3.4), dpi=100, layout="constrained")
-        owner.resid_canvas = FigureCanvas(owner.resid_fig)
-        layout.addWidget(owner.resid_canvas)
+        owner.cv_panel = AnalysisResults("validation")
+        layout.addWidget(owner.cv_panel)
 
 def build_param_tab(owner):
         layout = QVBoxLayout(owner.tab_param)
@@ -179,8 +173,8 @@ def build_tol_tab(owner):
 
 def build_model_tab(owner):
         layout = QVBoxLayout(owner.tab_model)
-        owner.model_text = owner._new_text()
-        layout.addWidget(owner.model_text)
+        owner.model_panel = AnalysisResults("model")
+        layout.addWidget(owner.model_panel)
 
 def build_tools_tab(owner):
         layout = QVBoxLayout(owner.tab_tools)

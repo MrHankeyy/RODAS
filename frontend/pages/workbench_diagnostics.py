@@ -11,6 +11,8 @@ from backend.infrastructure import file_io
 from backend.engines import optimizer as oe
 from backend.services import analysis_service
 from backend.services.project_service import ProjectService
+from backend.reporting.math_format import rich_text
+from frontend.math_widgets import install_delegate, MathTextEdit, decorate_item
 
 
 class WorkbenchDiagnostics(QWidget):
@@ -33,7 +35,7 @@ class WorkbenchDiagnostics(QWidget):
             self.tables[key]=table;self.tabs.addTab(table,title)
         self.figure=Figure(figsize=(9,6),tight_layout=True)
         self.canvas=FigureCanvasQTAgg(self.figure);self.tabs.addTab(self.canvas,'诊断图')
-        self.notes=QTextEdit();self.notes.setReadOnly(True);self.tabs.addTab(self.notes,'统计解释')
+        self.notes=MathTextEdit();self.notes.setReadOnly(True);self.tabs.addTab(self.notes,'统计解释')
         self.point_tab=QWidget();point_layout=QVBoxLayout(self.point_tab)
         scroll=QScrollArea();scroll.setWidgetResizable(True);scroll.setMaximumHeight(220)
         self.form_widget=QWidget();self.form=QFormLayout(self.form_widget);scroll.setWidget(self.form_widget)
@@ -50,13 +52,15 @@ class WorkbenchDiagnostics(QWidget):
 
     @staticmethod
     def fill(table,rows):
+        install_delegate(table)
         headers=list(dict.fromkeys(k for row in rows for k in row))
         table.setColumnCount(len(headers));table.setHorizontalHeaderLabels(headers);table.setRowCount(len(rows))
         for i,row in enumerate(rows):
             for j,key in enumerate(headers):
                 value=row.get(key)
                 text='—' if value is None else f'{value:.6g}' if isinstance(value,float) else str(value)
-                table.setItem(i,j,QTableWidgetItem(text))
+                table.setItem(i,j,decorate_item(QTableWidgetItem(text), value))
+        table.resizeRowsToContents()
 
     def clear(self):
         self.context=None;self.snapshot={};self.response.clear()
@@ -149,6 +153,7 @@ class WorkbenchDiagnostics(QWidget):
                 ("当前点满足设定约束。" if result["feasible"]
                  else "当前点违反设定约束。")
                 + "\n" + result["note"])
+            self.point_note.setText(rich_text(self.point_note.text()))
         except Exception as exc:
             self.point_table.setRowCount(0)
             self.snapshot.pop("point_evaluation", None)

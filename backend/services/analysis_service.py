@@ -6,11 +6,18 @@ import hashlib
 from backend.engines import optimizer as optimizer
 from backend.engines import workbench as statistics
 from backend.services.project_service import ProjectService
+from backend.reporting.math_format import polynomial
 
 
 def build_snapshot(context, k_design=6, k_constraint=6):
     project = context["_project"]
+    formulas = {}
+    for name, model in context["models"].items():
+        if "predict_fn" not in model:
+            _, equation, coding = polynomial(name, model, context["names"])
+            formulas[name] = {"equation": equation, "coding": [item.latex for item in coding]}
     return {
+        "model_formulas": formulas,
         "created_utc": datetime.now(timezone.utc).isoformat(),
         "input_sha256": hashlib.sha256(
             ProjectService.for_project(project).input_signature().encode("utf-8")).hexdigest(),
@@ -33,7 +40,8 @@ def build_snapshot(context, k_design=6, k_constraint=6):
 
 
 def analyze(project, context, robust, k_design=6, k_constraint=6):
-    validation_text = optimizer.cross_validation(context)
+    validation = optimizer.validation_results(context)
+    validation_text = optimizer.cross_validation(context, validation)
     residual_text, residual_data = optimizer.residual_analysis(context)
     parameter_result = (
         optimizer.parameter_design(
@@ -55,6 +63,7 @@ def analyze(project, context, robust, k_design=6, k_constraint=6):
         anova_text=optimizer.anova_and_lof(context, project),
         validation_text=validation_text + "\n\n" + residual_text,
         model_text=model_text,
+        validation=validation,
     )
     return {
         "anova_text": snapshot["anova_text"],

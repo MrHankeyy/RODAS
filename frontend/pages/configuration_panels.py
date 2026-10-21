@@ -3,6 +3,7 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox,
     QSpinBox,
 )
+from frontend.math_widgets import decorate_combo
 
 
 def _publish(owner, controls):
@@ -20,6 +21,7 @@ def screening(owner):
     kind.addItems([
         "全因子 2^k（小因子数）", "部分析因 1/2 分数",
         "部分析因 1/4 分数", "Plackett-Burman（12/20 次）"])
+    decorate_combo(kind)
     row.addWidget(kind)
     row.addSpacing(24)
     row.addWidget(QLabel("报告重点主效应数："))

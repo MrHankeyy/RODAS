@@ -62,15 +62,14 @@ class OptimizationController:
             page._oe_context = None
             page._robust_res = {}
             page._param_res = {}
-            page._resid_data = {}
             page.diagnostics_panel.clear()
             page.screening_panel.set_result({})
             page.taguchi_panel.set_result({})
             page.tol_table.setRowCount(0)
             page.tool_table.setRowCount(0)
-            for name in ("robust_text", "signif_text", "cv_text", "param_text", "tol_text", "model_text", "tool_text"):
+            for name in ("robust_results", "param_text", "tol_text", "tool_text", "signif_panel", "cv_panel", "model_panel"):
                 getattr(page, name).clear()
-            for name in ("pareto", "resid", "factor"):
+            for name in ("pareto", "factor"):
                 fig, canvas = getattr(page, name + "_fig", None), getattr(page, name + "_canvas", None)
                 if fig is not None:
                     fig.clear()
@@ -119,7 +118,7 @@ class OptimizationController:
         page.status_label.setText("优化失败：" + message)
         page._oe_context = None
         page._robust_res = {}
-        page.robust_text.clear()
+        page.robust_results.clear()
         page.project_service.clear_workbench()
         Notice.warning(page, "优化失败", message)
 
@@ -132,7 +131,6 @@ class OptimizationController:
                 raise ValueError(robust["error"])
             page._oe_context["sigma_limits"] = robust.get("sigma_limits", {})
             page._robust_res = robust
-            page.robust_text.setText(robust["text"])
             page._plot_pareto(robust)
             page._update_analysis(page._oe_context, robust)
             page.status_label.setText("计算完成" if robust["feasible_count"] else "计算完成，未找到可行候选")
@@ -162,7 +160,6 @@ class OptimizationController:
             raise ValueError(robust["error"])
         context["sigma_limits"] = robust.get("sigma_limits", {})
         page._robust_res = robust
-        page.robust_text.setText(robust.get("text", robust.get("error", "")))
         page._plot_pareto(robust)
     
         page._update_analysis(context, robust)
@@ -199,7 +196,7 @@ class OptimizationController:
         try:
             context = page._prepare_context()
             page._robust_res = {}
-            page.robust_text.clear()
+            page.robust_results.clear()
             page._plot_pareto({})
             page._update_analysis(context, {})
             page.tabs.setCurrentWidget(page.diagnostics_panel)
@@ -219,18 +216,18 @@ class OptimizationController:
         kc = page.k_constraint_spin.value()
         bundle = analysis_service.analyze(
             page.project_data, context, robust, kd, kc)
+        verification = (analysis_service.evaluate_point(context, robust["best"]["x"], kd, kc)
+                        if robust.get("best") else {})
+        page.robust_results.set_result(context, robust, verification)
     
         page._refresh_view()
-        page.signif_text.setPlainText(bundle["anova_text"])
-        page._resid_data = bundle["residual_data"]
-        page.cv_text.setPlainText(bundle["validation_text"])
-        page._plot_residual(page._resid_data)
+        for panel in (page.signif_panel, page.cv_panel, page.model_panel):
+            panel.set_result(context, bundle["snapshot"])
     
         page._param_res = bundle["parameter_design"]
         page.param_text.setText(page._param_res.get("text", ""))
         page._plot_factor(page._param_res.get("factor_plots", []))
         page.tol_text.setText(bundle["tolerance_text"])
-        page.model_text.setPlainText(bundle["model_text"])
     
         page.diagnostics_panel.set_context(
             context, robust, kd, kc, snapshot=bundle["snapshot"])

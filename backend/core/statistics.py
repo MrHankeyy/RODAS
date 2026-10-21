@@ -144,20 +144,31 @@ def anova_and_lof(context, project):
     return "\n".join(lines)
 
 
-def cross_validation(context):
+def validation_results(context):
+    """Compute validation once; keep numeric results separate from report text."""
     if not context or not context["models"] or not HAS_NUMPY:
-        return "无模型可交叉验证。"
-    lines = ["【交互验证（交叉验证）】"]
+        return {}
+    results = {}
     for resp_name, m in context["models"].items():
+        result = results[resp_name] = {"r2": None, "rmse": None, "samples": 0}
         if "predict_fn" in m:
             validation = m.get("validation", {})
-            lines.append(f"  响应 {resp_name}（{m.get('model_type', '代理模型')}）："
-                         f"留出集验证，测试样本 {validation.get('test_samples', '未知')}，"
-                         f"R²={validation.get('r2_test', '未知')}，RMSE={m['rmse']:.4g}；未执行 K 折验证。")
+            actual = _np.asarray(validation.get("actual", []), dtype=float)
+            predicted = _np.asarray(validation.get("predicted", []), dtype=float)
+            result.update(kind="holdout", model=m.get("model_type", "代理模型"),
+                          train_samples=validation.get("train_samples"))
+            if not len(actual) or actual.shape != predicted.shape or not _np.all(_np.isfinite(actual + predicted)):
+                result["message"] = "没有匹配的有限留出集观测与预测。"
+                continue
+            ss_tot = float(_np.sum((actual - actual.mean()) ** 2))
+            ss_res = float(_np.sum((actual - predicted) ** 2))
+            result.update(samples=len(actual), r2=1-ss_res/ss_tot if ss_tot > 0 else None,
+                          rmse=math.sqrt(ss_res/len(actual)))
             continue
         X, y = _matrix_xy(context, resp_name)
+        result.update(kind="kfold", folds=min(5, len(y)))
         if len(y) < 4:
-            lines.append(f"  {resp_name}: 样本不足")
+            result["message"] = "样本不足，无法执行交叉验证。"
             continue
         kfold = min(5, len(y))
         rng = _np.random.default_rng(123)
@@ -175,14 +186,31 @@ def cross_validation(context):
             except Exception:
                 continue
         if not _np.all(_np.isfinite(preds)):
-            lines.append(f"  {resp_name}: 分折后样本不足或设计矩阵秩不足，无法验证同一模型；未降阶替代。")
+            result["message"] = "分折后样本不足或设计矩阵秩不足，无法验证同一模型；未降阶替代。"
             continue
         actual = y
-        ss_tot = float(_np.sum((actual - actual.mean()) ** 2)) + 1e-12
+        ss_tot = float(_np.sum((actual - actual.mean()) ** 2))
         ss_res = float(_np.sum((actual - preds) ** 2))
-        cv_r2 = 1 - ss_res / ss_tot
-        cv_rmse = math.sqrt(ss_res / len(y))
-        lines.append(f"  响应 {resp_name}: {kfold} 折 CV-RMSE={cv_rmse:.4g}, CV-R²={cv_r2:.4g}")
+        result.update(samples=len(y), r2=1-ss_res/ss_tot if ss_tot > 0 else None,
+                      rmse=math.sqrt(ss_res/len(y)))
+    return results
+
+
+def cross_validation(context, results=None):
+    results = validation_results(context) if results is None else results
+    if not results:
+        return "无模型可交叉验证。"
+    lines = ["【交叉验证 / 留出集验证】"]
+    for name, result in results.items():
+        if result.get("message"):
+            lines.append(f"  {name}: {result['message']}")
+            continue
+        r2 = f"{result['r2']:.4g}" if result['r2'] is not None else "不可估计（响应为常数）"
+        if result["kind"] == "holdout":
+            lines.append(f"  响应 {name}（{result['model']}）：留出集验证，测试样本 {result['samples']}，"
+                         f"R²={r2}，RMSE={result['rmse']:.4g}；未执行 K 折验证。")
+        else:
+            lines.append(f"  响应 {name}: {result['folds']} 折 CV-RMSE={result['rmse']:.4g}, CV-R²={r2}")
     return "\n".join(lines)
 
 

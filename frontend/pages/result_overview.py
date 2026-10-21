@@ -6,11 +6,11 @@ from PyQt6.QtWidgets import (
 )
 
 from frontend.pages.result_summary import display, overview
+from frontend.math_widgets import MathLabel, install_delegate, decorate_item
 
 
 def label(text="", role=None):
-    widget = QLabel(text)
-    widget.setTextFormat(Qt.TextFormat.PlainText)
+    widget = MathLabel(text)
     widget.setWordWrap(True)
     if role:
         widget.setProperty("role", role)
@@ -24,13 +24,14 @@ class SummaryTable(QTableWidget):
         self.setHorizontalHeaderLabels(headers)
         self.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.setAlternatingRowColors(True)
+        install_delegate(self)
         self.verticalHeader().hide()
         self.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         for i, row in enumerate(rows):
             for j, value in enumerate(row):
-                self.setItem(i, j, QTableWidgetItem(display(value)))
+                self.setItem(i, j, decorate_item(QTableWidgetItem(display(value)), value))
         self.resizeRowsToContents()
         self.setFixedHeight(self.horizontalHeader().height() + sum(self.rowHeight(i) for i in range(len(rows))) + 4)
 

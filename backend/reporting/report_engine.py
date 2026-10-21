@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 from dataclasses import asdict
 from backend.infrastructure import file_io
 from backend.services.project_service import ProjectService
+from backend.reporting.math_format import formula_html, rich_text
 
 
 def serializable(value):
@@ -236,7 +237,14 @@ def build_report(data,kind='model',record_id=None,include_raw=False):
         evaluation=wb['point_evaluation'];blocks += [text('手动核验点：'+fmt(evaluation.get('point'))),table('手动点约束核验',evaluation.get('responses',[])),text(evaluation.get('note',''))]
     if wb.get('local_search'):
         local=wb['local_search'];blocks += [text(local.get('text','')),table('局部探索接受路径',[{'设置':r['x'],'望性':r['mean'],'归一标准差':r['std'],'约束违反':r['violation'],'损失':r['score']} for r in local.get('path',[])])]
-    if wb.get('model_text'):blocks.append(text(wb['model_text']))
+    if wb.get('model_formulas'):
+        for name, formulas in wb['model_formulas'].items():
+            blocks.append(text(name + ' · 拟合方程（编码变量）'))
+            blocks.append({'type': 'formula', 'parts': formulas['equation']})
+            blocks.append(text('输入编码关系：'))
+            blocks.extend({'type': 'formula', 'parts': [value]} for value in formulas['coding'])
+    elif wb.get('model_text'):
+        blocks.append(text(wb['model_text']))
     if not blocks:blocks=[text('尚无参数取值结果。筛选设计只提供因子筛选结论，不输出连续最优点。')]
     section('settings','参数取值、稳定性与容差',blocks)
     if optimization or wb:risks.append('μ±kσ 是独立输入、对角二阶近似下的稳健带，不是预测区间，不保证概率覆盖。')
@@ -270,7 +278,7 @@ def chart_png(block):
 
 
 def render_html(report,section_ids=None):
-    esc=lambda value:html.escape(fmt(value),quote=True).replace('\n','<br/>')
+    esc=lambda value:rich_text(fmt(value))
     selected=set(section_ids) if section_ids is not None else None
     meta=report['metadata']
     chunks=['<!doctype html><html><head><meta charset="utf-8"/><style>body{font-family:"Microsoft YaHei",sans-serif;color:#243449;font-size:10pt;} h1{font-size:22pt;color:#17385e;} h2{font-size:15pt;color:#17385e;margin-top:24px;} h3{font-size:11pt;color:#245f9e;} table{border-collapse:collapse;width:100%;font-size:9pt;} th{background:#e7eef7;} td,th{border:1px solid #cbd5e1;padding:5px;text-align:left;} p{line-height:1.5;} .meta{color:#50657d;} </style></head><body>',
@@ -280,6 +288,8 @@ def render_html(report,section_ids=None):
         chunks.append(f'<h2 id="{section["id"]}">{esc(section["title"])}</h2>')
         for block in section['blocks']:
             if block['type']=='text':chunks.append(f'<p>{esc(block["text"])}</p>')
+            elif block['type']=='formula':
+                chunks.append('<p>'+' '.join(formula_html(part) for part in block['parts'])+'</p>')
             elif block['type']=='chart':
                 encoded=base64.b64encode(chart_png(block)).decode('ascii')
                 chunks.append(f'<p><img width="610" height="280" src="data:image/png;base64,{encoded}" alt="{esc(block["title"])}"/></p>')

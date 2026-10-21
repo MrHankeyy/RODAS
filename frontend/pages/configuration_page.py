@@ -10,6 +10,7 @@ from PyQt6.QtWidgets import (
 from backend.domain.models import ProjectData
 from backend.services import design_service
 from backend.services.project_service import ProjectService
+from backend.reporting.math_format import rich_text
 from frontend.notifications import Notice
 from frontend.pages import configuration_panels
 from frontend.pages.model_configuration import ModelConfiguration, MODEL_TITLES
@@ -258,8 +259,8 @@ class ConfigurationPage(QWidget):
         try:
             plan = self._build_plan(preview=True)
             meta = plan.params.get("meta", {})
-            self.preview_label.setText(f"预计试验次数：{meta.get('total_runs', len(plan.rows))} 次\n"
-                f"{meta.get('bounds_note', '')}")
+            self.preview_label.setText(rich_text(f"预计试验次数：{meta.get('total_runs', len(plan.rows))} 次\n"
+                f"{meta.get('bounds_note', '')}"))
         except (ValueError, TypeError) as exc:
             self.preview_label.setText(f"当前配置不可生成：{exc}")
 
