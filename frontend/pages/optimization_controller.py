@@ -218,6 +218,7 @@ class OptimizationController:
         kc = page.k_constraint_spin.value()
         bundle = analysis_service.analyze(
             page.project_data, context, robust, kd, kc)
+        bundle['snapshot']['settings'] = page._analysis_settings()
         verification = (analysis_service.evaluate_point(context, robust["best"]["x"], kd, kc)
                         if robust.get("best") else {})
         page.robust_results.set_result(context, robust, verification)
@@ -250,6 +251,59 @@ class OptimizationController:
             "未通过" if failed else "完成",
             {"results": reports.results(page.project_data)},
             "未找到可行候选" if failed else "计算完成，工程结论待确认")
+
+    def restore_results(self):
+        """Repopulate saved views using restored predictors; never fit a model."""
+        from PyQt6.QtWidgets import QTableWidgetItem
+        page = self.page
+        project = page.project_data
+        snapshot = project.workbench_result
+        settings = snapshot.get('settings', {})
+        for key, control in (('population', page.pop_spin), ('generations', page.gen_spin),
+                             ('weight', page.weight_spin), ('k_design', page.k_design_spin),
+                             ('k_constraint', page.k_constraint_spin)):
+            if key in settings:
+                control.setValue(settings[key])
+        if 'mode' in settings:
+            page.robust_mode_combo.setCurrentText(settings['mode'])
+        for i in range(page.sigma_limits_table.rowCount()):
+            name = page.sigma_limits_table.item(i, 0).data(256)
+            if name in settings.get('sigma_limits', {}):
+                page.sigma_limits_table.setItem(i, 1, QTableWidgetItem(settings['sigma_limits'][name]))
+        page._refresh_view()
+        page.screening_panel.set_result(project.screening_result)
+        page.taguchi_panel.set_result(project.taguchi_result)
+        context = None
+        if project.surrogate_result:
+            context, _ = model_service.build_surrogate_context(project)
+        elif page.project_service.model_cache.get('rsm'):
+            context = model_service.build_rsm_context(project)
+        if context is None:
+            return
+        page._oe_context = context
+        robust = snapshot.get('optimization', {})
+        context['sigma_limits'] = robust.get('sigma_limits', {})
+        page._robust_res = robust
+        kd = snapshot.get('k_design', 6)
+        kc = snapshot.get('k_constraint', 6)
+        verification = (analysis_service.evaluate_point(context, robust['best']['x'], kd, kc)
+                        if robust.get('best') else {})
+        page.robust_results.set_result(context, robust, verification)
+        if snapshot:
+            for panel in (page.signif_panel, page.cv_panel, page.model_panel):
+                panel.set_result(context, snapshot)
+            page.diagnostics_panel.set_context(context, robust, kd, kc, snapshot=snapshot)
+        page._param_res = snapshot.get('parameter_design', {})
+        page.param_text.setText(page._param_res.get('text', ''))
+        page._plot_factor(page._param_res.get('factor_plots', []))
+        page.tol_text.setText('已恢复保存的容差分析结果。' if snapshot.get('tolerance') else '')
+        page.diagnostics_panel.fill(page.tol_table, [
+            {'响应': name, '因子': row['name'], '局部方差': row['variance'], '份额 %': row['share']}
+            for name, rows in snapshot.get('tolerance', {}).items() for row in rows])
+        local = snapshot.get('local_search', {})
+        page.tool_text.setText(local.get('text', ''))
+        page.diagnostics_panel.fill(page.tool_table, local.get('path', []))
+        page.status_label.setText('已恢复任务中的模型与结果，可直接预测或继续分析。')
 
     def _run_tool(self):
         page = self.page

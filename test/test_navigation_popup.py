@@ -64,6 +64,7 @@ class NavigationPopupTests(unittest.TestCase):
 
     def test_small_window_keeps_plan_actions_visible_for_every_family(self):
         window = MainWindow()
+        window.task_actions.confirm_leave = lambda **kwargs: True
         window.resize(1050, 700)
         window.show()
         window.switch_page(1)
@@ -97,6 +98,7 @@ class NavigationPopupTests(unittest.TestCase):
 
     def test_feature_popup_shows_all_choices_for_each_selected_item(self):
         window = MainWindow()
+        window.task_actions.confirm_leave = lambda **kwargs: True
         window.resize(1050, 700)
         window.show()
         window.switch_page(0)
@@ -130,6 +132,7 @@ class NavigationPopupTests(unittest.TestCase):
 
     def test_popup_tracks_scrolled_table_cell_and_formula_choice_sizes(self):
         window = MainWindow()
+        window.task_actions.confirm_leave = lambda **kwargs: True
         window.resize(1050, 700)
         window.show()
         window.switch_page(0)

@@ -118,6 +118,7 @@ class DataManagementTests(unittest.TestCase):
 
     def test_headings_use_tooltips_and_data_details_are_removed_from_four(self):
         window = MainWindow()
+        window.task_actions.confirm_leave = lambda **kwargs: True
         window.show()
         for index, (title, description) in enumerate(window.PAGE_INFO):
             window.switch_page(index)

@@ -75,6 +75,8 @@ QToolTip { background:#253a50; color:white; border:0; padding:6px; }
 
 
 def install_theme(app):
+    if app.property('rodasThemeInstalled'):
+        return
     from pathlib import Path
     if app.style().objectName().lower() != 'fusion':
         app.setStyle('Fusion')
@@ -87,6 +89,7 @@ def install_theme(app):
     QSpinBox::up-arrow, QDoubleSpinBox::up-arrow {{ image:url("{icons}/chevron-up.svg"); width:8px; height:8px; }}
     QSpinBox::down-arrow, QDoubleSpinBox::down-arrow {{ image:url("{icons}/chevron-down.svg"); width:8px; height:8px; }}
     ''')
+    app.setProperty('rodasThemeInstalled', True)
 
 
 def primary(button):

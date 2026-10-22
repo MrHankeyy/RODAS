@@ -65,7 +65,6 @@ class OptimizationPage(QWidget):
             self.diagnostics_panel.clear()
             self._oe_context = None
             self._robust_res = {}
-            self.project_service.clear_workbench()
             self.robust_results.clear()
             self.status_label.setText(
                 "优化参数已改变；已有优化结果属于先前设置，请重新执行。")

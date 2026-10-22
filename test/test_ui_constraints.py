@@ -80,6 +80,7 @@ class ConstraintTests(unittest.TestCase):
 
     def test_message_panel_and_no_project_browser(self):
         window = MainWindow()
+        window.task_actions.confirm_leave = lambda **kwargs: True
         Notice.information(window, '测试保存', '操作完成')
         self.assertIn('测试保存', window.message_view.toPlainText())
         self.assertIsNone(window.findChild(type(window.centralWidget()), 'project_explorer'))

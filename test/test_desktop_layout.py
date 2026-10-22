@@ -16,6 +16,7 @@ APP = QApplication.instance() or QApplication([])
 class DesktopLayoutTests(unittest.TestCase):
     def setUp(self):
         self.window = MainWindow()
+        self.window.task_actions.confirm_leave = lambda **kwargs: True
         self.window.show()
         APP.processEvents()
 

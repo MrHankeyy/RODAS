@@ -29,7 +29,7 @@ class AnalysisPage(QWidget):
             bar.addWidget(field)
         for label, slot in [("更新预览", self.run_analysis), ("导出 PDF", self.export_pdf), ("导出 HTML", self.export_html)]:
             button = QPushButton(label)
-            button.clicked.connect(slot)
+            button.clicked.connect((lambda: self.run_analysis(commit=True)) if label == '更新预览' else slot)
             if label == "导出 PDF":
                 from frontend.theme import primary
                 primary(button)
@@ -42,13 +42,14 @@ class AnalysisPage(QWidget):
         super().showEvent(event)
         self.run_analysis()
 
-    def run_analysis(self, *_args):
+    def run_analysis(self, *_args, commit=False):
         self.report = None
         self.report_html = ""
         try:
             service = ProjectService.for_project(self.project_data)
-            service.update_report_metadata(
-                {key: widget.text().strip() for key, widget in self.fields.items()})
+            if commit:
+                service.update_report_metadata(
+                    {key: widget.text().strip() for key, widget in self.fields.items()})
             data = reports.bundle(self.project_data)
             if not any(data["results"].values()):
                 self.preview.setPlainText(
@@ -72,7 +73,7 @@ class AnalysisPage(QWidget):
         self._export("html")
 
     def _export(self, kind):
-        self.run_analysis()
+        self.run_analysis(commit=True)
         if not self.report_html:
             Notice.warning(self, "暂无报告", "请先完成当前输入的分析或优化。")
             return

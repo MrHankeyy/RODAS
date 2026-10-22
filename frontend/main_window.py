@@ -32,6 +32,8 @@ class MainWindow(QMainWindow):
         self.setWindowIcon(brand_icon())
         install_theme(QApplication.instance())
         self._build_ui()
+        from frontend.task_actions import TaskActions
+        self.task_actions = TaskActions(self)
         self.show_welcome()
 
     def _build_ui(self):
@@ -101,6 +103,7 @@ class MainWindow(QMainWindow):
     def _build_main_workspace(self):
         self.stacked_widget = QStackedWidget()
         self.page_MOD = ModelingPage(self.project_data)
+        self.page_MOD.load_project_data()
         self.page_CFG = ConfigurationPage(self.project_data)
         self.page_DM = DataManagementPage(self.project_data)
         self.page_OPT = OptimizationPage(self.project_data)
@@ -153,8 +156,6 @@ class MainWindow(QMainWindow):
         self.brand_button.update()
 
     def show_welcome(self):
-        if self.stacked_widget.currentIndex() == 0:
-            self.page_MOD.sync_to_project_data()
         self.stacked_widget.setCurrentIndex(self.welcome_index)
         self.module_heading.hide()
         self.message_panel.hide()
@@ -232,8 +233,6 @@ class MainWindow(QMainWindow):
     def switch_page(self, index: int):
         if not 0 <= index < len(self.PAGE_INFO):
             raise ValueError('未知的功能模块索引。')
-        if index != 0 and self.stacked_widget.currentIndex() == 0:
-            self.page_MOD.sync_to_project_data()
         self.stacked_widget.setCurrentIndex(index)
         self.module_heading.show()
         self.message_panel.show()
@@ -249,4 +248,7 @@ class MainWindow(QMainWindow):
             Notice.warning(self, "计算进行中", "请等待当前计算结束后关闭窗口。")
             event.ignore()
             return
-        super().closeEvent(event)
+        if self.task_actions.confirm_leave(force=True):
+            super().closeEvent(event)
+        else:
+            event.ignore()

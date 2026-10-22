@@ -136,9 +136,20 @@ def build_surrogate_context(project, surrogate_result=None):
 
 
 def build_rsm_context(project):
+    from backend.services.project_service import ProjectService
+    service = ProjectService.for_project(project)
+    service.ensure_current()
+    if service.model_cache.get('rsm'):
+        factors = [f for f in project.factors if f.name and not f.is_fixed
+                   and ('响应曲面' not in project.design_method or f.source == '设计')
+                   and f.name in project.doe_matrix[0]]
+        return dict(inputs=factors, names=[f.name for f in factors],
+                    models=service.model_cache['rsm'], errors=[],
+                    _responses=project.responses, _project=project)
     context, errors = optimizer.build_models(project)
     if errors or not context or not context["models"]:
         raise ValueError("\n".join(errors or ["响应曲面拟合失败"]))
+    service.model_cache['rsm'] = context['models']
     return context
 
 

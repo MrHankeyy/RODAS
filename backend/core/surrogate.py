@@ -5,6 +5,8 @@ import math
 import random
 import statistics
 import time
+from functools import partial
+from .predictors import Predictor, correlation as correlation_values, trend_matrix
 try:
     import numpy as _np
     HAS_NUMPY = True
@@ -51,25 +53,11 @@ def train_kriging(Xtr, ytr, Xte, correlation="Gaussian", trend="常数"):
     elif "Matern" in correlation:
         corr_label = "Matern 3/2"
 
-    def corr(a, b, theta):
-        d2 = ((a[:, None, :] - b[None, :, :]) ** 2).sum(axis=2)
-        if corr_label == "指数":
-            return _np.exp(-_np.sqrt(d2) * theta)
-        if corr_label == "Matern 3/2":
-            s = _np.sqrt(d2) * theta
-            return (1 + s) * _np.exp(-s)
-        return _np.exp(-d2 * theta)  # Gaussian / Power(p=2)
+    corr = partial(correlation_values, label=corr_label)
+    trend_matrix_for_model = partial(trend_matrix, kind=trend)
 
-    def trend_matrix(values):
-        columns = [_np.ones(len(values))]
-        if "一次" in trend or "二次" in trend:
-            columns.extend(values[:, j] for j in range(values.shape[1]))
-        if "二次" in trend:
-            columns.extend(values[:, j] ** 2 for j in range(values.shape[1]))
-        return _np.column_stack(columns)
-
-    Ftr = trend_matrix(xz)
-    Fte = trend_matrix(tz)
+    Ftr = trend_matrix_for_model(xz)
+    Fte = trend_matrix_for_model(tz)
     best = None
     for theta in (0.05, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0, 20.0, 50.0, 100.0, 200.0):
         R = corr(xz, xz, theta) + _np.eye(n) * 1e-8
@@ -93,13 +81,8 @@ def train_kriging(Xtr, ytr, Xte, correlation="Gaussian", trend="常数"):
     w = _np.linalg.solve(R, ytr - Ftr @ beta)
     rte = corr(xz, tz, theta)
     pred = Fte @ beta + rte.T @ w
-    # 保留模型的光滑预测；裁剪到样本响应范围会产生虚假的零梯度/零方差平台。
-    def predict_fn(values):
-        values = _np.asarray(values, float).reshape(1, -1)
-        scaled = values / span
-        trend_value = trend_matrix(scaled)
-        kernel_value = corr(xz, scaled, theta)
-        return float((trend_value @ beta + kernel_value.T @ w)[0])
+    predict_fn = Predictor("kriging", dict(span=span, x=xz, theta=theta,
+        correlation=corr_label, trend=trend, beta=beta, weights=w))
     return {"params": {"theta": theta, "correlation": corr_label, "trend": trend},
             "predicted": [float(v) for v in pred], "predict_fn": predict_fn}
 
@@ -144,9 +127,9 @@ def train_svr(Xtr, ytr, Xte, kernel="RBF", poly_degree=3,
         model = SVR(kernel=kernel_arg, degree=int(poly_degree), C=c,
                 gamma=gamma, epsilon=0.05)
         model.fit(Xtr, ytr)
-        def predict_fn(values):
-            value = _np.asarray(values, float).reshape(1, -1)
-            return float(model.predict(value)[0])
+        predict_fn = Predictor("svr", dict(support=model.support_vectors_,
+            dual=model.dual_coef_.ravel(), intercept=float(model.intercept_[0]),
+            kernel=model.kernel, gamma=float(model._gamma), degree=model.degree, coef0=model.coef0))
         return {"params": {"kernel": kernel, "C": c, "gamma": gamma,
                    "poly_degree": int(poly_degree),
                            "solver": "scikit-learn SVR"},
@@ -167,9 +150,8 @@ def train_svr(Xtr, ytr, Xte, kernel="RBF", poly_degree=3,
                     best_params = (c, gamma)
                     best_alpha = alpha.copy()
                     best_pred = _kernel_rbf(Xtr, Xte, gamma).T @ alpha
-        def predict_fn(values):
-            value = _np.asarray(values, float).reshape(1, -1)
-            return float((_kernel_rbf(Xtr, value, best_params[1]).T @ best_alpha).item())
+        predict_fn = Predictor("krr", dict(support=Xtr, dual=best_alpha,
+            intercept=0., kernel="rbf", gamma=best_params[1]))
         return {"params": {"kernel": kernel, "C": best_params[0],
                            "gamma": best_params[1],
                    "poly_degree": int(poly_degree),
@@ -202,9 +184,9 @@ def train_ann(Xtr, ytr, Xte, hidden_layers=1, hidden_nodes=8, activation="sigmoi
                              learning_rate_init=float(learning_rate),
                              max_iter=int(epochs), random_state=7)
         model.fit(Xs, ys.ravel())
-        def predict_fn(values):
-            value = (_np.asarray(values, float).reshape(1, -1) - Xmean) / Xstd
-            return float(model.predict(value)[0] * ystd + ymean)
+        predict_fn = Predictor("ann", dict(weights=model.coefs_, biases=model.intercepts_,
+            activation=model.activation, out_activation=model.out_activation_,
+            x_mean=Xmean, x_std=Xstd, y_mean=ymean, y_std=ystd))
         pred = model.predict((Xte - Xmean) / Xstd) * ystd + ymean
         return {"params": {"layers": hidden, "solver": "scikit-learn MLP"},
             "predicted": [float(v) for v in pred], "predict_fn": predict_fn}
@@ -240,10 +222,9 @@ def train_ann(Xtr, ytr, Xte, hidden_layers=1, hidden_nodes=8, activation="sigmoi
             b2 += learning_rate * db2 / len(Xs)
         _, out = _ann_forward((Xte - Xmean) / Xstd, w1, b1, w2, b2, activation)
         pred = out[:, 0] * ystd + ymean
-        def predict_fn(values):
-            value = (_np.asarray(values, float).reshape(1, -1) - Xmean) / Xstd
-            _, result = _ann_forward(value, w1, b1, w2, b2, activation)
-            return float(result[0, 0] * ystd + ymean)
+        predict_fn = Predictor("ann", dict(weights=[w1, w2], biases=[b1, b2],
+            activation=activation, out_activation="identity",
+            x_mean=Xmean, x_std=Xstd, y_mean=ymean, y_std=ystd))
         return {"params": {"layers": tuple(layers), "solver": "numpy BP"},
             "predicted": [float(v) for v in pred], "predict_fn": predict_fn}
 

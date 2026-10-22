@@ -114,6 +114,36 @@ class ModelingPage(QWidget):
             f"{len(self.project_data.factors)} 个因子")
         self.save_status_label.setStyleSheet("color:#16803c; font-weight:bold;")
 
+    def load_project_data(self):
+        """Populate controls from committed definitions without submitting them."""
+        for table in (self.response_table, self.design_factor_table, self.environment_factor_table):
+            table.setRowCount(0)
+        for response in self.project_data.responses:
+            self.add_response_row()
+            row = self.response_table.rowCount() - 1
+            self.response_table.cellWidget(row, 0).setText(response.name)
+            self.response_table.cellWidget(row, 1).centered_widget.setChecked('目标' in response.kind)
+            self.response_table.cellWidget(row, 2).centered_widget.setChecked('约束' in response.kind)
+            self.response_table.cellWidget(row, 3).setCurrentText(response.feature)
+            threshold = f'{response.lower},{response.upper}' if response.feature == '望目' else response.robust_limit
+            self.response_table.cellWidget(row, 4).setText(threshold)
+            self.response_table.cellWidget(row, 5).setText(response.unit)
+        for factor in self.project_data.factors:
+            table = self.design_factor_table if factor.source == '设计' else self.environment_factor_table
+            self._add_factor_row(table)
+            row = table.rowCount() - 1
+            table.cellWidget(row, 0).setText(factor.name)
+            table.cellWidget(row, 1).setCurrentText(factor.uncertainty)
+            table.cellWidget(row, 2).setCurrentText(factor.distribution)
+            table.cellWidget(row, 3).setText(factor.param1)
+            table.cellWidget(row, 4).setText(factor.param2)
+            table.cellWidget(row, 6).setText(factor.unit)
+            button = table.cellWidget(row, 5)
+            button.setChecked(factor.is_fixed)
+            button.setProperty('fixed_value', factor.fixed_value)
+            if factor.is_fixed:
+                button.setText('已固定: ' + factor.fixed_value)
+
     def _validate_response_inputs(self):
         """校验响应表：目标/约束至少勾选一项；望目必须填写逗号分隔的上下界。"""
         errors = []

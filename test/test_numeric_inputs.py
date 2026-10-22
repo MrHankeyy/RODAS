@@ -107,6 +107,7 @@ class NumericInputTests(unittest.TestCase):
 
     def test_all_page_spin_controls_use_completed_edit_policy(self):
         window = MainWindow()
+        window.task_actions.confirm_leave = lambda **kwargs: True
         controls = window.findChildren(QAbstractSpinBox)
         self.assertGreater(len(controls), 30)
         self.assertTrue(all(not control.keyboardTracking() for control in controls))

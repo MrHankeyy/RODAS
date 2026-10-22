@@ -25,6 +25,7 @@ class WelcomeWorkspaceTests(unittest.TestCase):
         self.root = Path(self.temp.name)
         self.workspace = Workspace()
         self.window = MainWindow(self.workspace)
+        self.window.task_actions.confirm_leave = lambda **kwargs: True
         self.window.show()
         APP.processEvents()
 
@@ -45,6 +46,8 @@ class WelcomeWorkspaceTests(unittest.TestCase):
         editor = w.page_MOD.design_factor_table.cellWidget(0, 0)
         editor.setText('翼梁厚度')
         w.brand_button.click()
+        self.assertFalse(w.project_data.factors)
+        w.page_MOD.save_btn.click()
         self.assertEqual(w.project_data.factors[0].name, '翼梁厚度')
         w.btns_switch[3].click()
         w.project_data.workbench_result = {'sentinel': [1, 2, 3]}
@@ -138,6 +141,7 @@ class WelcomeWorkspaceTests(unittest.TestCase):
         self.assertEqual(self.window.project_data.factors[0].name, 'X')
         self.assertEqual(list(self.root.iterdir()), [])
         fresh_window = MainWindow()
+        fresh_window.task_actions.confirm_leave = lambda **kwargs: True
         try:
             self.assertEqual(fresh_window.workspace.directory, '')
             self.assertEqual(fresh_window.workspace.file_path('report.pdf'), 'report.pdf')
