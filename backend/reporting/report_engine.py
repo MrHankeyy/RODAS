@@ -31,6 +31,24 @@ def inputs(project):
         'design_params':project.design_params,'matrix':project.doe_matrix,'surrogate_config':project.surrogate_config})
 
 
+def _factor_rows(factors):
+    rows = []
+    for factor in factors:
+        p1, p2 = factor.get('param1'), factor.get('param2')
+        if factor.get('uncertainty') == '概率' and p2 not in (None, ''):
+            sigma = math.sqrt(float(p2))
+            if factor.get('distribution') == '均匀分布':
+                half = math.sqrt(3) * sigma
+                p1, p2 = float(p1) - half, float(p1) + half
+            else:
+                p2 = sigma
+        rows.append({'因子':factor.get('name'),'来源':factor.get('source'),
+                     '不确定性':factor.get('uncertainty'),'分布':factor.get('distribution'),
+                     '名义下限':factor.get('nominal_lower'),'名义上限':factor.get('nominal_upper'),
+                     '不确定参数1':p1,'不确定参数2':p2,'单位':factor.get('unit')})
+    return rows
+
+
 def fingerprint(data):
     return hashlib.sha256(json.dumps(data,sort_keys=True,ensure_ascii=False,allow_nan=False).encode('utf-8')).hexdigest()
 
@@ -165,9 +183,8 @@ def build_report(data,kind='model',record_id=None,include_raw=False):
         table('响应定义',[{'指标':r.get('name'),'角色':r.get('kind'),'目标特征':r.get('feature'),'下界':r.get('lower'),
         '上界':r.get('upper'),'单侧阈值':r.get('robust_limit'),'单位':r.get('unit')} for r in responses])])
     section('materials','材料、对象与输入',[text(metadata.get('materials') or '样机、材料、设备和试验环境尚未填写。'),
-        table('因子定义',[{'因子':f.get('name'),'来源':f.get('source'),'不确定性':f.get('uncertainty'),'分布':f.get('distribution'),
-        'P1':f.get('param1'),'P2':f.get('param2'),'固定':f.get('is_fixed'),'固定值':f.get('fixed_value'),'单位':f.get('unit')} for f in factors]),
-        text('区间因子的 P1/P2 为上下界；概率因子的 P1/P2 为均值/方差。')])
+        table('因子定义',_factor_rows(factors)),
+        text('设计因子的名义范围用于搜索，不确定参数描述加性偏差；环境因子不设名义范围，参数描述实际取值。区间及均匀分布的两项参数为上下界，正态分布为均值/标准差，均使用所列单位。')])
     params=source.get('design_params') or {}
     blocks=[text('设计方法：'+(source.get('method') or '未设置')),
         table('DOE 配置',[{'配置项':k,'值':v} for k,v in (params.get('meta') or params).items() if k!='groups']),

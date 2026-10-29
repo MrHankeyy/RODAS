@@ -21,6 +21,20 @@ APP=QApplication.instance() or QApplication([])
 
 
 class ReportTests(unittest.TestCase):
+    def test_factor_parameters_display_stddev_and_uniform_bounds_without_changing_source(self):
+        p=ProjectData(factors=[
+            FactorItem(name='T',source='环境',uncertainty='概率',distribution='正态分布',param1='30',param2='4',unit='℃'),
+            FactorItem(name='U',source='环境',uncertainty='概率',distribution='均匀分布',param1='30',param2=str(100/3),unit='℃')])
+        source=re.inputs(p)['factors'];before=copy.deepcopy(source)
+        rows=re._factor_rows(source)
+        self.assertEqual(rows[0]['不确定参数2'],2)
+        self.assertAlmostEqual(rows[1]['不确定参数1'],20)
+        self.assertAlmostEqual(rows[1]['不确定参数2'],40)
+        self.assertEqual([row['单位'] for row in rows],['℃','℃'])
+        self.assertEqual(source,before)
+        html=re.render_html(re.build_report(re.bundle(p)))
+        self.assertIn('均值/标准差',html)
+
     def test_operations_emit_messages_without_history(self):
         from frontend.notifications import bus
         p,_=make_context();messages=[]

@@ -293,8 +293,7 @@ def build_models(project):
     if not matrix:
         return None, ["尚无 DOE 试验数据，请先在【方案配置】生成方案。"]
     is_rsm = "响应曲面" in project.design_method
-    inputs = [f for f in project.factors
-              if f.name and not f.is_fixed and (not is_rsm or f.source == "设计")]
+    inputs = de.model_factors(project) if is_rsm else [f for f in project.factors if f.name and not f.is_fixed]
     names = [f.name for f in inputs]
     if not names:
         return None, ["没有可建模的输入因子。"]

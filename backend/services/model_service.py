@@ -5,13 +5,14 @@ import json
 import math
 import statistics
 
-from backend.engines import design_analysis as design
 from backend.engines import doe as engine
 from backend.engines import optimizer as optimizer
+from backend.core.factors import model_factors
+from backend.domain.models import factor_definition
 
 
 def active_factors(project):
-    return design.active_controls(project)
+    return model_factors(project)
 
 
 def active_responses(project):
@@ -21,7 +22,7 @@ def active_responses(project):
 def surrogate_signature(project):
     return json.dumps({
         "config": project.surrogate_config,
-        "factors": [asdict(item) for item in active_factors(project)],
+        "factors": [factor_definition(item) for item in active_factors(project)],
         "responses": [asdict(item) for item in active_responses(project)],
         "matrix": project.doe_matrix,
     }, sort_keys=True, ensure_ascii=False)
@@ -140,9 +141,7 @@ def build_rsm_context(project):
     service = ProjectService.for_project(project)
     service.ensure_current()
     if service.model_cache.get('rsm'):
-        factors = [f for f in project.factors if f.name and not f.is_fixed
-                   and ('响应曲面' not in project.design_method or f.source == '设计')
-                   and f.name in project.doe_matrix[0]]
+        factors = [f for f in model_factors(project) if f.name in project.doe_matrix[0]]
         return dict(inputs=factors, names=[f.name for f in factors],
                     models=service.model_cache['rsm'], errors=[],
                     _responses=project.responses, _project=project)

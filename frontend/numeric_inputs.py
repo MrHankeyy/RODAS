@@ -1,5 +1,7 @@
 """Shared numeric editors: commit typed values on Enter or focus loss."""
-from PyQt6.QtWidgets import QAbstractSpinBox, QDoubleSpinBox, QSpinBox
+from PyQt6.QtCore import QLocale
+from PyQt6.QtGui import QDoubleValidator
+from PyQt6.QtWidgets import QAbstractSpinBox, QDoubleSpinBox, QSpinBox, QLineEdit
 
 
 class DecimalInput(QDoubleSpinBox):
@@ -33,3 +35,13 @@ def commit_numeric_inputs(parent):
     """Flush pending edits before an action reads its numeric parameters."""
     for control in parent.findChildren(QAbstractSpinBox):
         control.interpretText()
+
+
+def numeric_text_input(value=""):
+    """Optional/scientific decimal draft, validated when the definition is saved."""
+    control = QLineEdit(str(value))
+    validator = QDoubleValidator(control)
+    validator.setLocale(QLocale.c())
+    validator.setNotation(QDoubleValidator.Notation.ScientificNotation)
+    control.setValidator(validator)
+    return control

@@ -24,14 +24,10 @@ def _sigma_of_factor(f, k_design):
             return max(0.0, float(f.param2)) ** 0.5
         except (TypeError, ValueError):
             return (hi - lo) / 6.0
-    if f.source == "环境":
-        if f.uncertainty == "概率":
-            try:
-                return float(f.param2) ** 0.5
-            except (TypeError, ValueError):
-                return (hi - lo) / math.sqrt(12)
-        return (hi - lo) / math.sqrt(12)
-    # 设计因子按六西格玛解释：±k·σ 覆盖区间
+    if f.source == "环境" or f.nominal_lower != "":
+        # Existing moment approximation: actual environmental width or design deviation width.
+        return (float(f.param2) - float(f.param1)) / (2.0 * max(1.0, k_design))
+    # For actual environmental intervals (and legacy design ranges), half-width = k·σ.
     return (hi - lo) / (2.0 * max(1.0, k_design))
 
 
@@ -39,18 +35,7 @@ def robust_moments(model, x_design, context, k_design, include_residual=True):
     """在设计点 x_design(设计因子名->值) 处计算任一响应的均值 μ 与标准差 σ。"""
     inputs = context["inputs"]
     names = context["names"]
-    x = []
-    for f in inputs:
-        if f.source == "环境":
-            # 噪声因子取均值点
-            lo, hi = de.factor_limits(f)
-            if f.uncertainty == "概率" and f.param1:
-                x.append(float(f.param1))
-            else:
-                x.append((lo + hi) / 2.0)
-        else:
-            lo, hi = de.factor_limits(f)
-            x.append(float(x_design.get(f.name, (lo + hi) / 2.0)))
+    x = [de.factor_center(f, x_design if f.source == "设计" else None) for f in inputs]
     x = _np.array(x, float)
     mu = model_predict(model, x)
     grad = model_grad_x(model, x)

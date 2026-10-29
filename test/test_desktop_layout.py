@@ -5,10 +5,9 @@ import unittest
 from pathlib import Path
 os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from PyQt6.QtWidgets import QApplication, QLabel
+from PyQt6.QtWidgets import QApplication, QPushButton
 from PyQt6.QtCore import Qt
 from frontend.main_window import MainWindow
-from frontend.pages.modeling_page import FIXED_VALUE_HELP
 
 APP = QApplication.instance() or QApplication([])
 
@@ -72,23 +71,13 @@ class DesktopLayoutTests(unittest.TestCase):
         page = self.window.page_MOD
         page.add_design_factor_row()
         page.add_environment_factor_row()
-        page.environment_factor_table.cellWidget(0, 0).setText('温度')
+        page.environment_factors.editors[0].name.setText('温度')
         page.model_tabs.setCurrentIndex(2)
         self.assertEqual(page.model_tabs.tabText(2), '环境因子')
         page.model_tabs.setCurrentIndex(1)
-        self.assertEqual(page.environment_factor_table.cellWidget(0, 0).text(), '温度')
-        self.assertEqual(
-            page.design_factor_table.horizontalHeader().section_tooltip(5),
-            FIXED_VALUE_HELP,
-        )
-        self.assertEqual(
-            page.design_factor_table.cellWidget(0, 5).toolTip(),
-            FIXED_VALUE_HELP,
-        )
-        self.assertNotIn(
-            FIXED_VALUE_HELP,
-            [label.text() for label in page.findChildren(QLabel)],
-        )
+        self.assertEqual(page.environment_factors.editors[0].name.text(), '温度')
+        self.assertEqual(page.environment_factors.table.cellWidget(0, 0).text(), '温度')
+        self.assertFalse(any('固定' in button.text() for button in page.findChildren(QPushButton)))
 
     def test_message_collapse_preserves_content(self):
         self.window.fold_messages.click()

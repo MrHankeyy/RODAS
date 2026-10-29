@@ -43,7 +43,11 @@ class WelcomeWorkspaceTests(unittest.TestCase):
         self.assertTrue(w.message_panel.isHidden())
         w.btns_switch[0].click()
         w.page_MOD.add_design_factor_row()
-        editor = w.page_MOD.design_factor_table.cellWidget(0, 0)
+        factor = w.page_MOD.design_factors.editors[0]
+        for control, value in ((factor.lower, '1'), (factor.upper, '2'),
+                               (factor.delta_lower, '-.05'), (factor.delta_upper, '.05')):
+            control.setText(value)
+        editor = factor.name
         editor.setText('翼梁厚度')
         w.brand_button.click()
         self.assertFalse(w.project_data.factors)

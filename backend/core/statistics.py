@@ -268,11 +268,9 @@ def tolerance_contribution(context, k_design, point=None):
     x_raw = []
     for f in inputs:
         lo, hi = de.factor_limits(f)
-        if f.source == "环境":
-            val = float(f.param1) if (f.uncertainty == "概率" and f.param1) else (lo + hi) / 2.0
-        else:
-            val = (point or {}).get(f.name, (lo + hi) / 2.0)
-            x_nom[f.name] = val
+        val = de.factor_center(f, point if f.source == "设计" else None)
+        if f.source == "设计":
+            x_nom[f.name] = (point or {}).get(f.name, (lo + hi) / 2.0)
         x_raw.append(val)
     x = _np.array(x_raw, float)
     for resp_name, m in context["models"].items():

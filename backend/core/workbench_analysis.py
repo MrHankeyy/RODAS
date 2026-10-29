@@ -5,7 +5,7 @@ from .factors import _isfinite
 import math
 import numpy as np
 from scipy import stats
-from .factors import factor_limits
+from .factors import factor_limits, factor_center
 
 
 def descriptive(project):
@@ -133,8 +133,7 @@ def point_analysis(context, point, kd, kc):
         raw=[]
         for f in context['inputs']:
             lo,hi=factor_limits(f)
-            raw.append(float(f.param1) if f.source=='环境' and f.uncertainty=='概率' else
-                       (lo+hi)/2 if f.source=='环境' else point[f.name])
+            raw.append(factor_center(f, point if f.source == '设计' else None, include_deviation=False))
         nominal=model_predict(model,raw)
         lower,upper=mu-kc*sigma,mu+kc*sigma
         margin=None

@@ -22,6 +22,8 @@ def _num(value, default=0.0):
 
 def factor_limits(factor):
     """返回 (下限, 上限)，保证 low<=high。"""
+    if factor.nominal_lower != "" and factor.nominal_upper != "":
+        return float(factor.nominal_lower), float(factor.nominal_upper)
     lo = _num(getattr(factor, "param1", None))
     hi = _num(getattr(factor, "param2", None))
     if getattr(factor, "uncertainty", "区间") == "概率":
@@ -37,6 +39,25 @@ def factor_limits(factor):
     if hi == lo:
         hi = lo + 1.0
     return lo, hi
+
+
+def factor_center(factor, point=None, include_deviation=True):
+    """Keep nominal search values distinct from the center of additive deviations."""
+    if factor.source == "环境" and not factor.nominal_lower:
+        return (_num(factor.param1) if factor.uncertainty == "概率" else
+                (_num(factor.param1) + _num(factor.param2)) / 2)
+    lo, hi = factor_limits(factor)
+    nominal = (point or {}).get(factor.name, (lo + hi) / 2)
+    if factor.nominal_lower != "":
+        offset = (_num(factor.param1) if factor.uncertainty == "概率" else
+                  (_num(factor.param1) + _num(factor.param2)) / 2)
+        return nominal + offset if include_deviation else nominal
+    return nominal
+
+
+def model_factors(project):
+    """Both design variables and actual environmental inputs join the model."""
+    return [f for f in project.factors if f.name and not f.is_fixed]
 
 
 def simple_factors(factors, exclude_fixed=True):

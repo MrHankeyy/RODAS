@@ -149,7 +149,7 @@ class OptimizationPage(QWidget):
     def _update_uncertainty_label(self, *_args):
         sigmas = [f"{f.name}: σ={oe._sigma_of_factor(f, self.k_design_spin.value()):.6g}"
                   for f in self.project_data.factors if f.name]
-        self.uncertainty_label.setText(rich_text("当前输入标准差（区间设计因子 σ=区间宽度/(2k)）：" + "；".join(sigmas)))
+        self.uncertainty_label.setText(rich_text("当前矩近似的输入标准差（设计使用偏差区间，环境使用实际区间；不使用名义设计范围推导）：" + "；".join(sigmas)))
 
     def _new_text(self):
         text = MathTextEdit()

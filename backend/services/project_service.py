@@ -1,6 +1,7 @@
 """The single write boundary for project inputs and published results."""
 from copy import deepcopy
 from dataclasses import asdict
+from backend.domain.models import factor_definition
 import json
 
 RESULT_FIELDS = ('screening_result', 'taguchi_result', 'rsm_result',
@@ -17,7 +18,7 @@ def set_operation_sink(callback):
 
 
 def _input_signature(project):
-    return json.dumps({"factors": [asdict(f) for f in project.factors],
+    return json.dumps({"factors": [factor_definition(f) for f in project.factors],
                        "responses": [asdict(r) for r in project.responses],
                        "method": project.design_method, "params": project.design_params,
                        "matrix": project.doe_matrix, "surrogate": project.surrogate_config},

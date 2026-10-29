@@ -120,7 +120,8 @@ MODEL_DESIGNS = {"RSM": ("CCD", "BBD"),
 def model_plan(project, method, config, preview=False):
     """Generate the original DOE choices supported by the selected model."""
     config = deepcopy(config)
-    factors = [f for f in _design_factors(project) if f[3] is None]
+    _require_design_factors(_design_factors(project))
+    factors = [f for f in factor_tools.simple_factors(factor_tools.model_factors(project)) if f[3] is None]
     _require_design_factors(factors)
     model = config["model"]
     if model not in MODEL_DESIGNS:

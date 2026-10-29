@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, asdict
 
 
 @dataclass
@@ -18,11 +18,22 @@ class FactorItem:
     source: str = "设计"        # 设计 / 环境
     uncertainty: str = "区间"   # 区间 或 概率
     distribution: str = "无"    # 正态分布, 均匀分布, 等
-    param1: str = ""            # 区间下限 或 概率均值
-    param2: str = ""            # 区间上限 或 概率方差
-    fixed_value: str = ""       # 固定后的均值或区间中点
-    is_fixed: bool = False
+    param1: str = ""            # 设计：偏差下界/均值；环境：实际下界/均值
+    param2: str = ""            # 设计：偏差上界/方差；环境：实际上界/方差
+    fixed_value: str = ""       # 仅兼容已有任务；新编辑器不提供固定值
+    is_fixed: bool = False      # 仅兼容旧任务的模型维度
     unit: str = ""
+    nominal_lower: str = ""    # 设计的独立名义范围；环境留空
+    nominal_upper: str = ""    # 环境旧任务可带名义范围，提交后转为实际取值参数
+
+
+def factor_definition(factor):
+    """Keep legacy input signatures stable when loading archives without nominal bounds."""
+    values = asdict(factor)
+    if not factor.nominal_lower and not factor.nominal_upper:
+        values.pop('nominal_lower')
+        values.pop('nominal_upper')
+    return values
 
 
 @dataclass

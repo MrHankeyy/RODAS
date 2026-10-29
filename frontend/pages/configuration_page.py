@@ -8,6 +8,7 @@ from PyQt6.QtWidgets import (
 )
 
 from backend.domain.models import ProjectData
+from backend.core.factors import model_factors
 from backend.services import design_service
 from backend.services.project_service import ProjectService
 from backend.reporting.math_format import rich_text
@@ -53,7 +54,7 @@ class ConfigurationPage(QWidget):
         self.model_stack = QStackedWidget()
         self.model_editors = {}
         for key in self.MODEL_KEYS:
-            editor = ModelConfiguration(key, self._design_factors(), config=self._saved_config(key))
+            editor = ModelConfiguration(key, model_factors(self.project_data), config=self._saved_config(key))
             self.model_editors[key] = editor
             self.model_stack.addWidget(editor)
         column.addWidget(self.model_stack)
@@ -202,7 +203,7 @@ class ConfigurationPage(QWidget):
         definition = repr(self.project_data.factors)
         if definition != self._definition:
             for editor in self.model_editors.values():
-                editor.set_factors(self._design_factors())
+                editor.set_factors(model_factors(self.project_data))
             self._definition = definition
         self._configuration_changed()
 

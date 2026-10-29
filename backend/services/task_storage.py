@@ -12,6 +12,7 @@ from zipfile import ZipFile, ZIP_DEFLATED
 
 import numpy as np
 from backend.core.predictors import Predictor
+from backend.core.factors import model_factors
 from backend.domain.models import ProjectData, FactorItem, ResponseItem
 from backend.services.project_service import ProjectService
 
@@ -68,7 +69,7 @@ def _pack(project):
     data['factors'] = [asdict(f) for f in project.factors]
     data['responses'] = [asdict(r) for r in project.responses]
     document = encode(dict(project=data, models=service.model_cache))
-    manifest = dict(format='RODAS', version=1, software_version='0.2', document=document,
+    manifest = dict(format='RODAS', version=2, software_version='0.2', document=document,
                     input_sha256=sha256(service.input_signature().encode('utf-8')).hexdigest())
     return _json(manifest), arrays
 
@@ -105,7 +106,7 @@ def load_task(path):
                     or archive.getinfo('task.json').file_size > 64 * 1024 ** 2):
                 raise ValueError('任务文件结构异常或过大。')
             manifest = json.loads(archive.read('task.json'))
-            if manifest.get('format') != 'RODAS' or manifest.get('version') != 1:
+            if manifest.get('format') != 'RODAS' or manifest.get('version') not in (1, 2):
                 raise ValueError('不支持的任务文件格式或版本。')
 
             def decode(value):
@@ -149,7 +150,7 @@ def load_task(path):
             raise ValueError('任务输入版本校验失败。')
         service.model_cache = data['models']
         # Validate model dimensions in raw input order, without training anything.
-        count = len([f for f in project.factors if f.name and f.source == '设计' and not f.is_fixed])
+        count = len(model_factors(project))
         for result in project.surrogate_result.get('responses', {}).values():
             predictor = result.get('predict_fn')
             if predictor is not None and (not isinstance(predictor, Predictor) or _model_probes(predictor).shape[1] != count):

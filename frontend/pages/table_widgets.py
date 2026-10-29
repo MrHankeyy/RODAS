@@ -1,96 +1,38 @@
 """Reusable table widgets shared by workflow pages."""
 from PyQt6 import QtGui
-from PyQt6.QtCore import Qt, QRect, QSize, QEvent
-from PyQt6.QtGui import QPainter, QPen, QColor, QPalette
-from PyQt6.QtWidgets import QApplication, QHeaderView, QTableWidget, QTableWidgetItem, QToolTip
+from PyQt6.QtCore import Qt, QEvent, QTimer
+from PyQt6.QtWidgets import QApplication, QTableWidget, QTableWidgetItem, QHeaderView
 
 
-class MultiLevelHeader(QHeaderView):
-    """多级表头：支持「分组大栏 → 小栏 → 叶子列」的层级渲染。"""
+class BalancedColumnsTable(QTableWidget):
+    """Share spare viewport width while preserving each column's usable minimum."""
 
-    def __init__(self, levels, parent=None):
-        super().__init__(Qt.Orientation.Horizontal, parent)
-        self._leaves = []
-        self._group_bands = []
-        self._leaf_count = 0
-        self._section_tooltips = {}
-        for node in levels:
-            self._build(node, 0)
-        self._band_height = 28
-        self._header_height = self._band_height * (
-            len(self._group_bands) + 1)
-        self.setFixedHeight(self._header_height)
-        self.setSectionsClickable(False)
-        self.setHighlightSections(False)
-        self.setDefaultAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.sectionResized.connect(lambda *_: self.viewport().update())
-        self.sectionMoved.connect(lambda *_: self.viewport().update())
+    def __init__(self, minimum_widths, fixed_columns=()):
+        super().__init__(0, len(minimum_widths))
+        self.minimum_widths = tuple(minimum_widths)
+        self.flexible_columns = [i for i in range(len(minimum_widths)) if i not in fixed_columns]
+        self.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Fixed)
+        self.viewport().installEventFilter(self)
+        self._resize_pending = False
+        self._fit_columns()
 
-    def sizeHint(self):
-        return QSize(super().sizeHint().width(), self._header_height)
+    def eventFilter(self, watched, event):
+        if watched is self.viewport() and event.type() == QEvent.Type.Resize and not self._resize_pending:
+            self._resize_pending = True
+            QTimer.singleShot(0, self._fit_columns)
+        return super().eventFilter(watched, event)
 
-    def set_section_tooltip(self, section, text):
-        """Set help text shown only while hovering a specific leaf section."""
-        if text:
-            self._section_tooltips[section] = text
-        else:
-            self._section_tooltips.pop(section, None)
-
-    def section_tooltip(self, section):
-        return self._section_tooltips.get(section, "")
-
-    def viewportEvent(self, event):
-        if event.type() == QEvent.Type.ToolTip:
-            text = self.section_tooltip(self.logicalIndexAt(event.pos()))
-            if text:
-                QToolTip.showText(event.globalPos(), text, self.viewport())
-                return True
-            QToolTip.hideText()
-        return super().viewportEvent(event)
-
-    def _build(self, node, depth):
-        if isinstance(node, str):
-            start = self._leaf_count
-            self._leaf_count += 1
-            self._leaves.append((start, start, node))
-            return
-        label, children = node
-        start = self._leaf_count
-        for child in children:
-            self._build(child, depth + 1)
-        end = self._leaf_count - 1
-        while len(self._group_bands) <= depth:
-            self._group_bands.append([])
-        self._group_bands[depth].append((start, end, label))
-
-    def paintEvent(self, event):
-        painter = QPainter(self.viewport())
-        painter.fillRect(event.rect(), self.palette().window())
-        self._draw_band(painter, 0, self._leaves, bold=False)
-        for band_index, groups in enumerate(self._group_bands, start=1):
-            self._draw_band(painter, band_index, groups, bold=True)
-
-    def _draw_band(self, painter, band_index, items, bold):
-        band_height = self._band_height
-        y = (
-            self.height() - band_height if band_index == 0
-            else (band_index - 1) * band_height)
-        font = self.font()
-        font.setBold(bold)
-        painter.setFont(font)
-        for start, end, label in items:
-            left = self.sectionViewportPosition(start)
-            right = (
-                self.sectionViewportPosition(end) + self.sectionSize(end))
-            if right <= 0 or left >= self.viewport().width():
-                continue
-            rect = QRect(left, y, right - left, band_height)
-            painter.fillRect(rect, QColor(237, 242, 247))
-            painter.setPen(QPen(QColor(213, 222, 231)))
-            painter.drawRect(rect)
-            painter.setPen(
-                self.palette().color(QPalette.ColorRole.Text))
-            painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, label)
+    def _fit_columns(self):
+        self._resize_pending = False
+        self.horizontalHeader().setMinimumSectionSize(min(self.minimum_widths))
+        widths = list(self.minimum_widths)
+        if self.flexible_columns:
+            extra, remainder = divmod(max(0, self.viewport().width() - sum(widths)), len(self.flexible_columns))
+            for rank, column in enumerate(self.flexible_columns):
+                widths[column] += extra + (rank < remainder)
+        for column, width in enumerate(widths):
+            if self.columnWidth(column) != width:
+                self.setColumnWidth(column, width)
 
 
 class ExcelLikeTableWidget(QTableWidget):

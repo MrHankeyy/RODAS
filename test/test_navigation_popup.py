@@ -4,7 +4,7 @@ import unittest
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from PyQt6.QtCore import QPoint, Qt
-from PyQt6.QtWidgets import QApplication, QComboBox, QStyle, QStyleOptionComboBox, QWidget
+from PyQt6.QtWidgets import QApplication, QComboBox, QStyle, QStyleOptionComboBox, QWidget, QAbstractItemView
 from backend.domain.models import FactorItem, ProjectData, ResponseItem
 from frontend.main_window import MainWindow
 from frontend.pages.configuration_page import ConfigurationPage
@@ -22,9 +22,15 @@ class NavigationPopupTests(unittest.TestCase):
         page.add_response_row()
         page.add_design_factor_row()
         page.add_environment_factor_row()
-        page.response_table.cellWidget(0, 0).setText("应力")
-        page.design_factor_table.cellWidget(0, 0).setText("厚度")
-        page.environment_factor_table.cellWidget(0, 0).setText("温度")
+        page.responses.editors[0].name.setText("应力")
+        for section, name in ((page.design_factors, "厚度"), (page.environment_factors, "温度")):
+            editor = section.editors[0]
+            editor.name.setText(name)
+            if section is page.design_factors:
+                editor.lower.setText('1')
+                editor.upper.setText('2')
+            for control, value in ((editor.delta_lower, '-.05'), (editor.delta_upper, '.05')):
+                control.setText(value)
         for index in (2, 0, 1, 2):
             page.results_workspace.buttons[index].click()
             self.assertEqual(page.model_tabs.currentIndex(), index)
@@ -105,7 +111,7 @@ class NavigationPopupTests(unittest.TestCase):
         page = window.page_MOD
         page.add_response_row()
         APP.processEvents()
-        combo = page.response_table.cellWidget(0, 3)
+        combo = page.responses.editors[0].feature
         for index in range(3):
             combo.setCurrentIndex(index)
             self.assert_list_popup(combo)
@@ -139,9 +145,10 @@ class NavigationPopupTests(unittest.TestCase):
         page = window.page_MOD
         for _ in range(18):
             page.add_response_row()
-        page.response_table.verticalScrollBar().setValue(page.response_table.verticalScrollBar().maximum())
+        table = page.responses.table
+        table.scrollTo(table.model().index(17, 3), QAbstractItemView.ScrollHint.PositionAtBottom)
         APP.processEvents()
-        combo = page.response_table.cellWidget(17, 3)
+        combo = page.responses.editors[17].feature
         combo.setCurrentIndex(2)
         self.assert_list_popup(combo)
         window.switch_page(1)

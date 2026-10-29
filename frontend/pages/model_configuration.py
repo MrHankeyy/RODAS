@@ -34,7 +34,7 @@ class ModelConfiguration(QWidget):
         self.range_group = QGroupBox("因子与试验范围")
         bounds_layout = QVBoxLayout(self.range_group)
         self.bounds_table = QTableWidget(0, 3)
-        self.bounds_table.setHorizontalHeaderLabels(["设计因子（单位）", "低水平 / 抽样下限", "高水平 / 抽样上限"])
+        self.bounds_table.setHorizontalHeaderLabels(["模型输入（单位）", "低水平 / 抽样下限", "高水平 / 抽样上限"])
         self.bounds_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.bounds_table.verticalHeader().hide()
         self.bounds_table.setMaximumHeight(145)

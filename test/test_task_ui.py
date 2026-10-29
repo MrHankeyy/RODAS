@@ -49,7 +49,11 @@ class TaskUITests(unittest.TestCase):
         self.w.switch_page(0)
         page = self.w.page_MOD
         page.add_design_factor_row()
-        page.design_factor_table.cellWidget(0, 0).setText('厚度')
+        editor = page.design_factors.editors[0]
+        editor.name.setText('厚度')
+        for control, value in ((editor.lower, '1'), (editor.upper, '2'),
+                               (editor.delta_lower, '-.05'), (editor.delta_upper, '.05')):
+            control.setText(value)
         self.w.switch_page(1)
         self.assertFalse(self.w.project_data.factors)
         self.w.switch_page(0)
@@ -57,7 +61,7 @@ class TaskUITests(unittest.TestCase):
         self.assertFalse(self.w.project_data.factors)
         path = self.save()
         self.assertFalse(task_storage.load_task(path).factors)
-        self.assertEqual(page.design_factor_table.cellWidget(0, 0).text(), '厚度')
+        self.assertEqual(editor.name.text(), '厚度')
         page.save_btn.click()
         self.assertEqual(self.w.project_data.factors[0].name, '厚度')
         self.w.task_actions.save()
@@ -101,8 +105,8 @@ class TaskUITests(unittest.TestCase):
             self.assertEqual(task_storage.fingerprint(self.w.project_data), self.w.task_actions.saved_fingerprint)
             self.w.page_OPT._prepare_context()
         self.assertEqual(self.w.workspace.directory, str(directory))
-        self.assertEqual(self.w.page_MOD.design_factor_table.rowCount(), 2)
-        self.assertEqual(self.w.page_MOD.response_table.cellWidget(0, 0).text(), 'Y')
+        self.assertEqual(len(self.w.page_MOD.design_factors.editors), 2)
+        self.assertEqual(self.w.page_MOD.responses.editors[0].name.text(), 'Y')
         self.assertIsNotNone(self.w.page_OPT.model_panel.context)
         self.assertIsNotNone(self.w.page_OPT.diagnostics_panel.context)
         self.w.switch_page(2)
