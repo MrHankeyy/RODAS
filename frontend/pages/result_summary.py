@@ -36,10 +36,11 @@ def _model_results(project, labels):
             rows.append([labels.get(name, name), item.get("r2_test"), item.get("mape_test_%")])
         else:
             rows.append([labels.get(name, name), item.get("r2"), item.get("adj_r2"), item.get("rmse")])
-    title = "模型训练结果" if surrogate else "二次响应面拟合结果"
-    headers = ["响应", "测试集 R²", "相对误差指标（%）"] if surrogate else ["响应", "拟合 R²", "调整 R²", "拟合 RMSE"]
-    note = ("下一步：在「交叉验证与残差」检查预测误差，再进行鲁棒优化。" if surrogate else
-            "RMSE 单位同响应。下一步：检查「显著性 / LOF」与「交叉验证与残差」，再进行鲁棒优化。")
+    title = "模型训练结果" if surrogate else "二次响应面模型拟合结果"
+    headers = (["响应", "测试集决定系数", "归一化平均绝对误差（%）"] if surrogate else
+               ["响应", "拟合决定系数", "调整决定系数", "拟合均方根误差"])
+    note = ("下一步：在「交叉验证与残差分析」检查预测误差，再进行鲁棒性优化设计。" if surrogate else
+            "均方根误差单位同响应。下一步：检查「回归显著性与失拟检验」与「交叉验证与残差分析」，再进行鲁棒性优化设计。")
     sections = [section(title, headers, rows, note)] if rows else []
     return sections + errors, len(rows), len(errors)
 
@@ -50,9 +51,9 @@ def _screening_results(project, labels):
     for name, item in result.get("response_analysis", {}).items():
         effects = item.get("effects", [])[:project.design_params.get("top_n", 5)]
         sections.append(section(f"重点主效应 · {labels.get(name, name)}",
-            ["因子", "高−低效应", "主效应平方占比（%）"],
+            ["因子", "主效应", "主效应平方占比（%）"],
             [[e["name"], e["effect"], e["share"]] for e in effects],
-            "效应单位同响应。下一步：在「筛选主效应」查看完整效应与设计诊断，再决定后续研究因子。"))
+            "效应单位同响应。下一步：在「主效应分析」查看完整效应与设计诊断，再决定后续研究因子。"))
     errors = result.get("errors", {})
     count = len(sections)
     sections += [section(f"{name} · 分析失败", message=message) for name, message in errors.items()]
@@ -70,7 +71,7 @@ def _taguchi_results(project, labels):
                 [[units.get(factor, factor), level] for factor, level in best.items()],
                 "候选组合基于水平主效应，需要确认试验；不同响应的推荐分别显示。"))
         matched = [run for run in item.get("runs", []) if best and run["settings"] == best]
-        metric = "S/N（dB）" if item.get("has_replication") else "均值指标"
+        metric = "信噪比（dB）" if item.get("has_replication") else "均值指标"
         if matched:
             rows = [[run["mean"], run["std"], run["metric"]] for run in matched]
             sections.append(section(f"候选组合的已试验统计 · {labels.get(name, name)}",
@@ -110,7 +111,7 @@ def overview(project):
     elif successes:
         status, next_step = "分析已完成", "当前数据与分析结果已就绪。"
     else:
-        action = "计算筛选主效应" if "筛选" in method else "计算田口信噪比" if "田口" in method else "建模与模型诊断"
+        action = "计算因子主效应" if "筛选" in method else "计算田口信噪比" if "田口" in method else "建模与模型诊断"
         status, next_step = "等待分析", f"下一步：使用页面上方「{action}」。"
     if not sections:
         sections = [section("分析结果", message="尚未执行分析。" if ready else "响应数据就绪后显示当前方案的分析结果。")]

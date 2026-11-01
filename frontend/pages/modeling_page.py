@@ -13,14 +13,17 @@ class ModelingPage(QWidget):
     def __init__(self, project_data):
         super().__init__()
         self.project_data = project_data
-        self.responses = ResponseTable()
-        self.design_factors = FactorTable("设计")
-        self.environment_factors = FactorTable("环境")
-        self.sections = (self.responses, self.design_factors, self.environment_factors)
+        task_type = project_data.task_type
+        self.responses = ResponseTable(task_type)
+        self.design_factors = FactorTable("设计", task_type)
+        self.environment_factors = FactorTable("环境", task_type) if task_type != "factorial" else None
+        self.sections = (self.responses, self.design_factors)
+        if self.environment_factors is not None:
+            self.sections += (self.environment_factors,)
         self.model_tabs = ResultTabs()
-        for section, title in zip(self.sections, ("响应", "设计因子", "环境因子")):
-            self.model_tabs.addTab(section, title)
-        self.results_workspace = ResultsWorkspace(self.model_tabs, [("业务建模", [0, 1, 2])])
+        for section in self.sections:
+            self.model_tabs.addTab(section, section.title)
+        self.results_workspace = ResultsWorkspace(self.model_tabs, [("业务建模", list(range(len(self.sections))))])
         root = QVBoxLayout(self)
         root.setContentsMargins(12, 12, 12, 12)
         root.addWidget(self.results_workspace, 1)

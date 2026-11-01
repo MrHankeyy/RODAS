@@ -40,25 +40,15 @@ def _maximin_lhs(n_points, dimensions, rng, candidates=12):
     return best
 
 
-def _van_der_corput(index, base):
-    value, factor = 0.0, 1.0 / base
-    while index:
-        index, remainder = divmod(index, base)
-        value += remainder * factor
-        factor /= base
-    return value
-
-
-def _sobol_like(n_points, dimensions):
-    """优先使用 scipy 的 Sobol；无 scipy 时回退到确定性的低差异序列。"""
+def _sobol(n_points, dimensions):
+    """Generate real Sobol points only; report errors without substituting a sequence."""
+    stage = "依赖加载"
     try:
         from scipy.stats import qmc  # type: ignore
+        stage = "生成"
         return qmc.Sobol(d=dimensions, scramble=False).random(n_points).tolist()
-    except Exception:
-        pass
-    bases = [2, 3, 5, 7, 11, 13, 17, 19]
-    return [[_van_der_corput(index + 1, bases[col % len(bases)])
-             for col in range(dimensions)] for index in range(n_points)]
+    except Exception as exc:
+        raise ValueError(f"索博尔序列{stage}失败（{type(exc).__name__}）：{exc}") from exc
 
 
 def build_samples(factors, n_points: int, method: str, seed: int):
@@ -83,7 +73,7 @@ def build_samples(factors, n_points: int, method: str, seed: int):
             rows.append({name: lo + point[i] * (hi - lo)
                          for i, (name, lo, hi, _) in enumerate(factors)})
     elif method in ("低差异序列 SOBOL", "SOBOL（低差异序列）"):
-        for point in _sobol_like(n_points, k):
+        for point in _sobol(n_points, k):
             rows.append({name: lo + point[i] * (hi - lo)
                          for i, (name, lo, hi, _) in enumerate(factors)})
     elif method == "稀疏配点法":

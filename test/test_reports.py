@@ -21,6 +21,27 @@ APP=QApplication.instance() or QApplication([])
 
 
 class ReportTests(unittest.TestCase):
+    def test_noninteractive_report_uses_chinese_terminology(self):
+        p=ProjectData(design_method='代理模型建模 · 克里金模型', surrogate_config={
+            'model':'Kriging','doe_method':'Latin Hypercube (LHS)',
+            'model_params':{'correlation':'Gaussian（高斯）'}})
+        html=re.render_html(re.build_report(re.bundle(p)))
+        for text in ('克里金模型','拉丁超立方采样','高斯相关函数','试验设计方法'):
+            self.assertIn(text,html)
+        for old in ('Kriging','Latin Hypercube','Gaussian（高斯）','DOE 配置'):
+            self.assertNotIn(old,html)
+
+    def test_taguchi_target_value_is_in_response_definition_and_export(self):
+        p=ProjectData(task_type='taguchi', responses=[ResponseItem(name='尺寸', feature='望目', target='10.125', unit='mm')])
+        report=re.build_report(re.bundle(p))
+        section=next(s for s in report['sections'] if s['id']=='purpose')
+        rows=next(b['rows'] for b in section['blocks'] if b.get('title')=='响应定义')
+        self.assertEqual(rows[0]['目标值'],'10.125')
+        self.assertEqual((rows[0]['下界'],rows[0]['上界']),('',''))
+        content=re.render_html(report)
+        self.assertIn('目标值',content)
+        self.assertIn('10.125',content)
+
     def test_factor_parameters_display_stddev_and_uniform_bounds_without_changing_source(self):
         p=ProjectData(factors=[
             FactorItem(name='T',source='环境',uncertainty='概率',distribution='正态分布',param1='30',param2='4',unit='℃'),

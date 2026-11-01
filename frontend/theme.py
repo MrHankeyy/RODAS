@@ -19,6 +19,9 @@ QPushButton#welcomeAction { background:#fff; border:1px solid #e2e8f0; border-ra
 QPushButton#welcomeAction:hover { background:#edf4fa; border-color:#168cb4; }
 QPushButton#welcomeAction:pressed { background:#e3eff7; }
 QLabel#welcomeActionLabel { font-size:14px; font-weight:500; color:#21354d; }
+QWidget#welcomeTaskOptions { background:#fff; border:1px solid #d5dee7; border-radius:6px; }
+QPushButton#welcomeTaskChoice { text-align:left; border:0; border-radius:3px; padding:5px 10px; min-height:20px; }
+QPushButton#welcomeTaskChoice:hover, QPushButton#welcomeTaskChoice:focus { background:#edf4fa; color:#173b64; }
 QStatusBar { background:#f4f6f9; border-top:1px solid #e2e8f0; padding:4px 12px; }
 QStatusBar::item { border:0; }
 QPushButton#workingDirectory { text-align:left; color:#65768a; background:transparent; border:0; padding:2px 8px; font-size:12px; }
@@ -148,6 +151,8 @@ class ResultsWorkspace(QWidget):
             self.groups[title] = group
             for index in visible:
                 button = QPushButton(self.tabs.tabText(index))
+                button.setToolTip(self.tabs.tabToolTip(index))
+                button.setAccessibleDescription(self.tabs.tabToolTip(index))
                 button.setObjectName('resultNavigationButton')
                 button.setCheckable(True)
                 button.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -160,6 +165,8 @@ class ResultsWorkspace(QWidget):
         if old is not None:
             old.deleteLater()
         self.navigation.setWidget(content)
+        width = max((button.sizeHint().width() for button in self.buttons.values()), default=0)
+        self.navigation.setFixedWidth(max(196, width + 30))
         self._sync(self.tabs.currentIndex())
 
     def _activate(self, index):

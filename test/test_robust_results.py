@@ -54,7 +54,7 @@ class RobustResultsTests(unittest.TestCase):
                 self.assertNotIn("constraints", widget.tables)
                 captions = [widget.tables["settings"].item(i, 0).text()
                             for i in range(widget.tables["settings"].rowCount())]
-                self.assertIn("帕累托前沿解数" if mode == "multi" else "均值权重 λ", captions)
+                self.assertIn("帕累托前沿解数" if mode == "multi" else "望性损失权重 λ", captions)
                 widget.clear()
                 self.assertFalse(widget.tables)
                 self.assertTrue(widget.plot.isHidden())

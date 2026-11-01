@@ -291,8 +291,8 @@ def build_models(project):
     """训练每个响应的二次模型（输入为所有非固定因子）。返回 (context, errors)。"""
     matrix = project.doe_matrix or []
     if not matrix:
-        return None, ["尚无 DOE 试验数据，请先在【方案配置】生成方案。"]
-    is_rsm = "响应曲面" in project.design_method
+        return None, ["尚无试验设计数据，请先在【方案配置】生成方案。"]
+    is_rsm = any(text in project.design_method for text in ("响应面", "响应曲面"))
     inputs = de.model_factors(project) if is_rsm else [f for f in project.factors if f.name and not f.is_fixed]
     names = [f.name for f in inputs]
     if not names:
@@ -300,11 +300,11 @@ def build_models(project):
     # 只使用矩阵中实际存在的输入列
     keys = set(matrix[0].keys())
     if is_rsm and any(n not in keys for n in names):
-        return None, ["DOE 缺少设计因子列，不能删去因子后继续拟合。"]
+        return None, ["试验矩阵缺少设计因子列，不能删去因子后继续拟合。"]
     names = [n for n in names if n in keys]
     inputs = [f for f in inputs if f.name in names]
     if not names:
-        return None, ["DOE 矩阵中未找到输入因子列。"]
+        return None, ["试验矩阵中未找到输入因子列。"]
 
     context = {"inputs": inputs, "names": names, "models": {},
                "errors": [], "_responses": project.responses,
@@ -330,7 +330,7 @@ def build_models(project):
             context["errors"].append(f"响应 {resp.name} 有效样本 {len(y)} < 3，跳过建模。")
             continue
         if is_rsm and len(y) != len(matrix):
-            context["errors"].append(f"响应 {resp.name} 存在缺失/非有限数据，请补齐后拟合完整二次响应面。")
+            context["errors"].append(f"响应 {resp.name} 存在缺失/非有限数据，请补齐后拟合完整二次模型。")
             continue
         try:
             context["models"][resp.name] = _fit_model(X, y, full_quadratic=is_rsm)

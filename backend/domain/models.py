@@ -1,15 +1,23 @@
 from dataclasses import dataclass, field, asdict
 
 
+TASK_TYPES = {
+    'robust': '基于代理模型的鲁棒性优化设计',
+    'taguchi': '田口设计',
+    'factorial': '因子筛选',
+}
+
+
 @dataclass
 class ResponseItem:
     name: str = ""
     kind: str = "目标"          # 目标 / 约束 / 目标+约束
     feature: str = "望小"       # 望大 / 望小 / 望目
-    lower: str = ""             # 望目时: 稳定性阈值下界
-    upper: str = ""             # 望目时: 稳定性阈值上界
-    robust_limit: str = ""      # 稳定性阈值: 望大=稳定要求最小值, 望小=稳定要求最大值
+    lower: str = ""             # 望目时: 响应阈值下界
+    upper: str = ""             # 望目时: 响应阈值上界
+    robust_limit: str = ""      # 响应阈值: 望大=要求最小值, 望小=要求最大值
     unit: str = ""
+    target: str = ""           # 田口望目响应的目标值，与规格限分开
 
 
 @dataclass
@@ -57,3 +65,4 @@ class ProjectData:
     workbench_result: dict = field(default_factory=dict)   # 可序列化的工作台分析快照
     report_metadata: dict = field(default_factory=dict)
     report_history: list[dict] = field(default_factory=list)
+    task_type: str = ""        # 创建任务时选择的主线；尚未生成试验方案

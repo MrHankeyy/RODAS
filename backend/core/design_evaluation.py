@@ -195,7 +195,7 @@ def project_responses(context):
 
 
 def self_is_constraint(resp):
-    # 稳定性阈值属于目标的望性参考，只有用户明确勾选“约束响应”
+    # 响应阈值属于目标的望性参考，只有用户明确勾选“约束响应”
     # 时才把该响应从目标集合移入约束集合。
     return "约束" in getattr(resp, "kind", "")
 

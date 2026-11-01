@@ -4,7 +4,7 @@
 - 方案设计摘要与设计诊断；
 - 两水平筛选（± 对比主效应 / 方差贡献）；
 - 响应曲面（二次模型拟合、拟合优度、优选设置）；
-- 田口稳健设计（均值响应表、S/N 表、稳健最优水平组合）；
+- 田口设计（均值响应表、信噪比表、稳健最优水平组合）；
 - 代理模型训练（Kriging / SVR / BPANN 的误差与耗时）。
 """
 from __future__ import annotations
@@ -78,11 +78,11 @@ class OptimizationPage(QWidget):
         is_taguchi = "田口" in method
         is_special = is_screening or is_taguchi
         if is_screening:
-            self.run_all_btn.setText("筛选设计：计算主效应")
+            self.run_all_btn.setText("因子筛选：计算主效应")
         elif is_taguchi:
             self.run_all_btn.setText("田口设计：计算信噪比")
         else:
-            self.run_all_btn.setText("执行稳定性设计与鲁棒优化")
+            self.run_all_btn.setText("执行鲁棒性优化设计")
         for index in (1, 2, 3, 4, 5, 6, 7):
             self.tabs.setTabVisible(index, not is_special)
         self.tabs.setTabVisible(8, is_screening)
@@ -94,9 +94,9 @@ class OptimizationPage(QWidget):
         self.run_all_btn.setToolTip(
             "筛选设计只计算因子敏感度，不执行优化"
             if is_screening else
-            "田口设计根据内表×外表响应计算 S/N 并推荐稳健水平"
+            "田口设计根据内表×外表响应计算信噪比并推荐稳健水平"
             if is_taguchi else
-            "响应曲面和代理模型进入鲁棒优化工作台")
+            "二次响应面模型和代理模型进入鲁棒性优化设计工作台")
 
     def _run_primary_action(self):
         """顶部主按钮：筛选/田口走专用分析，其余方案走鲁棒优化。"""
@@ -112,9 +112,10 @@ class OptimizationPage(QWidget):
     def _build_robust_tab(self):
         return optimization_panels.build_robust_tab(self)
 
-    def _on_robust_mode(self, text):
-        self.sigma_limits_table.setVisible(text == "约束型")
-        if text == "约束型":
+    def _on_robust_mode(self, _text=None):
+        mode = self.robust_mode_combo.currentData()
+        self.sigma_limits_table.setVisible(mode == "constraint")
+        if mode == "constraint":
             self.sigma_limits_table.blockSignals(True)
             saved = {self.sigma_limits_table.item(i,0).data(256): self.sigma_limits_table.item(i,1).text()
                      for i in range(self.sigma_limits_table.rowCount()) if self.sigma_limits_table.item(i,1)}
@@ -128,11 +129,11 @@ class OptimizationPage(QWidget):
                 self.sigma_limits_table.setItem(i,0,label)
                 self.sigma_limits_table.setItem(i,1,QTableWidgetItem(saved.get(r.name,"")))
             self.sigma_limits_table.blockSignals(False)
-        self.weight_spin.setEnabled("加权" in text)
+        self.weight_spin.setEnabled(mode == "weighted")
         self.k_constraint_spin.setEnabled(True)
 
     def _sigma_limits(self):
-        if self.robust_mode_combo.currentText() != "约束型":
+        if self.robust_mode_combo.currentData() != "constraint":
             return {}
         limits = {}
         for i in range(self.sigma_limits_table.rowCount()):
@@ -219,7 +220,7 @@ class OptimizationPage(QWidget):
         service.publish_results(screening_result=result)
         self.screening_panel.set_result(result)
         service.record_operation(
-            "筛选分析", "部分完成" if result.get("errors") else "完成",
+            "因子筛选", "部分完成" if result.get("errors") else "完成",
             {"results": {"screening": result}})
 
     # ------------------------------------------------------------- 响应曲面
@@ -228,7 +229,7 @@ class OptimizationPage(QWidget):
         self._oe_context = context
         result = self._store_rsm_fit(context)
         self.project_service.record_operation(
-            "响应曲面建模", payload={"results": {"rsm": result}})
+            "二次响应面建模", payload={"results": {"rsm": result}})
         return context
 
     def _store_rsm_fit(self, context):
@@ -255,20 +256,24 @@ class OptimizationPage(QWidget):
         service = self.project_service
         result = model_service.train_surrogates(self.project_data)
         service.publish_results(surrogate_result=result)
+        failures = [f"{name}：{item['error']}" for name, item in result["responses"].items() if item.get("error")]
+        if failures:
+            self._oe_context = None
+            self._robust_res = {}
+            self.robust_results.clear()
+            service.clear_workbench()
         for name, response_result in result["responses"].items():
             score = response_result.get("r2_test")
             if score is not None and (
                     not math.isfinite(score) or score < .6):
                 Notice.warning(
                     self, "代理预测精度偏低",
-                    f"{name} 留出集 R²={score}。请检查异常样本、补充采样或"
+                    f"{name} 测试集决定系数={score}。请检查异常样本、补充采样或"
                     "调整模型参数；优化候选应另做确认。")
         service.record_operation(
             "代理模型训练",
-            "部分完成" if any(
-                item.get("error") for item in result["responses"].values())
-            else "完成",
-            {"results": {"surrogate": result}})
+            ("失败" if len(failures) == len(result["responses"]) else "部分完成") if failures else "完成",
+            {"results": {"surrogate": result}}, message="\n".join(failures))
         return result
 
     def _build_surrogate_context(self):
@@ -277,7 +282,7 @@ class OptimizationPage(QWidget):
 
     # ============================================================ 工作台
     def _analysis_settings(self):
-        return {"mode": self.robust_mode_combo.currentText(), "k_design": self.k_design_spin.value(),
+        return {"mode": self.robust_mode_combo.currentData(), "k_design": self.k_design_spin.value(),
                 "k_constraint": self.k_constraint_spin.value(), "weight": self.weight_spin.value(),
                 "sigma_limits": {self.sigma_limits_table.item(i,0).data(256): self.sigma_limits_table.item(i,1).text() for i in range(self.sigma_limits_table.rowCount()) if self.sigma_limits_table.item(i,1)}, "population": self.pop_spin.value(), "generations": self.gen_spin.value(), "seed": 7}
 

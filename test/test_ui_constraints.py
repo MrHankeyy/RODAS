@@ -54,7 +54,7 @@ class ConstraintTests(unittest.TestCase):
     def test_invalid_bound_is_nonmodal_and_leaves_page_usable(self):
         p, _ = quadratic()
         page = OptimizationPage(p)
-        page.robust_mode_combo.setCurrentText('约束型')
+        page.robust_mode_combo.setCurrentIndex(page.robust_mode_combo.findData('constraint'))
         page.run_workbench()
         self.assertIsNone(getattr(page, '_worker', None))
         self.assertIn('标准差', page.status_label.text())
@@ -95,7 +95,7 @@ class ConstraintTests(unittest.TestCase):
         page = OptimizationPage(p)
         page.pop_spin.setValue(20)
         page.gen_spin.setValue(30)
-        page.robust_mode_combo.setCurrentText('约束型')
+        page.robust_mode_combo.setCurrentIndex(page.robust_mode_combo.findData('constraint'))
         page.sigma_limits_table.item(0,1).setText('0.1')
         messages = []
         def receive(*args): messages.append(args)

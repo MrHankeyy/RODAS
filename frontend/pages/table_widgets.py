@@ -92,17 +92,24 @@ class ExcelLikeTableWidget(QTableWidget):
                 item.setText("")
 
 
-def fill_records(table, rows):
+def fill_records(table, rows, *, statistic_columns=()):
     """Fill a read-only result table with mathematical display support."""
     from frontend.math_widgets import install_delegate, decorate_item
+    from frontend.terminology import apply_header_tooltips, statistic_name, statistic_tooltip
     install_delegate(table)
     headers = list(dict.fromkeys(key for row in rows for key in row))
     table.setColumnCount(len(headers))
     table.setHorizontalHeaderLabels(headers)
+    apply_header_tooltips(table)
     table.setRowCount(len(rows))
     for i, row in enumerate(rows):
         for j, key in enumerate(headers):
             value = row.get(key)
             text = "—" if value is None else f"{value:.6g}" if isinstance(value, float) else str(value)
-            table.setItem(i, j, decorate_item(QTableWidgetItem(text), value))
+            if key in statistic_columns:
+                text = statistic_name(text)
+            item = QTableWidgetItem(text)
+            if key in statistic_columns:
+                item.setToolTip(statistic_tooltip(text))
+            table.setItem(i, j, decorate_item(item, value if key not in statistic_columns else text))
     table.resizeRowsToContents()

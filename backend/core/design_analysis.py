@@ -51,7 +51,7 @@ def screening(project):
               "main_effects": [], "plot_points": [], "stability_impact": [],
               "errors": {}, "aliases": aliases,
               "diagnostic_summary": (project.design_params.get("meta", {}).get("diagnostic", "") +
-                  "。主效应=高水平均值−低水平均值；效应份额为平方效应归一化，不等于显著性或方差归因。"),
+                  "。主效应=高水平均值−低水平均值；主效应平方占比不等于显著性或方差归因。"),
               "conclusion": "填入完整响应后计算；筛选不输出连续优化点。"}
     shares = defaultdict(list)
     for resp in project.responses:
@@ -104,8 +104,8 @@ def screening(project):
     result["main_effects"] = ranking[:project.design_params.get("top_n", 5)]
     result["plot_points"] = [{"name": e["name"], "value": e["share"]} for e in ranking]
     if ranking:
-        result["conclusion"] = "已计算各响应的有符号主效应。综合排名为各响应平方效应份额的等权平均，不直接比较不同量纲；建议重点因子进入后续建模与确认试验。"
-    result["analysis_status"] = "部分响应未完成" if result["errors"] else "筛选主效应分析完成"
+        result["conclusion"] = "已计算各响应的有符号主效应。综合排名为各响应主效应平方占比的等权平均，不直接比较不同量纲；建议重点因子进入后续建模与确认试验。"
+    result["analysis_status"] = "部分响应未完成" if result["errors"] else "因子筛选的主效应分析完成"
     return result
 
 
@@ -126,7 +126,7 @@ def snr(values, feature, target=None):
             raise ValueError("名义最好信噪比至少需要两次观测")
         mean = statistics.mean(values)
         if mean == 0:
-            raise ValueError("经典名义最好信噪比的均值不能为零；请给出目标上下界")
+            raise ValueError("经典名义最好信噪比的均值不能为零；请给出目标值")
         loss = statistics.variance(values) / mean**2
     return -10*math.log10(loss) if loss > 0 else float("inf")
 
@@ -203,10 +203,7 @@ def taguchi(project):
             feature = resp.feature if "按各响应" in mode else ("望大" if "望大" in mode else "望小" if "望小" in mode else "望目")
             target = None
             if feature == "望目":
-                lo, hi = finite(resp.lower), finite(resp.upper)
-                if hi < lo:
-                    raise ValueError("目标上下界颠倒")
-                target = (lo + hi)/2
+                target = finite(resp.target)
             runs = []
             for i in range(n_inner):
                 v = values[i]
@@ -239,12 +236,12 @@ def taguchi(project):
                 result["signal_to_noise"].append({"factor": f.name, "response": resp.name,
                     "detail": "；".join(f"水平 {r['level_value']}: 均值 {r['mean']:.5g}, 指标 {r['metric']:.5g}" for r in table),
                     "snr": chosen["metric"]})
-            metric_label = ("目标偏差损失 S/N (dB)" if feature=="望目" else "S/N (dB)") if has_replication else "均值（单次观测，不能评估稳健性）"
+            metric_label = ("目标偏差损失信噪比（dB）" if feature=="望目" else "信噪比（dB）") if has_replication else "均值（单次观测，不能评估稳健性）"
             result["response_analysis"][resp.name] = {"runs": runs, "levels": level_rows,
                 "best_levels": best, "metric_label": metric_label, "feature": feature,
                 "has_replication": has_replication, "role": resp.kind,
-                "note": "约束响应仅报告观测结果，不按 S/N 最优替代约束可行性检验。" if "约束" in resp.kind else
-                        "望小 S/N 使用均方响应，衡量偏离零的大小。" if feature=="望小" else "最大化 S/N，候选水平需要确认试验。"}
+                "note": "约束响应仅报告观测结果，不以信噪比最优替代约束可行性检验。" if "约束" in resp.kind else
+                        "望小信噪比使用均方响应，衡量偏离零的大小。" if feature=="望小" else "最大化信噪比，候选水平需要确认试验。"}
             if best:
                 result["best_levels_by_response"][resp.name] = best
         except (ValueError, TypeError, KeyError) as exc:
@@ -254,7 +251,7 @@ def taguchi(project):
         result["best_levels"] = candidates[0]
     elif len(candidates)>1:
         result["recommendation"] += " 不同响应的候选水平冲突，未强行合并为一个最优组合。"
-    result["analysis_status"] = ("S/N 计算完成" if has_replication else "仅均值分析完成：无外表或重复观测，不报告稳健性")
+    result["analysis_status"] = ("信噪比计算完成" if has_replication else "仅均值分析完成：无外表或重复观测，不报告稳健性")
     if result["errors"]:
         result["analysis_status"] = "部分响应分析失败，请查看具体原因"
     return result

@@ -119,7 +119,7 @@ print(json.dumps(values))'''
         self.assertEqual(result.returncode, 0, result.stderr)
         np.testing.assert_allclose(json.loads(result.stdout), expected, rtol=1e-12)
 
-    def test_numpy_fallback_models_are_also_predictive_after_restore(self):
+    def test_numpy_ann_is_also_predictive_after_restore(self):
         original_import = builtins.__import__
 
         def without_sklearn(name, *args, **kwargs):
@@ -127,16 +127,13 @@ print(json.dumps(values))'''
                 raise ImportError('exercise numpy fallback')
             return original_import(name, *args, **kwargs)
 
-        for kind, params in [('SVR', dict(c_min=1, c_max=1, g_min=.5, g_max=.5)),
-                             ('ANN', dict(epochs=40))]:
-            with self.subTest(kind=kind):
-                with patch.object(builtins, '__import__', side_effect=without_sklearn):
-                    p = surrogate_project(kind, **params)
-                result = p.surrogate_result['responses']['Y']
-                self.assertIn(result['predict_fn'].kind, ('krr', 'ann'))
-                restored, _ = self.round_trip(p)
-                loaded = restored.surrogate_result['responses']['Y']['predict_fn']
-                self.assertAlmostEqual(loaded([.25, .75]), result['predict_fn']([.25, .75]), places=12)
+        with patch.object(builtins, '__import__', side_effect=without_sklearn):
+            p = surrogate_project('ANN', epochs=40)
+        result = p.surrogate_result['responses']['Y']
+        self.assertEqual(result['predict_fn'].kind, 'ann')
+        restored, _ = self.round_trip(p)
+        loaded = restored.surrogate_result['responses']['Y']['predict_fn']
+        self.assertAlmostEqual(loaded([.25, .75]), result['predict_fn']([.25, .75]), places=12)
 
     def test_atomic_failure_keeps_existing_task_and_removes_temporary_file(self):
         _, path = self.round_trip(ProjectData())

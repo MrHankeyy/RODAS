@@ -34,7 +34,7 @@ class Predictor:
             x = x / s['span']
             return (trend_matrix(x, s['trend']) @ s['beta']
                     + correlation(s['x'], x, s['theta'], s['correlation']).T @ s['weights'])
-        if self.kind in ('svr', 'krr'):
+        if self.kind == 'svr':
             support = s['support']
             kernel = s['kernel']
             if kernel == 'rbf':

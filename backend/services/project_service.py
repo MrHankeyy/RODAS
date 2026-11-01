@@ -6,7 +6,7 @@ import json
 
 RESULT_FIELDS = ('screening_result', 'taguchi_result', 'rsm_result',
                  'surrogate_result', 'workbench_result')
-INPUT_FIELDS = ('responses', 'factors', 'design_method', 'design_params',
+INPUT_FIELDS = ('task_type', 'responses', 'factors', 'design_method', 'design_params',
                 'doe_matrix', 'surrogate_config')
 _operation_sink = None
 
@@ -81,7 +81,7 @@ class ProjectService:
         self._check_source(expected_signature)
         response_names = {r.name for r in self._project.responses if r.name}
         if len(rows) != len(self._project.doe_matrix):
-            raise ValueError('试验行数已改变，请重新载入 DOE 矩阵。')
+            raise ValueError('试验行数已改变，请重新载入试验矩阵。')
         pending = deepcopy(self._project.doe_matrix)
         for index, row in enumerate(rows):
             for name in response_names:

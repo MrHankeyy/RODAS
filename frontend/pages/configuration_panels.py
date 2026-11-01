@@ -4,6 +4,7 @@ from PyQt6.QtWidgets import (
 )
 from frontend.math_widgets import decorate_combo
 from frontend.numeric_inputs import numeric_input
+from frontend.terminology import add_combo_item
 
 
 def _publish(owner, controls):
@@ -18,9 +19,11 @@ def screening(owner):
     row = QHBoxLayout()
     row.addWidget(QLabel("设计族："))
     kind = QComboBox()
-    kind.addItems([
-        "全因子 2^k（小因子数）", "部分析因 1/2 分数",
-        "部分析因 1/4 分数", "Plackett-Burman（12/20 次）"])
+    for term, value in (("full_factorial", "full"),
+                        ("half_fraction", "half"),
+                        ("quarter_fraction", "quarter"),
+                        ("plackett_burman", "pb")):
+        add_combo_item(kind, term, value)
     decorate_combo(kind)
     row.addWidget(kind)
     row.addSpacing(24)
@@ -49,14 +52,10 @@ def screening(owner):
     row.addWidget(seed)
     row.addStretch()
     layout.addLayout(row)
-    hint = QLabel("中心点用于检验曲率并估计纯误差；PB 设计主效应与双因子交互存在部分混杂。")
-    hint.setStyleSheet("color:#666;")
-    layout.addWidget(hint)
     _publish(owner, {
         "screen_kind_combo": kind, "f_topn_spin": top_n,
         "f_center_spin": centers, "f_repeat_spin": repeats,
-        "f_order_combo": order, "f_seed_spin": seed,
-        "screen_center_hint": hint})
+        "f_order_combo": order, "f_seed_spin": seed})
     return widget
 
 
@@ -113,16 +112,11 @@ def taguchi(owner):
     row.addWidget(seed)
     row.addStretch()
     layout.addLayout(row)
-    hint = QLabel(
-        "内表安排控制因子（设计因子）、外表安排噪声因子（环境因子）；"
-        "完整试验＝内表×外表叉积。环境因子列将自动填充外表水平。")
-    hint.setStyleSheet("color:#666;")
-    layout.addWidget(hint)
     _publish(owner, {
         "t_levels_combo": levels, "t_inner_combo": inner,
         "t_outer_combo": outer, "t_noise_levels_combo": noise_levels,
         "t_repeat_spin": repeats, "t_order_combo": order,
-        "t_snr_combo": snr, "t_seed_spin": seed, "t_hint": hint})
+        "t_snr_combo": snr, "t_seed_spin": seed})
     levels.currentTextChanged.connect(owner._on_taguchi_levels)
     noise_levels.currentTextChanged.connect(owner._on_taguchi_levels)
     return widget

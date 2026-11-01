@@ -82,10 +82,10 @@ def anova_and_lof(context, project):
         return "无模型可分析，请先填入响应数据。"
     matrix = project.doe_matrix or []
     names = context["names"]
-    lines = ["【回归方差分析 / 显著性 / 失拟(LOF)】"]
+    lines = ["【回归显著性与失拟检验】"]
     for resp_name, m in context["models"].items():
         if "predict_fn" in m:
-            lines.append(f"◆ 响应 {resp_name}：代理模型不适用多项式回归 ANOVA/LOF；请查看留出集验证与残差。")
+            lines.append(f"◆ 响应 {resp_name}：代理模型不适用多项式回归方差分析或失拟检验；请查看留出法验证与残差。")
             continue
         n = m["n"]
         # 从残差计算
@@ -104,9 +104,9 @@ def anova_and_lof(context, project):
         p = _f_pvalue(fstat, df_reg, df_res)
         lines.append(f"◆ 响应 {resp_name}")
         lines.append(f"  回归：F={fstat:.4g}，df=({df_reg},{df_res})，p={p:.4g}，"
-                     f"R²={m['r2']}，调整R²={m['adj_r2']}，RMSE={m['rmse']}")
+                     f"决定系数={m['r2']}，调整决定系数={m['adj_r2']}，均方根误差={m['rmse']}")
         if df_res <= 0 or ms_res <= 1e-24:
-            lines[-1] = f"  回归：R²={m['r2']}，RMSE={m['rmse']}；残差自由度不足或误差为零，F/p 不可估计。"
+            lines[-1] = f"  回归：决定系数={m['r2']}，均方根误差={m['rmse']}；残差自由度不足或误差为零，F/p 不可估计。"
         # 失拟：从重复设计点估计纯误差
         pure_ss, pure_df = 0, 0
         point_groups = {}
@@ -130,16 +130,16 @@ def anova_and_lof(context, project):
             ms_pe = pure_ss / pure_df
             ms_lof = lof_ss / lof_df
             if ms_pe <= 1e-24:
-                lines.append("  失拟(LOF)：重复点纯误差为零，F/p 不可估计；不能据此判定模型充分。")
+                lines.append("  失拟检验：重复点纯误差为零，F/p 不可估计；不能据此判定模型充分。")
                 continue
             lof_f = ms_lof / ms_pe
             lof_p = _f_pvalue(lof_f, lof_df, pure_df)
-            lines.append(f"  失拟(LOF)：SS_Lof={lof_ss:.4g}，SS_PE={pure_ss:.4g}，"
+            lines.append(f"  失拟检验：失拟平方和={lof_ss:.4g}，纯误差平方和={pure_ss:.4g}，"
                          f"F_Lof={lof_f:.4g}，p={lof_p:.4g}，df=({lof_df},{pure_df})")
             lines.append("  判定：" + ("未检出显著失拟，不等于证明模型充分。" if lof_p > 0.05
                                       else "模型存在失拟，建议改进模型结构或补点。"))
         else:
-            lines.append("  失拟(LOF)：无重复点/中心点，无法估计纯误差，跳过 LOF。")
+            lines.append("  失拟检验：无重复点或中心点，无法估计纯误差，已跳过。")
         lines.append("")
     return "\n".join(lines)
 
@@ -200,17 +200,19 @@ def cross_validation(context, results=None):
     results = validation_results(context) if results is None else results
     if not results:
         return "无模型可交叉验证。"
-    lines = ["【交叉验证 / 留出集验证】"]
+    lines = ["【交叉验证与留出法验证】"]
     for name, result in results.items():
         if result.get("message"):
             lines.append(f"  {name}: {result['message']}")
             continue
         r2 = f"{result['r2']:.4g}" if result['r2'] is not None else "不可估计（响应为常数）"
         if result["kind"] == "holdout":
-            lines.append(f"  响应 {name}（{result['model']}）：留出集验证，测试样本 {result['samples']}，"
-                         f"R²={r2}，RMSE={result['rmse']:.4g}；未执行 K 折验证。")
+            model_name = {"Kriging": "克里金模型", "SVR": "支持向量回归模型",
+                          "ANN": "神经网络模型"}.get(result['model'], result['model'])
+            lines.append(f"  响应 {name}（{model_name}）：留出法验证，测试样本 {result['samples']}，"
+                         f"测试集决定系数={r2}，均方根误差={result['rmse']:.4g}；未执行 K 折验证。")
         else:
-            lines.append(f"  响应 {name}: {result['folds']} 折 CV-RMSE={result['rmse']:.4g}, CV-R²={r2}")
+            lines.append(f"  响应 {name}: {result['folds']} 折交叉验证均方根误差={result['rmse']:.4g}，交叉验证决定系数={r2}")
     return "\n".join(lines)
 
 
@@ -239,7 +241,7 @@ def residual_analysis(context):
             validation = m.get("validation", {})
             predicted = validation.get("predicted", [])
             residuals = [a - p for a, p in zip(validation.get("actual", []), predicted)]
-            lines.append(f"  {resp_name}：留出集残差，R²={validation.get('r2_test', '未知')}，RMSE={m['rmse']:.4g}")
+            lines.append(f"  {resp_name}：留出集残差，测试集决定系数={validation.get('r2_test', '未知')}，均方根误差={m['rmse']:.4g}")
             data[resp_name] = {"predicted": predicted, "residual": residuals}
             continue
         residuals = m["residual"]
@@ -247,8 +249,8 @@ def residual_analysis(context):
         mean_r = statistics.mean(residuals) if n else 0.0
         std_r = statistics.pstdev(residuals) if n else 0.0
         std_res = [0.0 if std_r == 0 else (r - mean_r) / std_r for r in residuals]
-        lines.append(f"  {resp_name}: R²={m['r2']}, 调整R²={m['adj_r2']}, "
-                     f"RMSE={m['rmse']}, 残差均值={mean_r:.4g}, 残差标准差={std_r:.4g}")
+        lines.append(f"  {resp_name}: 决定系数={m['r2']}, 调整决定系数={m['adj_r2']}, "
+                     f"均方根误差={m['rmse']}, 残差均值={mean_r:.4g}, 残差标准差={std_r:.4g}")
         lines.append(f"    标准化残差区间 [{min(std_res):.3g}, {max(std_res):.3g}]，"
                      f"|z|>2 的占比 {sum(1 for z in std_res if abs(z) > 2) / max(n, 1) * 100:.1f}%")
         data[resp_name] = {"predicted": m["predicted"], "residual": residuals,
@@ -258,10 +260,10 @@ def residual_analysis(context):
 
 def tolerance_contribution(context, k_design, point=None):
     if not context or not context["models"]:
-        return "无模型可做容差贡献分析。", {}
+        return "无模型可做局部方差贡献分析。", {}
     inputs = context["inputs"]
     names = context["names"]
-    lines = ["【局部输入方差贡献（独立输入，对角二阶近似）】", f"参考点：{point or '设计区间中心'}", "包含一阶及对角曲率项，与当前优化器近似一致；不含混合二阶项，不代表全局重要性。"]
+    lines = ["【局部方差贡献分析（独立输入，对角二阶近似）】", f"参考点：{point or '设计区间中心'}", "包含一阶及对角曲率项，与当前优化器近似一致；不含混合二阶项，不代表全局重要性。"]
     detail = {}
     # 参考点：各设计因子取中心
     x_nom = {}
@@ -339,10 +341,10 @@ def parameter_design(context, robust_result, k_design, k_constraint=6.0):
     lines.append(f"  有限抽样内的可行稳定候选：{best_x or '未找到；不输出违反约束的稳定点'}")
     _m, _s = _metric_at(context, recommended, k_design, k_constraint)
     _m2, _s2 = _metric_at(context, best_x, k_design, k_constraint) if best_x is not None else (float("nan"), float("nan"))
-    lines.append(f"  推荐点：望性均值 {_m:.4f}，σ 归一 {_s:.4f}")
+    lines.append(f"  推荐点：平均望性 {_m:.4f}，归一化标准差 {_s:.4f}")
     if best_x is not None:
-        lines.append(f"  稳定候选：望性均值 {_m2:.4f}，σ 归一 {_s2:.4f}")
-    lines.append("  提示：因子图见“参数设计”页，横轴为取值，纵轴为均值/稳定性。")
+        lines.append(f"  稳定候选：平均望性 {_m2:.4f}，归一化标准差 {_s2:.4f}")
+    lines.append("  提示：因子图见“参数设计”页，横轴为取值，纵轴为平均望性与归一化标准差。")
     return {"text": "\n".join(lines), "recommended": recommended,
             "stable": best_x, "factor_plots": plots}
 
@@ -353,8 +355,10 @@ def model_extraction(context):
     lines = ["【模型提取（拟合方程）】"]
     for resp_name, m in context["models"].items():
         if "predict_fn" in m:
-            lines.append(f"  {resp_name}：{m.get('model_type', '代理模型')} 已训练预测器；"
-                         f"输入变量：{context['names']}。鲁棒优化直接调用该预测器，"
+            model_name = {"Kriging": "克里金模型", "SVR": "支持向量回归模型",
+                          "ANN": "神经网络模型"}.get(m.get('model_type'), '代理模型')
+            lines.append(f"  {resp_name}：{model_name}已训练预测器；"
+                         f"输入变量：{context['names']}。鲁棒性优化设计直接调用该预测器，"
                          "采用数值梯度和 Hessian 传播输入不确定性，无二次多项式方程。")
             continue
         inputs = context["inputs"]
@@ -384,5 +388,5 @@ def model_extraction(context):
             s.append((body if i == 0 and c >= 0 else sign + body))
         lines.append("    以下符号均为编码变量：" + str(dict(zip(names, zip(m["center"].tolist(), m["half"].tolist())))) + "；编码值=(实际值−中心)/半跨度。")
         lines.append(f"  {resp_name}: y = " + "".join(s).strip())
-        lines.append(f"    输入变量：{names}；R²={m['r2']}，调整R²={m['adj_r2']}")
+        lines.append(f"    输入变量：{names}；决定系数={m['r2']}，调整决定系数={m['adj_r2']}")
     return "\n".join(lines)

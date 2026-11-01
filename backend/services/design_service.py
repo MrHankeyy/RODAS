@@ -86,7 +86,7 @@ def taguchi_plan(project, method, inner, outer, levels, seed, replicates,
         "groups": groups,
         "recommendation": (
             "内表×外表叉积试验已完成安排。在【数据管理】填入各次试验响应后，"
-            "可到【设计优化】计算均值响应表、S/N 表并给出待确认的候选水平组合。"),
+            "可到【设计优化】计算均值响应表、信噪比表并给出待确认的候选水平组合。"),
         "summary": (
             f"已按内表 {meta['inner_label']}（{meta['inner_runs']} 组）×"
             f"外表 {meta['outer_label']}（{meta['outer_runs']} 组）生成"
@@ -101,8 +101,8 @@ def taguchi_plan(project, method, inner, outer, levels, seed, replicates,
 def surrogate_plan(project, method, config, seed):
     if not config:
         raise ValueError("请先在【方案配置】填写模型与试验设计参数。")
-    expected = ("Kriging" if "Kriging" in method else
-                "SVR" if "SVR" in method else "ANN")
+    expected = ("Kriging" if "克里金" in method else
+                "SVR" if "支持向量回归" in method else "ANN")
     if config.get("model") != expected:
         raise ValueError(
             f"当前设置属于 {config.get('model')}，与所选 {expected} 不一致。")
@@ -195,7 +195,7 @@ def _validate_model_design(model, rows, factors, config):
         matrix = (_design_matrix(coded[train])[0] if "二次" in trend else
                   np.column_stack([np.ones(len(train)), coded[train]]) if "一次" in trend else np.ones((len(train), 1)))
         if np.linalg.matrix_rank(matrix) < matrix.shape[1]:
-            raise ValueError("当前设计的训练子集无法识别 Kriging 趋势项；请增加样本或降低趋势阶次。")
+            raise ValueError("当前设计的训练子集无法识别克里金模型趋势项；请增加样本或降低趋势阶次。")
 
 
 def commit_plan(project, plan):

@@ -8,16 +8,25 @@ from PyQt6.QtCore import Qt, pyqtSignal
 
 from backend.engines.doe import factor_limits
 from backend.services.design_service import MODEL_DESIGNS
-from backend.reporting.math_format import rich_text
-from frontend.math_widgets import decorate_combo
 from frontend.numeric_inputs import numeric_input, commit_numeric_inputs
+from frontend.terminology import add_combo_item, name, tooltip
 
 
 MODEL_TITLES = {
-    "RSM": "二次响应面",
-    "Kriging": "Kriging",
-    "SVR": "SVR（支持向量回归）",
-    "ANN": "BP 神经网络",
+    "RSM": name("quadratic_response_surface"),
+    "Kriging": name("kriging"),
+    "SVR": name("svr"),
+    "ANN": name("bpnn"),
+}
+MODEL_TERM_KEYS = {
+    "RSM": "quadratic_response_surface", "Kriging": "kriging",
+    "SVR": "svr", "ANN": "bpnn",
+}
+DESIGN_TERM_KEYS = {
+    "CCD": "ccd", "BBD": "bbd",
+    "Latin Hypercube (LHS)": "lhs", "最优 LHS": "maximin_lhs",
+    "低差异序列 SOBOL": "sobol", "均匀网格抽样": "uniform_grid",
+    "稀疏配点法": "low_dimensional_combination", "随机抽样": "random_sampling",
 }
 
 
@@ -34,10 +43,11 @@ class ModelConfiguration(QWidget):
         self.range_group = QGroupBox("因子与试验范围")
         bounds_layout = QVBoxLayout(self.range_group)
         self.bounds_table = QTableWidget(0, 3)
-        self.bounds_table.setHorizontalHeaderLabels(["模型输入（单位）", "低水平 / 抽样下限", "高水平 / 抽样上限"])
+        self.bounds_table.setHorizontalHeaderLabels(["模型输入（单位）", "抽样下限", "抽样上限"])
         self.bounds_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.bounds_table.verticalHeader().hide()
-        self.bounds_table.setMaximumHeight(145)
+        self.bounds_table.horizontalHeader().geometriesChanged.connect(self._fit_bounds_table)
+        self.bounds_table.verticalHeader().geometriesChanged.connect(self._fit_bounds_table)
         bounds_layout.addWidget(self.bounds_table)
         root.addWidget(self.range_group)
         self.set_factors(factors)
@@ -46,7 +56,8 @@ class ModelConfiguration(QWidget):
         row = QHBoxLayout()
         row.addWidget(QLabel("试验设计方法："))
         self.doe_method_combo = QComboBox()
-        self.doe_method_combo.addItems(MODEL_DESIGNS[model_key])
+        for design in MODEL_DESIGNS[model_key]:
+            add_combo_item(self.doe_method_combo, DESIGN_TERM_KEYS[design], design)
         row.addWidget(self.doe_method_combo)
         self.sample_label = QLabel("基础样本点数：")
         row.addWidget(self.sample_label)
@@ -57,12 +68,13 @@ class ModelConfiguration(QWidget):
         self.structured = QWidget()
         row = QHBoxLayout(self.structured)
         row.setContentsMargins(0, 0, 0, 0)
-        row.addWidget(QLabel("CCD 轴值 α："))
+        axis_label = QLabel("轴值 α：")
+        axis_label.setToolTip(tooltip("ccd"))
+        row.addWidget(axis_label)
         self.alpha_mode_combo = QComboBox()
         self.alpha_mode_combo.addItem("面心（α=1）", "face")
         self.alpha_mode_combo.addItem("可旋转", "rotatable")
         self.alpha_mode_combo.addItem("自定义 α", "custom")
-        decorate_combo(self.alpha_mode_combo)
         row.addWidget(self.alpha_mode_combo)
         self.alpha_spin = numeric_input(float, .5, 5, 1, decimals=3)
         row.addWidget(self.alpha_spin)
@@ -84,10 +96,6 @@ class ModelConfiguration(QWidget):
         row.addWidget(self.seed_spin)
         row.addStretch()
         layout.addLayout(row)
-        self.design_hint = QLabel()
-        self.design_hint.setWordWrap(True)
-        self.design_hint.setProperty("role", "muted")
-        layout.addWidget(self.design_hint)
         root.addWidget(group)
         root.addWidget(self._build_model_group())
         self._load_config(config)
@@ -120,20 +128,25 @@ class ModelConfiguration(QWidget):
             for col, value in enumerate(values, 1):
                 self.bounds_table.setItem(i, col, QTableWidgetItem(str(value)))
         self.bounds_table.blockSignals(False)
+        self._fit_bounds_table()
         self._range_defaults = {f.name: factor_limits(f) for f in self.factors}
 
+    def _fit_bounds_table(self):
+        height = (self.bounds_table.horizontalHeader().sizeHint().height()
+                  + sum(self.bounds_table.rowHeight(i) for i in range(self.bounds_table.rowCount()))
+                  + 2 * self.bounds_table.frameWidth())
+        self.bounds_table.setFixedHeight(min(145, height))
+
     def _on_design_changed(self, *_args):
-        design = self.doe_method_combo.currentText()
+        design = self.doe_method_combo.currentData()
         structured = design in ("CCD", "BBD")
+        limits = ["低水平", "高水平"] if structured else ["抽样下限", "抽样上限"]
+        self.bounds_table.setHorizontalHeaderLabels(["模型输入（单位）", *limits])
         self.structured.setVisible(structured)
         self.sample_label.setVisible(not structured)
         self.sample_count_spin.setVisible(not structured)
         self.alpha_mode_combo.setEnabled(design == "CCD")
         self.alpha_spin.setEnabled(design == "CCD" and self.alpha_mode_combo.currentData() == "custom")
-        self.design_hint.setText(rich_text(
-            "CCD 的低高水平对应编码 ±1；α>1 时轴点会超出这些水平。" if design == "CCD" else
-            "BBD 使用三水平的成对组合，不包含立方体顶点。" if design == "BBD" else
-            "生成时检查样本数量与模型设置。"))
 
     def _build_model_group(self):
         group = QGroupBox("模型设置")
@@ -141,30 +154,40 @@ class ModelConfiguration(QWidget):
         key = self.model_key
 
         if key == "RSM":
-            info = QLabel("采用完整二次模型：常数项、一次项、平方项和两两交互项。生成时检查设计矩阵是否满秩。")
-            info.setWordWrap(True)
-            layout.addWidget(info)
+            row = QHBoxLayout()
+            row.addWidget(QLabel("模型形式："))
+            self.rsm_model_combo = QComboBox()
+            add_combo_item(self.rsm_model_combo, "full_quadratic_model", "full_quadratic")
+            row.addWidget(self.rsm_model_combo)
+            row.addStretch()
+            layout.addLayout(row)
         elif key == "Kriging":
             row = QHBoxLayout()
             row.addWidget(QLabel("相关函数："))
             self.corr_combo = QComboBox()
-            self.corr_combo.addItems(["Gaussian（高斯）", "指数 Exponential", "Matern 3/2"])
+            for term, value in (("gaussian_correlation", "Gaussian（高斯）"),
+                                ("exponential_correlation", "指数 Exponential"),
+                                ("matern_32_correlation", "Matern 3/2")):
+                add_combo_item(self.corr_combo, term, value)
             row.addWidget(self.corr_combo)
             row.addSpacing(20)
             row.addWidget(QLabel("回归函数（趋势项）："))
             self.regress_combo = QComboBox()
-            self.regress_combo.addItems(["常数（Ordinary）", "一次趋势", "二次趋势"])
+            for term, value in (("ordinary_trend", "常数（Ordinary）"),
+                                ("linear_trend", "一次趋势"),
+                                ("quadratic_trend", "二次趋势")):
+                add_combo_item(self.regress_combo, term, value)
             row.addWidget(self.regress_combo)
             row.addStretch()
             layout.addLayout(row)
-            layout.addWidget(QLabel("说明：θ 相关参数由最大似然在候选网格上自动寻优；"
-                                    "回归函数影响 Kriging 漂移项的复杂度。"))
-
         elif key == "SVR":
             row = QHBoxLayout()
             row.addWidget(QLabel("核函数："))
             self.kernel_combo = QComboBox()
-            self.kernel_combo.addItems(["RBF 核", "多项式核", "Sigmoid 核"])
+            for term, value in (("rbf_kernel", "RBF 核"),
+                                ("polynomial_kernel", "多项式核"),
+                                ("sigmoid_kernel", "Sigmoid 核")):
+                add_combo_item(self.kernel_combo, term, value)
             row.addWidget(self.kernel_combo)
             row.addSpacing(20)
             row.addWidget(QLabel("多项式次数："))
@@ -174,7 +197,8 @@ class ModelConfiguration(QWidget):
             row.addStretch()
             layout.addLayout(row)
             self.kernel_combo.currentTextChanged.connect(
-                lambda t: self.poly_degree_spin.setEnabled(t == "多项式核"))
+                lambda _t: self.poly_degree_spin.setEnabled(
+                    self.kernel_combo.currentData() == "多项式核"))
 
             grid = QVBoxLayout()
             c_row = QHBoxLayout()
@@ -203,8 +227,8 @@ class ModelConfiguration(QWidget):
             g_row.addStretch()
             grid.addLayout(g_row)
             layout.addLayout(grid)
-            layout.addWidget(QLabel("说明：C 与 g 按给定范围/步长网格寻优，ε-SVR 误差带取 0.05；"
-                                    "未安装 scikit-learn 时自动退回核岭回归近似。"))
+            group.setToolTip("C 与 γ 按给定范围和步长网格寻优，ε-SVR 误差带取 0.05。"
+                             "依赖加载、训练或预测失败时明确报错，不更换模型。")
 
         else:  # ANN
             row = QHBoxLayout()
@@ -248,7 +272,10 @@ class ModelConfiguration(QWidget):
             row2 = QHBoxLayout()
             row2.addWidget(QLabel("激活函数："))
             self.act_combo = QComboBox()
-            self.act_combo.addItems(["sigmoid", "tanh", "relu"])
+            for term, value in (("logistic_sigmoid", "sigmoid"),
+                                ("hyperbolic_tangent", "tanh"),
+                                ("relu", "relu")):
+                add_combo_item(self.act_combo, term, value)
             row2.addWidget(self.act_combo)
             row2.addSpacing(20)
             row2.addWidget(QLabel("学习率："))
@@ -277,7 +304,9 @@ class ModelConfiguration(QWidget):
         def restore_combo(combo, value):
             if value is None:
                 return
-            index = combo.findText(str(value))
+            index = combo.findData(value)
+            if index < 0:
+                index = combo.findText(str(value))
             if index < 0:
                 index = next((i for i in range(combo.count())
                               if combo.itemText(i).startswith(str(value))), -1)
@@ -340,12 +369,12 @@ class ModelConfiguration(QWidget):
         model_cfg = {}
         if self.model_key == "Kriging":
             model_cfg = {
-                "correlation": self.corr_combo.currentText(),
-                "trend": self.regress_combo.currentText(),
+                "correlation": self.corr_combo.currentData(),
+                "trend": self.regress_combo.currentData(),
             }
         elif self.model_key == "SVR":
             model_cfg = {
-                "kernel": self.kernel_combo.currentText(),
+                "kernel": self.kernel_combo.currentData(),
                 "poly_degree": self.poly_degree_spin.value(),
                 "c_min": self.c_min.value(), "c_max": self.c_max.value(),
                 "c_step": self.c_step.value(), "g_min": self.g_min.value(),
@@ -359,7 +388,7 @@ class ModelConfiguration(QWidget):
             model_cfg = {
                 "hidden_layers": self.hidden_layers_spin.value(),
                 "hidden_nodes": self.hidden_nodes_spin.value(),
-                "activation": self.act_combo.currentText(),
+                "activation": self.act_combo.currentData(),
                 "learning_rate": self.lr_spin.value(),
                 "epochs": self.epoch_spin.value(),
                 "node_search": node_search,
@@ -369,7 +398,7 @@ class ModelConfiguration(QWidget):
             "model": self.model_key,
             "model_params": model_cfg,
             "sample_count": self.sample_count_spin.value(),
-            "doe_method": self.doe_method_combo.currentText(),
+            "doe_method": self.doe_method_combo.currentData(),
             "bounds": self._bounds(),
             "alpha_mode": self.alpha_mode_combo.currentData(), "alpha": self.alpha_spin.value(),
             "centers": self.centers_spin.value(), "replicates": self.repeats_spin.value(),

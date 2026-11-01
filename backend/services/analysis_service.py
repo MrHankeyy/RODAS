@@ -48,7 +48,7 @@ def analyze(project, context, robust, k_design=6, k_constraint=6):
             context, robust, k_design, k_constraint)
         if robust else {
             "text": (
-                "尚未执行鲁棒优化，无推荐点；"
+                "尚未执行鲁棒性优化设计，无推荐点；"
                 "可在统计诊断页手动核验设计点。"),
             "factor_plots": [],
         })

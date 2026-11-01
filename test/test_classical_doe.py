@@ -35,7 +35,7 @@ def taguchi(feature='望小', outer=True, repeats=1):
     for row, group in zip(rows, meta['groups']):
         row.update({'内表组号':group['inner']+1, '外表组号':group['outer']+1})
         row['Y'] = 10 + 2*row['X0'] + row['X1'] + .1*row.get('N', 0)
-    return ProjectData(factors=fs+noise, responses=[ResponseItem(name='Y', feature=feature, lower='9', upper='11')],
+    return ProjectData(factors=fs+noise, responses=[ResponseItem(name='Y', feature=feature, target='10')],
         design_method='田口稳健设计（内表×外表）', design_params={'meta':meta}, doe_matrix=rows)
 
 
@@ -110,6 +110,20 @@ class ClassicalDOE(unittest.TestCase):
         p=taguchi();p.doe_matrix.pop()
         with self.assertRaises(ValueError): da.taguchi(p)
 
+    def test_nominal_target_directly_controls_selection_and_zero_target_loss(self):
+        for outer in (False, True):
+            p = taguchi('望目', outer)
+            for target, value in (('7', -1), ('13', 1)):
+                p.responses[0].target = target
+                self.assertEqual(da.taguchi(p)['best_levels'], {'X0': value, 'X1': value})
+            p.responses[0].target = '0'
+            for row in p.doe_matrix:
+                row['Y'] = .1 * row.get('N', 0)
+            result = da.taguchi(p)
+            self.assertFalse(result['errors'])
+            if outer:
+                for run in result['response_analysis']['Y']['runs']:
+                    self.assertAlmostEqual(run['metric'], 20)
     def test_rsm_polynomial_and_derivatives(self):
         fs=factors(3)
         for kind,mode in [('CCD','face'),('CCD','rotatable'),('CCD','custom'),('BBD','face')]:

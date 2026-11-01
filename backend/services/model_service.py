@@ -147,7 +147,7 @@ def build_rsm_context(project):
                     _responses=project.responses, _project=project)
     context, errors = optimizer.build_models(project)
     if errors or not context or not context["models"]:
-        raise ValueError("\n".join(errors or ["响应曲面拟合失败"]))
+        raise ValueError("\n".join(errors or ["二次响应面模型拟合失败"]))
     service.model_cache['rsm'] = context['models']
     return context
 

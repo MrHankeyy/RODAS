@@ -8,13 +8,16 @@ from unittest.mock import patch
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from PyQt6.QtCore import Qt
 from PyQt6.QtTest import QTest
-from PyQt6.QtWidgets import QApplication
+from PyQt6.QtWidgets import QApplication, QComboBox, QGroupBox, QLabel
 
 from backend.domain.models import ProjectData, FactorItem, ResponseItem
 from backend.services import design_service, model_service
 from frontend.pages.configuration_page import ConfigurationPage
 from frontend.pages.optimization_page import OptimizationPage
 from frontend.notifications import Notice
+from frontend.pages.model_configuration import DESIGN_TERM_KEYS, MODEL_TERM_KEYS
+from frontend.terminology import name, tooltip
+from frontend.theme import install_theme, polish_tables
 
 APP = QApplication.instance() or QApplication([])
 
@@ -34,13 +37,118 @@ def config(model, design):
 
 
 class ConfigurationWorkflowTests(unittest.TestCase):
+    def test_repeated_model_switches_fit_without_editing_parameters(self):
+        install_theme(APP)
+        for count in (2, 8):
+            p = project(count)
+            p.task_type = 'robust'
+            page = ConfigurationPage(p)
+            self.addCleanup(page.close)
+            polish_tables(page)
+            page.show()
+            for width, height in ((1050, 700), (1920, 1080), (1050, 700)):
+                page.resize(width, height)
+                for index in (0, 1, 2, 3, 0, 3, 2, 1, 0):
+                    page.model_combo.setCurrentIndex(index)
+                    for _ in range(4):
+                        APP.processEvents()
+                    editor = page.model_stack.currentWidget()
+                    table = editor.bounds_table
+                    with self.subTest(count=count, width=width, model=editor.model_key):
+                        self.assertGreaterEqual(editor.height(), editor.sizeHint().height())
+                        self.assertGreaterEqual(page.model_stack.height(), editor.height())
+                        if count == 2:
+                            self.assertGreaterEqual(table.viewport().height(),
+                                sum(table.rowHeight(row) for row in range(count)))
+                            self.assertEqual(table.verticalScrollBar().maximum(), 0)
+                        else:
+                            self.assertGreater(table.verticalScrollBar().maximum(), 0)
+                        button = page.results_workspace.buttons[2]
+                        self.assertGreaterEqual(button.width(), button.sizeHint().width())
+            page.close()
+
+    def test_trial_design_hints_are_removed_and_rsm_has_one_model_choice(self):
+        page = ConfigurationPage(project())
+        self.addCleanup(page.close)
+        removed = ('CCD 的低高水平', 'BBD 使用三水平', '生成时检查样本数量',
+                   '中心点用于检验曲率', '内表安排控制因子')
+        self.assertFalse(any(any(text in label.text() for text in removed)
+                             for label in page.findChildren(QLabel)))
+        for editor in page.model_editors.values():
+            trial = next(group for group in editor.findChildren(QGroupBox) if group.title() == '试验设计')
+            self.assertFalse(any(label.property('role') == 'muted' for label in trial.findChildren(QLabel)))
+        editor = page.model_editors['RSM']
+        settings = next(group for group in editor.findChildren(QGroupBox) if group.title() == '模型设置')
+        combo = settings.findChild(QComboBox)
+        self.assertIs(combo, editor.rsm_model_combo)
+        self.assertTrue(combo.isEnabled())
+        self.assertEqual([combo.itemText(i) for i in range(combo.count())], ['完整二次模型'])
+
+    def test_run_count_is_a_peer_group_and_updates_without_committing_drafts(self):
+        p = project()
+        page = ConfigurationPage(p)
+        self.addCleanup(page.close)
+        page.dynamic_params_widget.setCurrentIndex(2)
+        editor = page.model_editors['RSM']
+        self.assertIs(page.preview_group.parentWidget(), editor)
+        self.assertEqual([editor.layout().itemAt(i).widget().title() for i in range(editor.layout().count())],
+                         ['因子与试验范围', '试验设计', '模型设置', '试验规模'])
+        self.assertIs(page.preview_label.parentWidget(), page.preview_group)
+        self.assertIsNone(page.preview_label.property('role'))
+        before = deepcopy(asdict(p))
+        page._refresh_preview()
+        self.assertEqual(page.preview_label.text(), '预计试验次数：17 次')
+        editor.centers_spin.setValue(5)
+        editor.repeats_spin.setValue(2)
+        QTest.qWait(220)
+        self.assertEqual(page.preview_label.text(), '预计试验次数：38 次')
+        self.assertEqual(asdict(p), before)
+        for category, content in ((0, page.screening_widget), (1, page.taguchi_widget), (2, editor)) * 2:
+            page.dynamic_params_widget.setCurrentIndex(category)
+            page._refresh_preview()
+            self.assertIs(page.preview_group.parentWidget(), content)
+            self.assertIn('预计试验次数：', page.preview_label.text())
+            self.assertNotIn('\n', page.preview_label.text())
+            self.assertNotIn('所有设计点', page.preview_label.text())
+        page.model_combo.setCurrentIndex(3)
+        ann = page.model_editors['ANN']
+        ann.sample_count_spin.setValue(42)
+        page._refresh_preview()
+        self.assertIs(page.preview_group.parentWidget(), ann)
+        self.assertEqual(page.preview_label.text(), '预计试验次数：42 次')
+
+    def test_invalid_preview_is_framed_and_recovers_after_fixing_the_range(self):
+        page = ConfigurationPage(project())
+        self.addCleanup(page.close)
+        page.dynamic_params_widget.setCurrentIndex(2)
+        editor = page.model_editors['RSM']
+        editor.bounds_table.item(0, 2).setText('-1')
+        page._refresh_preview()
+        self.assertIs(page.preview_label.parentWidget(), page.preview_group)
+        self.assertIn('当前配置不可生成', page.preview_label.text())
+        editor.bounds_table.item(0, 2).setText('1')
+        page._refresh_preview()
+        self.assertEqual(page.preview_label.text(), '预计试验次数：17 次')
+
     def test_models_offer_and_accept_only_their_original_design_choices(self):
         p = project()
         page = ConfigurationPage(p)
+        self.assertEqual(tuple(page.model_combo.itemText(i) for i in range(page.model_combo.count())),
+                         tuple(name(MODEL_TERM_KEYS[key]) for key in page.MODEL_KEYS))
+        self.assertEqual(tuple(page.model_combo.itemData(i, Qt.ItemDataRole.ToolTipRole)
+                               for i in range(page.model_combo.count())),
+                         tuple(tooltip(MODEL_TERM_KEYS[key]) for key in page.MODEL_KEYS))
+        self.assertEqual(page.model_combo.toolTip(), tooltip(MODEL_TERM_KEYS["RSM"]))
         for model in ("RSM", "Kriging", "SVR", "ANN"):
             allowed = ("CCD", "BBD") if model == "RSM" else design_service.SAMPLING_METHODS
             combo = page.model_editors[model].doe_method_combo
-            self.assertEqual(tuple(combo.itemText(i) for i in range(combo.count())), allowed)
+            self.assertEqual(tuple(combo.itemData(i) for i in range(combo.count())), allowed)
+            self.assertEqual(tuple(combo.itemText(i) for i in range(combo.count())),
+                             tuple(name(DESIGN_TERM_KEYS[item]) for item in allowed))
+            self.assertEqual(tuple(combo.itemData(i, Qt.ItemDataRole.ToolTipRole)
+                                   for i in range(combo.count())),
+                             tuple(tooltip(DESIGN_TERM_KEYS[item]) for item in allowed))
+            self.assertEqual(combo.toolTip(), tooltip(DESIGN_TERM_KEYS[allowed[0]]))
             for design in allowed:
                 with self.subTest(model=model, design=design):
                     plan = design_service.model_plan(p, method(model), config(model, design))
@@ -118,10 +226,10 @@ class ConfigurationWorkflowTests(unittest.TestCase):
             failed.assert_called_once()
         self.assertEqual(asdict(p), snapshot)
         editor.bounds_table.item(0, 2).setText("1")
-        editor.doe_method_combo.setCurrentText("BBD")
-        with self.assertRaisesRegex(ValueError, "BBD|Box|因子"):
+        editor.doe_method_combo.setCurrentIndex(editor.doe_method_combo.findData("BBD"))
+        with self.assertRaisesRegex(ValueError, "博克斯|因子"):
             page._build_plan()
-        editor.doe_method_combo.setCurrentText("CCD")
+        editor.doe_method_combo.setCurrentIndex(editor.doe_method_combo.findData("CCD"))
         editor.bounds_table.item(0, 1).setText("nan")
         with self.assertRaisesRegex(ValueError, "范围无效"):
             page._build_plan()
@@ -185,7 +293,9 @@ class ConfigurationWorkflowTests(unittest.TestCase):
         p.doe_matrix = [{"X0": 0, "X1": 0, "X2": 0, "Y": 5}]
         snapshot = deepcopy(asdict(p))
         page = ConfigurationPage(p)
-        self.assertEqual(page.model_editors["Kriging"].doe_method_combo.currentText(), "Latin Hypercube (LHS)")
+        combo = page.model_editors["Kriging"].doe_method_combo
+        self.assertEqual(combo.currentText(), "拉丁超立方采样")
+        self.assertEqual(combo.currentData(), "Latin Hypercube (LHS)")
         self.assertIn("重新生成", page.config_status.text())
         self.assertIsNone(page._applied_state)
         self.assertEqual(asdict(p), snapshot)

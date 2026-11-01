@@ -12,6 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from PyQt6.QtWidgets import QApplication
 from backend.domain.models import ProjectData, FactorItem, ResponseItem
 from frontend.pages.optimization_page import OptimizationPage
+from frontend.terminology import name, tooltip
 from backend.engines import optimizer as oe
 from backend.engines import doe as de
 import numpy as np
@@ -53,7 +54,9 @@ class SurrogateWorkbenchTest(unittest.TestCase):
                 self.assertIn("计算完成", page.status_label.text())
                 self.assertEqual(page.cv_panel.snapshot["validation"]["Y"]["kind"], "holdout")
                 self.assertIn("留出集", page.cv_panel.figure.axes[0].get_title())
-                self.assertIn(model, page.model_panel.model_label.text())
+                term = {"Kriging": "kriging", "SVR": "svr", "ANN": "bpnn"}[model]
+                self.assertEqual(page.model_panel.model_label.text(), "当前模型：" + name(term))
+                self.assertEqual(page.model_panel.model_label.toolTip(), tooltip(term))
                 self.assertAlmostEqual(oe.model_predict(page._oe_context["models"]["Y"], [1.3]), trained([1.3 / 4]))
                 self.assertTrue(page.run_all_btn.isEnabled())
                 page.close()
@@ -108,13 +111,59 @@ class SurrogateWorkbenchTest(unittest.TestCase):
         self.assertEqual(result["params"]["solver"], "scikit-learn SVR")
         np.testing.assert_allclose([result["predict_fn"](v) for v in x[:7]], result["predicted"])
 
-    def test_svr_fallback_predictor_matches_selected_model(self):
+    def test_svr_dependency_failure_has_no_replacement_predictor(self):
         x = np.linspace(0, 1, 12).reshape(-1, 1)
         with patch.dict(sys.modules, {"sklearn.svm": None}):
-            result = de.train_svr(x, np.sin(x[:, 0] * 6), x[:4],
-                                  c_min=1, c_max=2, c_step=1,
-                                  g_min=.1, g_max=2.1, g_step=1)
-        np.testing.assert_allclose([result["predict_fn"](v) for v in x[:4]], result["predicted"])
+            with self.assertRaisesRegex(RuntimeError, "支持向量回归依赖加载失败"):
+                de.train_svr(x, np.sin(x[:, 0] * 6), x[:4])
+            result = de.train_surrogate(x, np.sin(x[:, 0] * 6), model="SVR")
+        self.assertIn("支持向量回归依赖加载失败", result["error"])
+        self.assertNotIn("predict_fn", result)
+
+    def test_svr_errors_reach_each_ui_action_and_block_optimization(self):
+        for action, notice, status in (("run_optimization", "critical", "分析失败"),
+                                       ("run_statistics", "warning", "统计分析失败"),
+                                       ("run_workbench", "warning", "优化失败")):
+            with self.subTest(action=action):
+                page = self.make_page("SVR")
+                self.addCleanup(page.close)
+                with patch.dict(sys.modules, {"sklearn.svm": None}), \
+                     patch("frontend.pages.optimization_controller.OptimizationWorker") as worker, \
+                     patch.object(oe, "build_models", side_effect=AssertionError("model replacement")), \
+                     patch("frontend.pages.optimization_page.Notice.information") as success, \
+                     patch("frontend.pages.optimization_page.Notice." + notice) as failed:
+                    getattr(page, action)()
+                failed.assert_called_once()
+                self.assertIn("支持向量回归依赖加载失败", failed.call_args.args[2])
+                self.assertIn(status, page.status_label.text())
+                success.assert_not_called()
+                worker.assert_not_called()
+                self.assertIsNone(page._oe_context)
+                response = page.project_data.surrogate_result["responses"]["Y"]
+                self.assertIn("error", response)
+                self.assertNotIn("predict_fn", response)
+
+    def test_failed_svr_retraining_clears_previous_optimization_state(self):
+        page = self.make_page("SVR")
+        self.addCleanup(page.close)
+        page._run_surrogate()
+        page._oe_context, errors = page._build_surrogate_context()
+        self.assertFalse(errors)
+        self.assertIsNotNone(page._oe_context)
+        page._robust_res = {"old": True}
+        page.project_data.workbench_result = {"old": True}
+        with patch.dict(sys.modules, {"sklearn.svm": None}), \
+             patch("frontend.pages.optimization_page.Notice.critical") as failed, \
+             patch("frontend.pages.optimization_page.Notice.information") as success:
+            page.run_optimization()
+        failed.assert_called_once()
+        success.assert_not_called()
+        self.assertIsNone(page._oe_context)
+        self.assertFalse(page._robust_res)
+        self.assertFalse(page.project_data.workbench_result)
+        context, errors = page._build_surrogate_context()
+        self.assertIsNone(context)
+        self.assertTrue(errors)
 
     def constraint_context(self, role="约束"):
         factors = [FactorItem(name="X", param1="0", param2="4")]

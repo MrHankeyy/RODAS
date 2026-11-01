@@ -7,6 +7,7 @@ from PyQt6.QtWidgets import (
 
 from frontend.pages.result_summary import display, overview
 from frontend.math_widgets import MathLabel, install_delegate, decorate_item
+from frontend.terminology import apply_header_tooltips, apply_item_tooltip
 
 
 def label(text="", role=None):
@@ -22,6 +23,7 @@ class SummaryTable(QTableWidget):
     def __init__(self, headers, rows, parent=None):
         super().__init__(len(rows), len(headers), parent)
         self.setHorizontalHeaderLabels(headers)
+        apply_header_tooltips(self)
         self.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.setAlternatingRowColors(True)
         install_delegate(self)
@@ -31,7 +33,8 @@ class SummaryTable(QTableWidget):
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         for i, row in enumerate(rows):
             for j, value in enumerate(row):
-                self.setItem(i, j, decorate_item(QTableWidgetItem(display(value)), value))
+                item = decorate_item(QTableWidgetItem(display(value)), value)
+                self.setItem(i, j, apply_item_tooltip(item))
         self.resizeRowsToContents()
         self.setFixedHeight(self.horizontalHeader().height() + sum(self.rowHeight(i) for i in range(len(rows))) + 4)
 

@@ -6,8 +6,10 @@ from PyQt6.QtCore import Qt, QRectF, QSize, pyqtSignal
 from PyQt6.QtGui import QColor, QFont, QFontMetricsF, QIcon, QPainter, QPainterPath, QPen, QPixmap
 from PyQt6.QtWidgets import (
     QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QGridLayout,
-    QSizePolicy,
+    QSizePolicy, QStackedWidget,
 )
+from backend.domain.models import TASK_TYPES
+from frontend.terminology import tooltip
 
 CHINESE_NAME = '面向飞行器结构的鲁棒性优化设计平台'
 ENGLISH_NAME = 'Robust Optimal Design of Aerospace Structures'
@@ -88,6 +90,59 @@ class ResponseSurface(QWidget):
         for x, y in [(-.7, -.3), (.1, -.1), (.7, .2), (-.2, .6), (.4, -.7)]:
             px, py = self._point(x, y)
             painter.drawEllipse(QRectF(px - 3.2, py - 3.2, 6.4, 6.4))
+
+
+class NewTaskCard(QStackedWidget):
+    task_requested = pyqtSignal(str)
+
+    def __init__(self, cover):
+        super().__init__()
+        self.cover = cover
+        self.addWidget(cover)
+        self.options = QWidget()
+        self.options.setObjectName('welcomeTaskOptions')
+        layout = QVBoxLayout(self.options)
+        layout.setContentsMargins(4, 4, 4, 4)
+        layout.setSpacing(0)
+        self.buttons = {}
+        term_keys = {'robust': 'task_robust', 'taguchi': 'taguchi_design',
+                     'factorial': 'factor_screening'}
+        for key, title in TASK_TYPES.items():
+            button = QPushButton(title)
+            button.setToolTip(tooltip(term_keys[key]))
+            button.setAccessibleDescription(tooltip(term_keys[key]))
+            button.setObjectName('welcomeTaskChoice')
+            button.setCursor(Qt.CursorShape.PointingHandCursor)
+            button.clicked.connect(lambda checked=False, kind=key: self.task_requested.emit(kind))
+            layout.addWidget(button)
+            self.buttons[key] = button
+        self.addWidget(self.options)
+        cover.clicked.connect(self.open_choices)
+        self.setAccessibleName('新建任务，选择分析主线')
+
+    def open_choices(self):
+        self.setCurrentWidget(self.options)
+        self.buttons['robust'].setFocus(Qt.FocusReason.TabFocusReason)
+
+    def enterEvent(self, event):
+        self.setCurrentWidget(self.options)
+        super().enterEvent(event)
+
+    def leaveEvent(self, event):
+        self.setCurrentWidget(self.cover)
+        super().leaveEvent(event)
+
+    def hideEvent(self, event):
+        self.setCurrentWidget(self.cover)
+        super().hideEvent(event)
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key.Key_Escape:
+            self.setCurrentWidget(self.cover)
+            self.cover.setFocus()
+            event.accept()
+        else:
+            super().keyPressEvent(event)
 
 
 class WelcomePage(QWidget):
@@ -172,7 +227,11 @@ class WelcomePage(QWidget):
             else:
                 button.setToolTip('预留入口，后续接入任务与教程功能')
                 button.setAccessibleDescription('预留入口，尚未接入功能')
-            actions.addWidget(button, 0, column)
+            if title == '新建任务':
+                self.new_task_card = NewTaskCard(button)
+                actions.addWidget(self.new_task_card, 0, column)
+            else:
+                actions.addWidget(button, 0, column)
             actions.setColumnStretch(column, 1)
             self.action_buttons[title] = button
         root.addLayout(actions)

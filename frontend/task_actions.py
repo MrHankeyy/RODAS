@@ -3,7 +3,7 @@ from pathlib import Path
 from PyQt6.QtGui import QAction, QKeySequence
 from PyQt6.QtWidgets import QFileDialog, QMessageBox
 
-from backend.domain.models import ProjectData
+from backend.domain.models import ProjectData, TASK_TYPES
 from backend.services import task_storage
 from frontend.notifications import Notice
 
@@ -31,11 +31,15 @@ class TaskActions:
         self.bind_welcome()
 
     def bind_welcome(self):
-        for title, slot in (('读取已有任务', self.open), ('新建任务', self.new), ('教程', self.tutorial)):
+        for title, slot in (('读取已有任务', self.open), ('教程', self.tutorial)):
             button = self.window.welcome_page.action_buttons[title]
             button.setToolTip('')
             button.setAccessibleDescription(title)
             button.clicked.connect(slot)
+        cover = self.window.welcome_page.action_buttons['新建任务']
+        cover.setToolTip('悬停或点击，选择任务主线')
+        cover.setAccessibleDescription('选择基于代理模型的鲁棒性优化设计、田口设计或因子筛选')
+        self.window.welcome_page.new_task_card.task_requested.connect(self.new)
 
     def busy(self):
         if getattr(self.window.page_OPT, '_worker', None) is not None:
@@ -110,9 +114,12 @@ class TaskActions:
         Notice.information(self.window, '任务已读取', str(self.path))
         return True
 
-    def new(self, *_args):
+    def new(self, task_type='robust'):
         if self.confirm_leave():
-            self._replace(ProjectData(), None)
+            self._replace(ProjectData(task_type=task_type), None)
+            self.window.switch_page(0)
+            return True
+        return False
 
     def _replace(self, project, path):
         window = self.window
@@ -144,12 +151,14 @@ class TaskActions:
     def _title(self):
         from frontend.pages.welcome_page import CHINESE_NAME
         label = (self.path.name + ' · ') if self.path else ''
+        kind = TASK_TYPES.get(self.window.project_data.task_type)
+        label += (kind + ' · ') if kind else ''
         self.window.setWindowTitle(label + 'RODAS · ' + CHINESE_NAME)
 
     def tutorial(self, *_args):
         QMessageBox.information(self.window, '教程',
-            '1. 在业务建模中定义响应与因子，点击“保存业务模型数据”。\n'
-            '2. 在方案配置中选择主线与参数，生成试验方案。\n'
+            '1. 在开始页的“新建任务”选择主线，进入业务建模定义响应与因子并保存。\n'
+            '2. 在方案配置中填写所选主线的参数，生成试验方案。\n'
             '3. 在数据管理中填写或导入响应，保存并检查完整度。\n'
             '4. 在设计优化中执行分析或优化，查看模型诊断与设计结果。\n'
             '5. 在分析报告中预览、导出结果。\n\n'

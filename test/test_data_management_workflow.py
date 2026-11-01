@@ -14,6 +14,10 @@ from frontend.main_window import MainWindow
 from frontend.pages.data_management_page import DataManagementPage
 from frontend.pages.result_overview import ResultOverview
 from frontend.theme import ResultsWorkspace
+from frontend.pages.configuration_page import ConfigurationPage
+from frontend.pages.model_configuration import MODEL_TITLES, MODEL_TERM_KEYS
+from frontend.terminology import tooltip
+from frontend.terminology import statistic_tooltip
 
 APP = QApplication.instance() or QApplication([])
 
@@ -26,6 +30,49 @@ def project(method="响应曲面设计"):
 
 
 class DataManagementTests(unittest.TestCase):
+    def test_statistics_refresh_keeps_bilingual_header_explanations(self):
+        p = project()
+        page = DataManagementPage(p)
+        self.addCleanup(page.close)
+        for values in ([1, 2, 3, 4, 5], [], [2, 4, 6]):
+            p.doe_matrix = [{'Y': value} for value in values]
+            page._refresh_views()
+            table = page.statistics_view.table
+            for column in range(table.columnCount()):
+                header = table.horizontalHeaderItem(column)
+                self.assertEqual(header.toolTip(), statistic_tooltip(header.text()))
+                self.assertIn('\n', header.toolTip())
+            if values:
+                header = table.horizontalHeaderItem(4)
+                self.assertEqual(header.text(), '第一四分位数')
+                self.assertEqual(header.toolTip(), '第一四分位数（First Quartile，Q1）\n数据的25%分位数')
+
+    def test_compact_summary_uses_generated_model_and_run_count(self):
+        p = ProjectData(task_type='robust', factors=[
+            FactorItem(name=name, param1='-1', param2='1') for name in ('b', 'h')])
+        config_page = ConfigurationPage(p)
+        self.addCleanup(config_page.close)
+        for index, key in enumerate(config_page.MODEL_KEYS):
+            config_page.model_combo.setCurrentIndex(index)
+            config_page._generate_by_method()
+            page = DataManagementPage(p)
+            self.addCleanup(page.close)
+            page.resize(1050, 700)
+            page.show()
+            APP.processEvents()
+            self.assertEqual(page.model_value.text(), MODEL_TITLES[key])
+            self.assertEqual(page.model_value.toolTip(), tooltip(MODEL_TERM_KEYS[key]))
+            self.assertEqual(page.run_count_value.text(), f'{len(p.doe_matrix)} 次')
+            labels = page.scheme_group.findChildren(QLabel)
+            self.assertEqual(len(labels), 4)
+            self.assertEqual({label.text() for label in labels},
+                {'模型类型', MODEL_TITLES[key], '试验次数', f'{len(p.doe_matrix)} 次'})
+            self.assertEqual(len({label.geometry().center().y() for label in labels}), 1)
+            config_page.model_combo.setCurrentIndex((index + 1) % 4)
+            page._refresh_views()
+            self.assertEqual(page.model_value.text(), MODEL_TITLES[key])
+            page.close()
+
     def test_three_workflows_share_checks_and_statistics_without_model(self):
         for method in ("两水平筛选设计", "田口稳健设计", "代理模型建模 · Kriging"):
             with self.subTest(method=method), patch(
@@ -87,7 +134,8 @@ class DataManagementTests(unittest.TestCase):
 
     def test_scheme_frame_and_saved_statistics_csv(self):
         page = DataManagementPage(project())
-        self.assertIs(page.title_label.parent(), page.scheme_group)
+        self.assertIs(page.model_value.parent(), page.scheme_group)
+        self.assertIs(page.run_count_value.parent(), page.scheme_group)
         self.assertFalse(any(g.title() == "试验数据 · 因子列只读，响应列可编辑"
                              for g in page.findChildren(QGroupBox)))
         root = Path(__file__).resolve().parents[1] / "temp"

@@ -31,12 +31,10 @@ from backend.core.response_models import (
 from backend.core.sampling import (
     _latin_hypercube,
     _maximin_lhs,
-    _van_der_corput,
-    _sobol_like,
+    _sobol,
     build_samples,
 )
 from backend.core.surrogate import (
-    _kernel_rbf,
     _ann_forward,
     train_kriging,
     train_svr,

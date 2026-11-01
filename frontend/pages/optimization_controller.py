@@ -28,13 +28,18 @@ class OptimizationController:
         try:
             if "筛选" in method:
                 page._run_screening()
-            elif "响应曲面" in method:
+            elif any(text in method for text in ("响应面", "响应曲面")):
                 page._run_rsm()
             elif "田口" in method:
                 page._run_taguchi()
             elif "代理模型" in method:
-                page._run_surrogate()
+                result = page._run_surrogate()
+                errors = [f"响应 {name}：{item['error']}" for name, item in result["responses"].items() if item.get("error")]
+                if errors:
+                    raise ValueError("\n".join(errors))
         except Exception as exc:  # noqa: BLE001
+            page.status_label.setText(f"分析失败：{exc}")
+            page._refresh_view()
             page.project_service.record_operation("后端分析", "失败", message=str(exc))
             Notice.critical(page, "分析失败", f"后端分析出错：{exc}")
             return
@@ -91,7 +96,7 @@ class OptimizationController:
             page._check_inputs()
             bus.post("进度", "模型准备", "检查数据与当前模型配置")
             context = page._prepare_context()
-            mode = {"多目标 NSGA-II":"multi", "加权单目标":"weighted", "约束型":"constraint"}[page.robust_mode_combo.currentText()]
+            mode = page.robust_mode_combo.currentData()
             limits = page._sigma_limits() if mode == "constraint" else {}
             page.project_service.clear_workbench()
             page._run_signature = page.project_service.input_signature()
@@ -99,7 +104,7 @@ class OptimizationController:
                 weight=page.weight_spin.value(), k_design=page.k_design_spin.value(), k_constraint=page.k_constraint_spin.value(),
                 seed=7, sigma_limits=limits), page)
             page.setEnabled(False)
-            page._worker.progress.connect(lambda done,total: bus.post("进度", "鲁棒优化", f"已完成 {done}/{total} 代"))
+            page._worker.progress.connect(lambda done,total: bus.post("进度", "鲁棒性优化设计", f"已完成 {done}/{total} 代"))
             page._worker.result_ready.connect(page._optimization_ready)
             page._worker.failed.connect(page._optimization_failed)
             page._worker.finished.connect(page._worker_finished)
@@ -147,14 +152,13 @@ class OptimizationController:
             page.run_optimization()
             return
         context = page._prepare_context()
-        mode = {"多目标 NSGA-II": "multi", "加权单目标": "weighted",
-                "约束型": "constraint"}[page.robust_mode_combo.currentText()]
+        mode = page.robust_mode_combo.currentData()
         pop = page.pop_spin.value()
         gen = page.gen_spin.value()
         weight = page.weight_spin.value()
         kd = page.k_design_spin.value()
         kc = page.k_constraint_spin.value()
-        page.status_label.setText("正在执行鲁棒优化与稳定性分析…（可能稍候）")
+        page.status_label.setText("正在执行鲁棒性优化设计与统计分析…（可能稍候）")
         robust = oe.robust_optimize(context, mode=mode, pop=pop, gen=gen,
                                     weight=weight, k_design=kd,
                                     k_constraint=kc, seed=7, sigma_limits=page._sigma_limits() if mode == "constraint" else None)
@@ -168,9 +172,9 @@ class OptimizationController:
     
         page.status_label.setText("分析完成：全部工作台已更新")
         Notice.information(
-            page, "稳定性设计分析完成",
-            "已执行鲁棒优化与全套稳定性分析。可切换标签页查看帕累托/Knee点、推荐取值、"
-            "容差贡献与模型方程，或使用优化工具集做更深入的取值探索。")
+            page, "鲁棒性优化设计分析完成",
+            "已执行鲁棒性优化设计与统计分析。可切换标签页查看帕累托前沿、折中解、推荐取值、"
+            "局部方差贡献分析与模型方程，或使用优化工具集做更深入的取值探索。")
         page.optimization_finished.emit()
 
     def _prepare_context(self):
@@ -181,7 +185,7 @@ class OptimizationController:
             if saved.get("signature") != page._surrogate_signature():
                 page._run_surrogate()
             context, errors = page._build_surrogate_context()
-        elif "响应曲面" in page._method():
+        elif any(text in page._method() for text in ("响应面", "响应曲面")):
             context, errors = page._run_rsm(), []
         else:
             context, errors = oe.build_models(page.project_data)
@@ -202,7 +206,7 @@ class OptimizationController:
             page._plot_pareto({})
             page._update_analysis(context, {})
             page.tabs.setCurrentWidget(page.diagnostics_panel)
-            page.status_label.setText("建模与统计分析完成，未执行鲁棒优化。")
+            page.status_label.setText("建模与统计分析完成，未执行鲁棒性优化设计。")
             page.optimization_finished.emit()
         except Exception as exc:
             page.project_service.record_operation("工作台统计分析", "失败", {"settings": page._analysis_settings()}, message=str(exc))
@@ -247,7 +251,7 @@ class OptimizationController:
             workbench_result=reports.serializable(bundle["snapshot"]))
         failed = bool(robust and robust.get("feasible_count", 0) == 0)
         service.record_operation(
-            "鲁棒优化与统计分析" if robust else "工作台统计分析",
+            "鲁棒性优化设计与统计分析" if robust else "工作台统计分析",
             "未通过" if failed else "完成",
             {"results": reports.results(page.project_data)},
             "未找到可行候选" if failed else "计算完成，工程结论待确认")
@@ -265,7 +269,9 @@ class OptimizationController:
             if key in settings:
                 control.setValue(settings[key])
         if 'mode' in settings:
-            page.robust_mode_combo.setCurrentText(settings['mode'])
+            index = page.robust_mode_combo.findData(settings['mode'])
+            if index >= 0:
+                page.robust_mode_combo.setCurrentIndex(index)
         for i in range(page.sigma_limits_table.rowCount()):
             name = page.sigma_limits_table.item(i, 0).data(256)
             if name in settings.get('sigma_limits', {}):
@@ -310,9 +316,9 @@ class OptimizationController:
         page._check_inputs()
         if not page._oe_context:
             Notice.warning(
-                page, "无模型", "请先点击【执行稳定性设计与鲁棒优化】。")
+                page, "无模型", "请先点击【执行鲁棒性优化设计】。")
             return
-        tool = page.tool_combo.currentText()
+        tool = page.tool_combo.currentData()
         k_design = page.k_design_spin.value()
         start = (page._param_res or {}).get("recommended")
         if page.tool_start.currentText() == "手动核验点":
@@ -335,9 +341,7 @@ class OptimizationController:
     
         service = page.project_service
         try:
-            method = (
-                "最陡上升" if "最陡上升" in tool else
-                "EVOP" if "EVOP" in tool else "AOFAT")
+            method = tool
             result = analysis_service.run_local_search(
                 page._oe_context, start, k_design,
                 page.k_constraint_spin.value(), page.tool_weight.value(),

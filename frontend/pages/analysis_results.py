@@ -12,17 +12,23 @@ from backend.core.factors import factor_limits
 from backend.reporting.math_format import Math, formula_html, polynomial
 from frontend.pages.result_overview import SummaryTable, label
 from frontend.pages.result_summary import display, named
+from frontend.terminology import name as term_name, tooltip
 
 
 class AnalysisResults(QWidget):
     """Shared response selector and sections; rendering never fits a model."""
-    TITLES = {"significance": "显著性 / LOF", "validation": "交叉验证与残差", "model": "模型提取"}
+    TITLES = {"significance": "回归显著性与失拟检验", "validation": "交叉验证与残差分析", "model": "模型提取"}
 
     def __init__(self, kind, parent=None):
         super().__init__(parent)
         self.kind = kind
         layout = QVBoxLayout(self)
-        layout.addWidget(label(self.TITLES[kind], "heading"))
+        heading = label(self.TITLES[kind], "heading")
+        if kind == "significance":
+            heading.setToolTip(tooltip("regression_significance_lof"))
+        elif kind == "validation":
+            heading.setToolTip(tooltip("cross_validation_residuals"))
+        layout.addWidget(heading)
         toolbar = QHBoxLayout()
         toolbar.addWidget(label("响应："))
         self.response = QComboBox()
@@ -87,7 +93,12 @@ class AnalysisResults(QWidget):
         else:
             model = self.context["models"][name]
             proxy = "predict_fn" in model
-            self.model_label.setText("当前模型：" + model.get("model_type", "二次响应面"))
+            model_type = model.get("model_type", "RSM")
+            model_term = {"RSM": "quadratic_response_surface", "Kriging": "kriging",
+                          "SVR": "svr", "ANN": "bpnn"}.get(model_type)
+            display_model = term_name(model_term) if model_term else model_type
+            self.model_label.setText("当前模型：" + display_model)
+            self.model_label.setToolTip(tooltip(model_term) if model_term else "")
             diagnostic = self.snapshot.get("responses", {}).get(name, {})
             measures = {row["统计量"]: row["值"] for row in diagnostic.get("summary", [])}
             if self.kind == "significance":
@@ -101,15 +112,15 @@ class AnalysisResults(QWidget):
     def significance(self, proxy, values):
         if proxy:
             self.section("当前模型不适用此检验", message=(
-                "Kriging、SVR、BP 的预测器不直接套用多项式回归 ANOVA / LOF。"
-                "请在「交叉验证与残差」查看留出集验证结果。"))
+                "克里金模型、支持向量回归模型和神经网络模型的预测器不直接套用多项式回归方差分析或失拟检验。"
+                "请在「交叉验证与残差分析」查看留出集验证结果。"))
             return
         if not values:
             self.section("检验不可估计", message="没有可用的观测与拟合统计量。")
             return
         for prefix, title, numerator, denominator in (
             ("回归", "回归整体显著性", values.get("参数数", 1) - 1, values.get("残差自由度")),
-            ("失拟", "失拟检验（LOF）", values.get("失拟自由度"), values.get("纯误差自由度")),
+            ("失拟", "失拟检验", values.get("失拟自由度"), values.get("纯误差自由度")),
         ):
             p = values.get(prefix + " p")
             available = p is not None and math.isfinite(p)
@@ -142,11 +153,15 @@ class AnalysisResults(QWidget):
         self.column.addWidget(label("验证来源：" + source, "muted"))
         metrics = QHBoxLayout()
         for caption, value in (
-            ("测试集 R²" if proxy else "CV-R²", result.get("r2")),
-            (("测试集 RMSE" if proxy else "CV-RMSE") + unit, result.get("rmse")),
+            ("测试集决定系数" if proxy else "交叉验证决定系数", result.get("r2")),
+            (("测试集均方根误差" if proxy else "交叉验证均方根误差") + unit, result.get("rmse")),
             ("有效验证样本数", result.get("samples")),
         ):
             group = QGroupBox(caption)
+            if "决定系数" in caption:
+                group.setToolTip(tooltip("holdout_r2" if proxy else "r2"))
+            elif "均方根误差" in caption:
+                group.setToolTip(tooltip("rmse"))
             box = QVBoxLayout(group)
             box.addWidget(label(display(value), "heading"))
             metrics.addWidget(group, 1)
@@ -156,7 +171,7 @@ class AnalysisResults(QWidget):
         if result.get("message"):
             self.column.addWidget(label(result["message"], "badge"))
         elif result.get("r2") is None and result.get("samples"):
-            self.column.addWidget(label("响应为常数，R² 不可估计；请参考 RMSE。", "badge"))
+            self.column.addWidget(label("响应为常数，决定系数不可估计；请参考均方根误差。", "badge"))
         rows = diagnostic.get("observations", [])
         if not rows:
             self.section("暂无图表数据", message="没有匹配的有限观测与预测。")
@@ -190,11 +205,13 @@ class AnalysisResults(QWidget):
     def model(self, name, model, proxy):
         inputs = self.context["inputs"]
         if proxy:
+            model_type = model.get("model_type")
+            model_term = {"Kriging": "kriging", "SVR": "svr", "ANN": "bpnn"}.get(model_type)
             self.section("已训练预测器", ["项目", "内容"], [
-                ["模型类型", model.get("model_type", "代理模型")], ["输出响应", self.response.currentText()],
+                ["模型类型", term_name(model_term) if model_term else "代理模型"], ["输出响应", self.response.currentText()],
                 ["输入变量", "、".join(item.name for item in inputs)],
                 ["后续优化", "直接调用当前模型的预测器"],
-                ["不确定性传播", "数值梯度与对角 Hessian 近似"]],
+                ["不确定性传播", "数值梯度与对角海森矩阵近似"]],
                 "该模型不提供二次多项式回归方程。")
             bounds = self.context["_project"].surrogate_config.get("bounds") or {}
             self.section("模型输入", ["因子", "抽样下限", "抽样上限", "单位"],

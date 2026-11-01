@@ -14,6 +14,7 @@ from backend.engines import optimizer as oe
 from backend.engines import workbench as wa
 from backend.domain.models import ProjectData,FactorItem,ResponseItem
 from frontend.pages.optimization_page import OptimizationPage
+from frontend.terminology import statistic_name, statistic_tooltip
 
 APP=QApplication.instance() or QApplication([])
 
@@ -85,7 +86,7 @@ class WorkbenchAnalysisTests(unittest.TestCase):
 
     def test_local_search_feasibility_and_monotone_acceptance(self):
         p,c=make_context(False,limit=.5)
-        for method in ('最陡上升','AOFAT','EVOP'):
+        for method in ('最陡下降搜索','自适应单因子搜索','单轮单因子搜索'):
             r=oe.local_search(c,{'A':0,'B':0},6,2,.8,method,16,.2)
             self.assertTrue(all(v['feasible'] for v in r['path']))
             self.assertTrue(all(a['score']>=b['score'] for a,b in zip(r['path'],r['path'][1:])))
@@ -117,6 +118,15 @@ class WorkbenchAnalysisTests(unittest.TestCase):
         with patch.object(oe,'robust_optimize',side_effect=AssertionError('statistics ran optimizer')),patch.object(QMessageBox,'warning') as warning:
             page.run_statistics();warning.assert_not_called()
         panel=page.diagnostics_panel
+        raw_summary = panel.snapshot['responses']['Y']['summary']
+        summary = panel.tables['summary']
+        self.assertEqual(summary.rowCount(), len(raw_summary))
+        for row, record in enumerate(raw_summary):
+            item = summary.item(row, 0)
+            self.assertEqual(item.text(), statistic_name(record['统计量']))
+            self.assertEqual(item.toolTip(), statistic_tooltip(record['统计量']))
+            self.assertIn('\n', item.toolTip())
+        self.assertIn('LOO PRESS', [record['统计量'] for record in raw_summary])
         self.assertEqual(panel.tables['observations'].rowCount(),35)
         self.assertEqual(panel.tables['coefficients'].rowCount(),6)
         panel.evaluate_point();self.assertEqual(panel.point_table.rowCount(),1)

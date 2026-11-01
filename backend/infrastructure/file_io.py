@@ -67,7 +67,7 @@ def export_pdf(html_text, path):
     writer.setResolution(96)
     writer.setPageSize(QPageSize(QPageSize.PageSizeId.A4))
     writer.setPageMargins(QMarginsF(15, 15, 15, 15))
-    writer.setTitle("RAMS 稳定性设计分析报告")
+    writer.setTitle("RODAS 鲁棒性优化设计分析报告")
     document = QTextDocument()
     document.setDefaultFont(QFont("Microsoft YaHei", 10))
     document.documentLayout().setPaintDevice(writer)
@@ -95,6 +95,6 @@ def export_pdf(html_text, path):
             painter.drawText(
                 QRectF(0, height + 12, width, 22),
                 Qt.AlignmentFlag.AlignRight,
-                f"RAMS · {page_index + 1} / {page_count}")
+                f"RODAS · {page_index + 1} / {page_count}")
     finally:
         painter.end()

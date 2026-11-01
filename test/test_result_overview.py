@@ -9,11 +9,28 @@ from backend.domain.models import ProjectData, ResponseItem
 from frontend.pages.optimization_page import OptimizationPage
 from frontend.pages.result_overview import ResultOverview
 from frontend.pages.result_summary import overview
+from frontend.terminology import STATISTICS, statistic_tooltip
 
 APP = QApplication.instance() or QApplication([])
 
 
 class ResultOverviewTests(unittest.TestCase):
+    def test_summary_headers_have_shared_bilingual_explanations(self):
+        self.assertTrue(all(0 < len(term[2]) <= 20 for term in STATISTICS.values()))
+        for method in ('响应曲面设计', '代理模型建模 · Kriging'):
+            p = self.project(method)
+            p.rsm_result = {'fit': {'Y': {'r2': .99, 'adj_r2': .98, 'rmse': .01}}}
+            p.surrogate_result = {'responses': {'Y': {'r2_test': .97, 'mape_test_%': 2}}}
+            view = ResultOverview()
+            self.addCleanup(view.close)
+            view.set_project(p)
+            table = view.result_tables[0]
+            for column in range(table.columnCount()):
+                header = table.horizontalHeaderItem(column)
+                self.assertEqual(header.toolTip(), statistic_tooltip(header.text()))
+                self.assertIn('\n', header.toolTip())
+            self.assertEqual(table.item(0, 0).text(), 'Y（mm）')
+
     def project(self, method="代理模型建模 · Kriging"):
         return ProjectData(design_method=method, responses=[ResponseItem(name="Y", unit="mm")],
                            doe_matrix=[{"Y": 1}, {"Y": 2}])
@@ -31,7 +48,7 @@ class ResultOverviewTests(unittest.TestCase):
 
     def test_empty_plan_and_ready_data_have_distinct_next_actions(self):
         self.assertEqual(overview(ProjectData())["status"], "尚未生成方案")
-        for method, action in [("两水平筛选设计", "计算筛选主效应"),
+        for method, action in [("两水平筛选设计", "计算因子主效应"),
                                ("田口稳健设计", "计算田口信噪比"),
                                ("响应曲面设计", "建模与模型诊断")]:
             with self.subTest(method=method):
@@ -47,7 +64,9 @@ class ResultOverviewTests(unittest.TestCase):
                 "train_samples": 8, "test_samples": 2, "params": {"model": model}}}}
             view.set_project(project)
             self.assertEqual(view.status_label.text(), "分析已完成")
-            self.assertEqual(view.result_tables[0].horizontalHeaderItem(1).text(), "测试集 R²")
+            header = view.result_tables[0].horizontalHeaderItem(1)
+            self.assertEqual(header.text(), "测试集决定系数")
+            self.assertIn("R²", header.toolTip())
             self.assertEqual(view.result_tables[0].item(0, 1).text(), "0.97")
         self.assertFalse(view.findChildren(QComboBox))
         view.close()
@@ -61,7 +80,7 @@ class ResultOverviewTests(unittest.TestCase):
                                       "Z": {"error": "数据不足"}}}
         data = overview(project)
         self.assertEqual(data["status"], "部分响应分析失败")
-        self.assertEqual(data["sections"][0]["headers"][1], "拟合 R²")
+        self.assertEqual(data["sections"][0]["headers"][1], "拟合决定系数")
         self.assertIn("数据不足", data["sections"][1]["message"])
 
     def test_screening_preserves_signed_effects_for_each_response(self):

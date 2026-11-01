@@ -39,21 +39,21 @@ def pareto(figure, canvas, robust):
         if knee and len(knee["obj"]) > 1:
             axes.scatter(
                 [knee["obj"][0]], [knee["obj"][1]], s=120,
-                marker="*", color="#f97316", label="Knee Point")
+                marker="*", color="#f97316", label="折中解")
         best = robust.get("best")
         if best and len(best["obj"]) > 1:
             axes.scatter(
                 [best["obj"][0]], [best["obj"][1]], s=60,
                 marker="D", color="#16a34a", label="推荐解")
-        axes.set_xlabel("均值损失（1 − 望性）")
+        axes.set_xlabel("望性损失（1 − 平均望性）")
         axes.set_ylabel(r"归一化标准差 $\sigma$")
-        axes.set_title("鲁棒优化 帕累托前沿")
+        axes.set_title("鲁棒性优化设计帕累托前沿")
         axes.grid(alpha=0.3)
         axes.legend(fontsize=8)
     elif robust.get("mode") == "weighted" and robust.get("best"):
         best = robust["best"]
         axes.bar(
-            ["均值损失", "归一化波动"],
+            ["望性损失", "归一化标准差"],
             [1 - best["mean_perf"], best["std_norm"]],
             color=["#2563eb", "#168064"])
         axes.set_title("加权优化候选点指标")
@@ -77,10 +77,10 @@ def factor_effects(figure, canvas, plots):
         axes = figure.add_subplot(rows, columns, index + 1)
         axes.plot(
             plot["x"], plot["mean"], "-o", color="#1d4ed8",
-            label="均值望性")
+            label="平均望性")
         axes.plot(
             plot["x"], plot["std"], "-s", color="#dc2626",
-            label=r"$\sigma$ 归一")
+            label=r"归一化标准差 $\sigma$")
         failed = [
             item for item, feasible in enumerate(plot.get("feasible", []))
             if not feasible]

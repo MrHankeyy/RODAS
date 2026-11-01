@@ -9,6 +9,10 @@ from backend.domain.models import FactorItem, ResponseItem
 from backend.core.factors import factor_limits
 from frontend.numeric_inputs import numeric_text_input
 from frontend.pages.table_widgets import BalancedColumnsTable
+from frontend.terminology import apply_header_tooltips
+
+
+LEVEL_HEADERS = {"taguchi": ("低水平值", "高水平值"), "factorial": ("低水平", "高水平")}
 
 
 def stacked(*widgets):
@@ -54,6 +58,7 @@ class DefinitionTable(QWidget):
 
     def __init__(self, title, factory, headers, minimum_widths):
         super().__init__()
+        self.title = title
         self.factory, self.editors = factory, []
         self.add_btn = QPushButton("+  新增" + title)
         self.add_btn.clicked.connect(lambda: self.add())
@@ -64,8 +69,10 @@ class DefinitionTable(QWidget):
         head.addStretch()
         head.addWidget(self.add_btn)
         root.addLayout(head)
-        self.table = BalancedColumnsTable(minimum_widths, fixed_columns=(len(headers)-2, len(headers)-1))
+        fixed_columns = () if len(headers) == 3 else (len(headers)-2, len(headers)-1)
+        self.table = BalancedColumnsTable(minimum_widths, fixed_columns=fixed_columns)
         self.table.setHorizontalHeaderLabels(headers)
+        apply_header_tooltips(self.table)
         self.table.verticalHeader().hide()
         self.table.verticalHeader().setDefaultSectionSize(36)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
@@ -90,7 +97,8 @@ class DefinitionTable(QWidget):
                     control.toggled.connect(self.changed)
         editor.delete_btn = QPushButton("删除")
         editor.delete_btn.clicked.connect(lambda checked=False, e=editor: self.remove(e))
-        self.table.setCellWidget(row, self.table.columnCount()-1, editor.delete_btn)
+        delete_cell = centered(editor.delete_btn) if self.table.columnCount() == 3 else editor.delete_btn
+        self.table.setCellWidget(row, self.table.columnCount()-1, delete_cell)
         editor.changed.connect(self.changed)
         self.set_current_index(row)
         self.changed.emit()
@@ -114,12 +122,21 @@ class DefinitionTable(QWidget):
 class FactorEditor(QWidget):
     changed = pyqtSignal()
 
-    def __init__(self, source, item=None):
+    def __init__(self, source, item=None, task_type="robust"):
         super().__init__()
         self.source = source
+        self.classical = task_type in ("taguchi", "factorial")
         item = item or FactorItem(source=source)
         self.name, self.unit = QLineEdit(item.name), QLineEdit(item.unit)
         design = source == "设计"
+        if self.classical:
+            self.range_labels = LEVEL_HEADERS[task_type]
+            self.lower = numeric_text_input(item.nominal_lower if design else item.param1)
+            self.upper = numeric_text_input(item.nominal_upper if design else item.param2)
+            self.cells = (self.name, self.lower, self.upper, self.unit)
+            self.unit.textChanged.connect(self.update_units)
+            self.update_units()
+            return
         separate = bool(item.nominal_lower or item.nominal_upper)
         if design:
             self.lower = numeric_text_input(item.nominal_lower)
@@ -177,9 +194,12 @@ class FactorEditor(QWidget):
         unit = self.unit.text().strip()
         design = self.source == "设计"
         prefix = "不确定性偏差" if design else "环境实际取值"
-        if design:
-            self.lower.setToolTip("名义设计下限" + ("（" + unit + "）" if unit else ""))
-            self.upper.setToolTip("名义设计上限" + ("（" + unit + "）" if unit else ""))
+        if design or self.classical:
+            labels = self.range_labels if self.classical else ("名义设计下限", "名义设计上限")
+            self.lower.setToolTip(labels[0] + ("（" + unit + "）" if unit else ""))
+            self.upper.setToolTip(labels[1] + ("（" + unit + "）" if unit else ""))
+        if self.classical:
+            return
         for control, label in ((self.delta_lower, prefix + "下界"), (self.delta_upper, prefix + "上界"),
                                (self.mean, prefix + "均值"), (self.uniform_lower, "均匀分布" + prefix + "下界"),
                                (self.uniform_upper, "均匀分布" + prefix + "上界")):
@@ -204,10 +224,17 @@ class FactorEditor(QWidget):
         if not name:
             raise ValueError("请填写因子名称。")
         design = self.source == "设计"
-        if design:
-            lower, upper = number(self.lower, name + "名义下限"), number(self.upper, name + "名义上限")
+        if design or self.classical:
+            labels = self.range_labels if self.classical else ("名义下限", "名义上限")
+            lower, upper = number(self.lower, name + labels[0]), number(self.upper, name + labels[1])
             if lower >= upper:
-                raise ValueError(f"{name}：名义下限须小于名义上限。")
+                raise ValueError(f"{name}：{labels[0]}须小于{labels[1]}。")
+        if self.classical:
+            return FactorItem(name=name, source=self.source, unit=self.unit.text().strip(),
+                              nominal_lower=self.lower.text().strip() if design else "",
+                              nominal_upper=self.upper.text().strip() if design else "",
+                              param1="0" if design else self.lower.text().strip(),
+                              param2="0" if design else self.upper.text().strip())
         parameter = "偏差" if design else "环境取值"
         probability = self.parameters.currentIndex() != 0
         first, second = (self.mean, self.stddev) if probability else (self.delta_lower, self.delta_upper)
@@ -242,14 +269,20 @@ class FactorEditor(QWidget):
 
 
 class FactorTable(DefinitionTable):
-    def __init__(self, source):
+    def __init__(self, source, task_type="robust"):
         design = source == "设计"
-        headers = ["名称"] + (["名义下限", "名义上限"] if design else []) + [
-            "不确定类型", "分布类型", "不确定性参数", "单位", "操作"]
-        widths = (70, 80, 80, 90, 110, 250, 60, 64) if design else (100, 90, 110, 250, 60, 64)
-        super().__init__(source + "因子", lambda item: FactorEditor(source, item),
+        classical = task_type in ("taguchi", "factorial")
+        if classical:
+            headers = ["名称", *LEVEL_HEADERS[task_type], "单位", "操作"]
+            widths = (110, 140, 140, 60, 64)
+        else:
+            headers = ["名称"] + (["名义下限", "名义上限"] if design else []) + [
+                "不确定类型", "分布类型", "不确定性参数", "单位", "操作"]
+            widths = (70, 80, 80, 90, 110, 250, 60, 64) if design else (100, 90, 110, 250, 60, 64)
+        title = ("控制因子" if design else "噪声因子") if task_type == "taguchi" else "试验因子" if task_type == "factorial" else source + "因子"
+        super().__init__(title, lambda item: FactorEditor(source, item, task_type),
                          headers, widths)
-        if design:
+        if design and not classical:
             self.relation = QLabel("实际取值 = 名义设计值 + 不确定性偏差 Δ")
             self.relation.setProperty("role", "muted")
             self.layout().addWidget(self.relation)
@@ -258,30 +291,43 @@ class FactorTable(DefinitionTable):
 class ResponseEditor(QWidget):
     changed = pyqtSignal()
 
-    def __init__(self, item=None):
+    def __init__(self, item=None, task_type="robust"):
         super().__init__()
+        self.task_type = task_type
         item = item or ResponseItem(kind="目标")
         self.name, self.unit = QLineEdit(item.name), QLineEdit(item.unit)
-        self.objective, self.constraint = QCheckBox(), QCheckBox()
-        self.objective.setToolTip("作为优化目标")
-        self.constraint.setToolTip("作为约束响应")
-        self.objective.setChecked("目标" in item.kind)
-        self.constraint.setChecked("约束" in item.kind)
+        if task_type == "factorial":
+            self.cells = (self.name, self.unit)
+            return
+        if task_type != "taguchi":
+            self.objective, self.constraint = QCheckBox(), QCheckBox()
+            self.objective.setToolTip("作为优化目标")
+            self.constraint.setToolTip("作为约束响应")
+            self.objective.setChecked("目标" in item.kind)
+            self.constraint.setChecked("约束" in item.kind)
         self.feature = QComboBox()
         self.feature.addItems(["望大", "望小", "望目"])
         self.feature.setCurrentText(item.feature)
-        self.limit = numeric_text_input(item.robust_limit)
-        self.lower, self.upper = numeric_text_input(item.lower), numeric_text_input(item.upper)
-        self.limit_label = QLabel()
-        self.limits = stacked(field_row((self.limit_label, self.limit)),
-                              field_row(("下限", self.lower), ("上限", self.upper)))
-        self.cells = (self.name, centered(self.objective), centered(self.constraint), self.feature,
-                      self.limits, self.unit)
+        if task_type == "taguchi":
+            self.target = numeric_text_input(item.target)
+            self.target.setToolTip("望目目标值，与响应使用相同单位")
+            self.limits = self.target
+        else:
+            self.lower, self.upper = numeric_text_input(item.lower), numeric_text_input(item.upper)
+            self.limit = numeric_text_input(item.robust_limit)
+            self.limit_label = QLabel()
+            self.limits = stacked(field_row((self.limit_label, self.limit)),
+                                  field_row(("下限", self.lower), ("上限", self.upper)))
+        roles = () if task_type == "taguchi" else (centered(self.objective), centered(self.constraint))
+        self.cells = (self.name,) + roles + (self.feature, self.limits, self.unit)
         self.feature.currentTextChanged.connect(self.update_feature)
         self.update_feature()
 
     def update_feature(self):
         feature = self.feature.currentText()
+        if self.task_type == "taguchi":
+            self.target.setEnabled(feature == "望目")
+            return
         self.limits.setCurrentIndex(1 if feature == "望目" else 0)
         self.limit_label.setText("下限" if feature == "望大" else "上限")
         self.limit.setToolTip("稳定要求" + self.limit_label.text())
@@ -290,14 +336,21 @@ class ResponseEditor(QWidget):
         name = self.name.text().strip()
         if not name:
             raise ValueError("请填写响应名称。")
+        if self.task_type == "factorial":
+            return ResponseItem(name=name, unit=self.unit.text().strip())
+        feature = self.feature.currentText()
+        if self.task_type == "taguchi":
+            if feature == "望目":
+                number(self.target, name + "目标值")
+            return ResponseItem(name=name, unit=self.unit.text().strip(), feature=feature,
+                                target=self.target.text().strip() if feature == "望目" else "")
         if not self.objective.isChecked() and not self.constraint.isChecked():
             raise ValueError(f"{name}：请勾选目标或约束。")
-        feature = self.feature.currentText()
         if feature == "望目":
             if number(self.lower, name + "下限") >= number(self.upper, name + "上限"):
-                raise ValueError(f"{name}：稳定要求下限须小于上限。")
+                raise ValueError(f"{name}：响应阈值下限须小于上限。")
         elif self.limit.text().strip() or self.constraint.isChecked():
-            number(self.limit, name + "稳定要求")
+            number(self.limit, name + "响应阈值")
         kind = "+".join(text for text, control in (("目标", self.objective), ("约束", self.constraint)) if control.isChecked())
         return ResponseItem(name=name, unit=self.unit.text().strip(), kind=kind, feature=feature,
                             lower=self.lower.text().strip() if feature == "望目" else "",
@@ -306,7 +359,12 @@ class ResponseEditor(QWidget):
 
 
 class ResponseTable(DefinitionTable):
-    def __init__(self):
-        super().__init__("响应", ResponseEditor,
-                         ["名称", "目标响应", "约束响应", "目标特征", "稳定性阈值", "单位", "操作"],
-                         (110, 80, 80, 100, 250, 60, 64))
+    def __init__(self, task_type="robust"):
+        if task_type == "factorial":
+            headers, widths = ["名称", "单位", "操作"], (180, 60, 64)
+        elif task_type == "taguchi":
+            headers, widths = ["名称", "目标特征", "目标值", "单位", "操作"], (110, 100, 140, 60, 64)
+        else:
+            headers = ["名称", "目标响应", "约束响应", "目标特征", "响应阈值", "单位", "操作"]
+            widths = (110, 80, 80, 100, 250, 60, 64)
+        super().__init__("响应", lambda item: ResponseEditor(item, task_type), headers, widths)

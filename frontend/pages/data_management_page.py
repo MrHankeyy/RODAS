@@ -1,7 +1,7 @@
 from pathlib import Path
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-    QPushButton, QTableWidgetItem, QGroupBox, QFileDialog
+    QPushButton, QTableWidgetItem, QGroupBox, QFileDialog, QFrame
 )
 from PyQt6 import QtGui
 from PyQt6.QtCore import Qt, QSignalBlocker
@@ -13,6 +13,8 @@ from frontend.workspace import dialog_path
 from frontend.theme import ResultTabs, ResultsWorkspace
 from frontend.pages.data_inspection import DataInspection
 from backend.services.data_service import data_overview
+from frontend.pages.model_configuration import MODEL_TITLES, MODEL_TERM_KEYS
+from frontend.terminology import tooltip
 
 class DataManagementPage(QWidget):
     def __init__(self, project_data: ProjectData):
@@ -26,10 +28,24 @@ class DataManagementPage(QWidget):
         root = QVBoxLayout(self)
         root.setContentsMargins(12, 12, 12, 12)
         self.scheme_group = QGroupBox("当前方案")
-        scheme_layout = QVBoxLayout(self.scheme_group)
-        self.title_label = QLabel()
-        self.title_label.setWordWrap(True)
-        scheme_layout.addWidget(self.title_label)
+        scheme_layout = QHBoxLayout(self.scheme_group)
+        scheme_layout.setContentsMargins(14, 8, 14, 10)
+        scheme_layout.setSpacing(14)
+        self.model_value = QLabel()
+        self.run_count_value = QLabel()
+        divider = QFrame()
+        divider.setFrameShape(QFrame.Shape.VLine)
+        for caption, value in (("模型类型", self.model_value), ("试验次数", self.run_count_value)):
+            if caption == "试验次数":
+                scheme_layout.addSpacing(14)
+                scheme_layout.addWidget(divider)
+                scheme_layout.addSpacing(14)
+            label = QLabel(caption)
+            label.setProperty("role", "muted")
+            value.setStyleSheet("font-weight:500;")
+            scheme_layout.addWidget(label)
+            scheme_layout.addWidget(value)
+        scheme_layout.addStretch()
         root.addWidget(self.scheme_group)
         self.tabs = ResultTabs()
         trial = QWidget()
@@ -96,8 +112,12 @@ class DataManagementPage(QWidget):
 
     def _refresh_views(self, *_args):
         data = data_overview(self.project_data)
-        information = data["information"]
-        self.title_label.setText("　 |　 ".join(f"{name}：{value}" for name, value in information))
+        method, count = (value for _caption, value in data["information"][:2])
+        model = method.removeprefix("代理模型建模 · ")
+        self.model_value.setText(model)
+        self.run_count_value.setText(count)
+        key = next((key for key, title in MODEL_TITLES.items() if title == model), None)
+        self.model_value.setToolTip(tooltip(MODEL_TERM_KEYS[key]) if key else "")
         self.check_view.refresh(self._dirty, data)
         self.statistics_view.refresh(self._dirty, data)
 
@@ -132,7 +152,7 @@ class DataManagementPage(QWidget):
     def load_doe_matrix(self):
         matrix = self.project_data.doe_matrix
         if not matrix:
-            Notice.warning(self, "无数据", "后端中未找到DOE点列，请先进入【方案配置】生成DOE实验方案！")
+            Notice.warning(self, "无数据", "后端中未找到试验点列，请先进入【方案配置】生成试验方案！")
             return
             
         
@@ -214,7 +234,7 @@ class DataManagementPage(QWidget):
                 file_path, self.project_data.doe_matrix)
             Notice.information(
                 self, "成功",
-                "DOE表导出成功！你可以将该表发给仿真脚本加载执行。")
+                "试验表导出成功！你可以将该表发给仿真脚本加载执行。")
         except Exception as exc:
             Notice.critical(self, "错误", f"导出失败: {exc}")
 

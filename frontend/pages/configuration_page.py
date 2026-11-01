@@ -4,19 +4,39 @@ from copy import deepcopy
 from PyQt6.QtCore import QTimer
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox, QPushButton,
-    QStackedWidget, QScrollArea, QAbstractSpinBox, QSpinBox,
+    QStackedWidget, QScrollArea, QAbstractSpinBox, QSpinBox, QGroupBox,
+    QSizePolicy, QLayout,
 )
 
 from backend.domain.models import ProjectData
 from backend.core.factors import model_factors
 from backend.services import design_service
 from backend.services.project_service import ProjectService
-from backend.reporting.math_format import rich_text
 from frontend.notifications import Notice
 from frontend.numeric_inputs import commit_numeric_inputs
 from frontend.pages import configuration_panels
-from frontend.pages.model_configuration import ModelConfiguration, MODEL_TITLES
+from frontend.pages.model_configuration import ModelConfiguration, MODEL_TITLES, MODEL_TERM_KEYS
+from frontend.terminology import add_combo_item, name, tooltip
 from frontend.theme import ResultTabs, ResultsWorkspace
+
+
+class ModelStack(QStackedWidget):
+    """Only the active editor determines the height of the model configuration."""
+    def __init__(self):
+        super().__init__()
+        self.layout().setSizeConstraint(QLayout.SizeConstraint.SetNoConstraint)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+
+    def sizeHint(self):
+        editor = self.currentWidget()
+        if editor is None:
+            return super().sizeHint()
+        editor.layout().invalidate()
+        editor.layout().activate()
+        return editor.sizeHint()
+
+    def minimumSizeHint(self):
+        return self.sizeHint()
 
 
 class ConfigurationPage(QWidget):
@@ -46,12 +66,13 @@ class ConfigurationPage(QWidget):
         self.model_label = QLabel("模型类型：")
         row.addWidget(self.model_label)
         self.model_combo = QComboBox()
-        self.model_combo.addItems([MODEL_TITLES[key] for key in self.MODEL_KEYS])
+        for key in self.MODEL_KEYS:
+            add_combo_item(self.model_combo, MODEL_TERM_KEYS[key], key)
         row.addWidget(self.model_combo, 1)
         column.addLayout(row)
         self.screening_widget = configuration_panels.screening(self)
         self.taguchi_widget = configuration_panels.taguchi(self)
-        self.model_stack = QStackedWidget()
+        self.model_stack = ModelStack()
         self.model_editors = {}
         for key in self.MODEL_KEYS:
             editor = ModelConfiguration(key, model_factors(self.project_data), config=self._saved_config(key))
@@ -61,17 +82,20 @@ class ConfigurationPage(QWidget):
         for widget in (self.screening_widget, self.taguchi_widget, model_page):
             widget.layout().setContentsMargins(10, 12, 10, 10)
             widget.layout().addStretch()
-        for widget, title in ((self.screening_widget, "因子筛选分析"),
-                              (self.taguchi_widget, "田口稳健设计"),
-                              (model_page, "代理建模与鲁棒优化")):
+        for widget, term in ((self.screening_widget, "screening_design"),
+                             (self.taguchi_widget, "taguchi_design"),
+                             (model_page, "task_robust")):
             scroll = QScrollArea()
             scroll.setWidgetResizable(True)
             scroll.setWidget(widget)
-            self.dynamic_params_widget.addTab(scroll, title)
+            index = self.dynamic_params_widget.addTab(scroll, name(term))
+            self.dynamic_params_widget.setTabToolTip(index, tooltip(term))
         self.results_workspace.refresh()
+        self.preview_group = QGroupBox("试验规模", self)
+        preview_layout = QVBoxLayout(self.preview_group)
         self.preview_label = QLabel()
         self.preview_label.setWordWrap(True)
-        self.preview_label.setProperty("role", "muted")
+        preview_layout.addWidget(self.preview_label)
         self.config_status = QLabel("尚未生成试验方案")
         self.config_status.setWordWrap(True)
         self.config_status.setProperty("role", "badge")
@@ -86,7 +110,6 @@ class ConfigurationPage(QWidget):
         self.gen_btn.clicked.connect(self.on_generate_clicked)
         row.addWidget(self.gen_btn)
         main.addLayout(row)
-        main.addWidget(self.preview_label)
         main.addWidget(self.results_workspace, 1)
         self._on_taguchi_levels()
         self.dynamic_params_widget.currentChanged.connect(self._on_selection_changed)
@@ -101,6 +124,12 @@ class ConfigurationPage(QWidget):
         if self.project_data.design_method:
             self._select_method(self.project_data.design_method)
             self._restore_classical_settings()
+        if self.project_data.task_type:
+            family = {'robust': 2, 'taguchi': 1, 'factorial': 0}[self.project_data.task_type]
+            for index in range(3):
+                self.dynamic_params_widget.setTabVisible(index, index == family)
+            self.dynamic_params_widget.setCurrentIndex(family)
+            self.results_workspace.refresh()
         self.update_info_display()
         self._on_selection_changed()
         if self.project_data.doe_matrix:
@@ -119,9 +148,10 @@ class ConfigurationPage(QWidget):
         saved = self.project_data.surrogate_config or {}
         if saved.get("model") == key:
             return saved
-        if key == "RSM" and "响应曲面" in self.project_data.design_method:
+        if key == "RSM" and any(text in self.project_data.design_method
+                                for text in ("响应曲面", "响应面")):
             meta = self.project_data.design_params.get("meta", {})
-            return dict(model=key, doe_method="BBD" if "Box-Behnken" in meta.get("design", "") else "CCD",
+            return dict(model=key, doe_method="BBD" if "博克斯" in meta.get("design", "") else "CCD",
                 centers=meta.get("centers", 3), replicates=meta.get("replicates", 1),
                 alpha=meta.get("alpha") or 1, alpha_mode="custom")
         return None
@@ -129,11 +159,11 @@ class ConfigurationPage(QWidget):
     def _selected_method(self):
         category = self.dynamic_params_widget.currentIndex()
         if category == 0:
-            return "两水平筛选设计（全因子/部分析因/PB）"
+            return name("screening_design")
         if category == 1:
-            return "田口稳健设计（内表×外表）"
+            return name("taguchi_design")
         key = self.MODEL_KEYS[self.model_combo.currentIndex()]
-        return "响应曲面设计" if key == "RSM" else f"代理模型建模 · {'BP 神经网络' if key == 'ANN' else key}"
+        return MODEL_TITLES[key] if key == "RSM" else f"代理模型建模 · {MODEL_TITLES[key]}"
 
     def _restore_classical_settings(self):
         params = self.project_data.design_params
@@ -163,17 +193,24 @@ class ConfigurationPage(QWidget):
         elif "田口" in method:
             self.dynamic_params_widget.setCurrentIndex(1)
         else:
-            key = "RSM" if "响应曲面" in method else "Kriging" if "Kriging" in method else "SVR" if "SVR" in method else "ANN"
+            key = ("RSM" if any(text in method for text in ("响应曲面", "响应面")) else
+                   "Kriging" if any(text in method for text in ("Kriging", "克里金")) else
+                   "SVR" if any(text in method for text in ("SVR", "支持向量回归")) else "ANN")
             self.model_combo.setCurrentIndex(self.MODEL_KEYS.index(key))
             self.dynamic_params_widget.setCurrentIndex(2)
 
     def _on_selection_changed(self, *_args):
         self.model_stack.setCurrentIndex(self.model_combo.currentIndex())
+        category = self.dynamic_params_widget.currentIndex()
+        content = self.model_stack.currentWidget() if category == 2 else (self.screening_widget, self.taguchi_widget)[category]
+        if self.preview_group.parentWidget() is not content:
+            layout = content.layout()
+            index = layout.count() if category == 2 else layout.count() - 1
+            layout.insertWidget(index, self.preview_group)
         self._configuration_changed()
 
     def _fit_dynamic_params(self):
-        editor = self.model_stack.currentWidget()
-        self.model_stack.setFixedHeight(editor.sizeHint().height() + 2)
+        self.model_stack.updateGeometry()
 
     def _configuration_changed(self, *_args):
         self._fit_dynamic_params()
@@ -262,8 +299,7 @@ class ConfigurationPage(QWidget):
         try:
             plan = self._build_plan(preview=True)
             meta = plan.params.get("meta", {})
-            self.preview_label.setText(rich_text(f"预计试验次数：{meta.get('total_runs', len(plan.rows))} 次\n"
-                f"{meta.get('bounds_note', '')}"))
+            self.preview_label.setText(f"预计试验次数：{meta.get('total_runs', len(plan.rows))} 次")
         except (ValueError, TypeError) as exc:
             self.preview_label.setText(f"当前配置不可生成：{exc}")
 
@@ -284,5 +320,5 @@ class ConfigurationPage(QWidget):
             service.record_operation("方案生成", "失败", message=str(exc))
             Notice.warning(self, "无法生成方案", str(exc))
             return
-        service.record_operation("方案生成", message=f"生成 {len(plan.rows)} 行 DOE")
+        service.record_operation("方案生成", message=f"生成 {len(plan.rows)} 行试验设计数据")
         Notice.information(self, "方案已生成", f"已生成 {plan.method}，共 {len(plan.rows)} 次试验。\n请进入【数据管理】填入或导入响应结果。")

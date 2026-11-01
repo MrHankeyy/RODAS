@@ -3,7 +3,7 @@
     "module": "test_analysis_results",
     "exit_code": 0,
     "summary": [
-      "Ran 6 tests in 1.879s",
+      "Ran 6 tests in 0.824s",
       "OK"
     ]
   },
@@ -11,7 +11,39 @@
     "module": "test_classical_doe",
     "exit_code": 0,
     "summary": [
-      "Ran 12 tests in 3.899s",
+      "Ran 13 tests in 1.938s",
+      "OK"
+    ]
+  },
+  {
+    "module": "test_configuration_workflow",
+    "exit_code": 0,
+    "summary": [
+      "Ran 12 tests in 2.884s",
+      "OK"
+    ]
+  },
+  {
+    "module": "test_data_management_workflow",
+    "exit_code": 0,
+    "summary": [
+      "Ran 6 tests in 1.507s",
+      "OK"
+    ]
+  },
+  {
+    "module": "test_definition_editors",
+    "exit_code": 0,
+    "summary": [
+      "Ran 28 tests in 4.805s",
+      "OK"
+    ]
+  },
+  {
+    "module": "test_desktop_layout",
+    "exit_code": 0,
+    "summary": [
+      "Ran 5 tests in 5.131s",
       "OK"
     ]
   },
@@ -19,7 +51,23 @@
     "module": "test_math_format",
     "exit_code": 0,
     "summary": [
-      "Ran 6 tests in 1.191s",
+      "Ran 8 tests in 0.254s",
+      "OK"
+    ]
+  },
+  {
+    "module": "test_navigation_popup",
+    "exit_code": 0,
+    "summary": [
+      "Ran 6 tests in 3.624s",
+      "OK"
+    ]
+  },
+  {
+    "module": "test_numeric_inputs",
+    "exit_code": 0,
+    "summary": [
+      "Ran 8 tests in 1.377s",
       "OK"
     ]
   },
@@ -27,7 +75,7 @@
     "module": "test_project_service",
     "exit_code": 0,
     "summary": [
-      "Ran 3 tests in 0.000s",
+      "Ran 3 tests in 0.001s",
       "OK"
     ]
   },
@@ -35,7 +83,7 @@
     "module": "test_reports",
     "exit_code": 0,
     "summary": [
-      "Ran 9 tests in 2.473s",
+      "Ran 11 tests in 2.541s",
       "OK"
     ]
   },
@@ -43,7 +91,7 @@
     "module": "test_result_overview",
     "exit_code": 0,
     "summary": [
-      "Ran 7 tests in 0.264s",
+      "Ran 7 tests in 0.062s",
       "OK"
     ]
   },
@@ -51,7 +99,78 @@
     "module": "test_robust_results",
     "exit_code": 0,
     "summary": [
-      "Ran 3 tests in 0.772s",
+      "Ran 3 tests in 0.275s",
+      "OK"
+    ]
+  },
+  {
+    "module": "test_screening_taguchi",
+    "exit_code": 5,
+    "summary": [
+      "Ran 0 tests in 0.000s"
+    ]
+  },
+  {
+    "module": "test_sobol_errors",
+    "exit_code": 0,
+    "summary": [
+      "Ran 6 tests in 0.140s",
+      "OK"
+    ]
+  },
+  {
+    "module": "test_surrogate_workbench",
+    "exit_code": 0,
+    "summary": [
+      "Ran 15 tests in 6.924s",
+      "OK"
+    ]
+  },
+  {
+    "module": "test_svr_errors",
+    "exit_code": 0,
+    "summary": [
+      "Ran 6 tests in 0.024s",
+      "OK"
+    ]
+  },
+  {
+    "module": "test_task_modeling",
+    "exit_code": 0,
+    "summary": [
+      "Ran 10 tests in 0.254s",
+      "OK"
+    ]
+  },
+  {
+    "module": "test_task_storage",
+    "exit_code": 0,
+    "summary": [
+      "Ran 8 tests in 4.253s",
+      "OK"
+    ]
+  },
+  {
+    "module": "test_task_ui",
+    "exit_code": 0,
+    "summary": [
+      "Ran 10 tests in 15.441s",
+      "OK"
+    ]
+  },
+  {
+    "module": "test_ui_constraints",
+    "exit_code": 0,
+    "summary": [
+      "Ran 8 tests in 3.386s",
+      "OK"
+    ]
+  },
+  {
+    "module": "test_welcome_workspace",
+    "exit_code": 0,
+    "summary": [
+      "Ran 12 tests in 39.975s",
       "OK"
     ]
   },
@@ -59,7 +178,7 @@
     "module": "test_workbench_analysis",
     "exit_code": 0,
     "summary": [
-      "Ran 11 tests in 2.160s",
+      "Ran 11 tests in 0.788s",
       "OK"
     ]
   }

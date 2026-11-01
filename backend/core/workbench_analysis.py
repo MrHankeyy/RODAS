@@ -18,9 +18,9 @@ def descriptive(project):
         n = len(values)
         row = {"响应": response.name, "有效数": n, "缺失或无效": len(raw)-n}
         if n:
-            row.update(zip(["最小值", "Q1", "中位数", "Q3", "最大值"], np.quantile(values,[0,.25,.5,.75,1]).tolist()))
+            row.update(zip(["最小值", "第一四分位数", "中位数", "第三四分位数", "最大值"], np.quantile(values,[0,.25,.5,.75,1]).tolist()))
             row.update({"均值": float(values.mean()), "样本标准差": float(values.std(ddof=1)) if n>1 else None,
-                        "IQR": float(np.quantile(values,.75)-np.quantile(values,.25)),
+                        "四分位距": float(np.quantile(values,.75)-np.quantile(values,.25)),
                         "偏度": float(stats.skew(values,bias=False)) if n>2 and np.ptp(values)>0 else None,
                         "超额峰度": float(stats.kurtosis(values,bias=False)) if n>3 and np.ptp(values)>0 else None})
         rows.append(row)
@@ -37,7 +37,7 @@ def diagnostics(context, name):
         actual = np.asarray(val.get('actual', []),float)
         predicted = np.asarray(val.get('predicted', []),float)
         ids = list(range(1,len(actual)+1))
-        source = '留出验证集（序号不是原 DOE 行号）'
+        source = '留出验证集（序号不是原试验矩阵行号）'
         notes.append('代理模型仅展示已有留出验证结果，不对黑盒预测器报告 OLS 系数检验、杠杆值或 Cook 距离。')
     else:
         names = context['names']
@@ -114,7 +114,7 @@ def diagnostics(context, name):
         observations.append(row)
     if 3<=n<=5000 and np.ptp(residual)>1e-12:
         measures['残差 Shapiro p']=float(stats.shapiro(residual).pvalue)
-        notes.append('Shapiro 仅作残差分布诊断，不显著不等于证明正态；DOE 行序不一定是实际试验时间。')
+        notes.append('夏皮罗检验仅作残差分布诊断，不显著不等于证明正态；试验矩阵行序不一定是实际试验时间。')
     return {'summary':[{'统计量':k,'值':v} for k,v in measures.items()], 'coefficients':coefficients,
             'observations':observations,'notes':notes,'source':source}
 

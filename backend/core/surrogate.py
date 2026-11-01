@@ -16,11 +16,6 @@ except Exception:
 from . import factors as de
 
 
-def _kernel_rbf(x, z, gamma):
-    diff = x[:, None, :] - z[None, :, :]
-    return _np.exp(-gamma * _np.sum(diff ** 2, axis=2))
-
-
 def _ann_forward(x, w1, b1, w2, b2, activation):
     z1 = x @ w1 + b1
     if activation == "relu":
@@ -90,11 +85,7 @@ def train_kriging(Xtr, ytr, Xte, correlation="Gaussian", trend="常数"):
 def train_svr(Xtr, ytr, Xte, kernel="RBF", poly_degree=3,
               c_min=0.1, c_max=10.0, c_step=1.0,
               g_min=0.01, g_max=10.0, g_step=1.0):
-    """SVR 训练。
-
-    若环境装有 scikit-learn 则调用其 SVR；否则退回 RBF 核岭回归（KRR），
-    并按 C/g 网格寻优，输出中会注明所用求解器。
-    """
+    """Train real SVR only; report dependency, fitting and prediction errors."""
     if not HAS_NUMPY:
         raise RuntimeError("numpy 不可用")
     Xtr = _np.asarray(Xtr, float)
@@ -102,15 +93,20 @@ def train_svr(Xtr, ytr, Xte, kernel="RBF", poly_degree=3,
     ytr = _np.asarray(ytr, float)
 
     def grid_range(lo, hi, step):
+        lo, hi, step = float(lo), float(hi), float(step)
+        if not all(map(math.isfinite, (lo, hi, step))) or lo <= 0 or hi < lo or step <= 0:
+            raise ValueError("C、γ 搜索范围须为正的有限数，上限不得小于下限，步长须大于零。")
         vals = []
-        v = float(lo)
-        while v <= float(hi) + 1e-9:
+        v = lo
+        while v <= hi + 1e-9:
             vals.append(round(v, 6))
-            v += float(step)
-        return vals or [1.0]
+            v += step
+        return vals
 
+    stage = "依赖加载"
     try:
         from sklearn.svm import SVR  # type: ignore
+        stage = "参数搜索"
         kernel_arg = ("rbf" if "RBF" in kernel or kernel == "RBF"
                       else ("poly" if "多项式" in kernel else "sigmoid"))
         best, best_err = None, float("inf")
@@ -120,44 +116,31 @@ def train_svr(Xtr, ytr, Xte, kernel="RBF", poly_degree=3,
                             gamma=gamma, epsilon=0.05)
                 model.fit(Xtr, ytr)
                 pred = model.predict(Xtr)
+                if not _np.isfinite(pred).all():
+                    raise ValueError("训练集预测包含非有限数。")
                 err = float(_np.mean((pred - ytr) ** 2))
                 if err < best_err:
                     best_err, best = err, (c, gamma)
         c, gamma = best
+        stage = "最终训练"
         model = SVR(kernel=kernel_arg, degree=int(poly_degree), C=c,
                 gamma=gamma, epsilon=0.05)
         model.fit(Xtr, ytr)
+        stage = "预测器构造"
         predict_fn = Predictor("svr", dict(support=model.support_vectors_,
             dual=model.dual_coef_.ravel(), intercept=float(model.intercept_[0]),
             kernel=model.kernel, gamma=float(model._gamma), degree=model.degree, coef0=model.coef0))
+        stage = "测试集预测"
+        predicted = model.predict(Xte)
+        if not _np.isfinite(predicted).all():
+            raise ValueError("测试集预测包含非有限数。")
         return {"params": {"kernel": kernel, "C": c, "gamma": gamma,
                    "poly_degree": int(poly_degree),
                            "solver": "scikit-learn SVR"},
-                "predicted": [float(v) for v in model.predict(Xte)],
+                "predicted": [float(v) for v in predicted],
                 "predict_fn": predict_fn}
-    except Exception:
-        # KRR 近似：核矩阵 + 岭回归，C 视为 1/λ 的缩放
-        best_pred, best_err, best_params = None, float("inf"), (1.0, 1.0)
-        for c in grid_range(c_min, c_max, c_step):
-            for gamma in grid_range(g_min, g_max, g_step):
-                K = _kernel_rbf(Xtr, Xtr, gamma)
-                lam = 1.0 / max(c, 1e-6)
-                alpha = _np.linalg.solve(K + lam * _np.eye(len(ytr)), ytr)
-                pred_tr = K @ alpha
-                err = float(_np.mean((pred_tr - ytr) ** 2))
-                if err < best_err:
-                    best_err = err
-                    best_params = (c, gamma)
-                    best_alpha = alpha.copy()
-                    best_pred = _kernel_rbf(Xtr, Xte, gamma).T @ alpha
-        predict_fn = Predictor("krr", dict(support=Xtr, dual=best_alpha,
-            intercept=0., kernel="rbf", gamma=best_params[1]))
-        return {"params": {"kernel": kernel, "C": best_params[0],
-                           "gamma": best_params[1],
-                   "poly_degree": int(poly_degree),
-                           "solver": "核岭回归 KRR（未安装 scikit-learn 的 SVR 近似）"},
-                "predicted": [float(v) for v in best_pred],
-                "predict_fn": predict_fn}
+    except Exception as exc:
+        raise RuntimeError(f"支持向量回归{stage}失败（{type(exc).__name__}）：{exc}") from exc
 
 
 def train_ann(Xtr, ytr, Xte, hidden_layers=1, hidden_nodes=8, activation="sigmoid",

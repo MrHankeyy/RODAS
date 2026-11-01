@@ -28,7 +28,7 @@ class WorkbenchDiagnostics(QWidget):
         for title,slot in [('导出当前表 CSV',self.export_csv),('导出完整统计 JSON',self.export_json),('导出诊断图',self.export_plot)]:
             button=QPushButton(title);button.clicked.connect(slot);head.addWidget(button)
         layout.addLayout(head)
-        self.notice=QLabel('请先执行“建模与模型诊断”或鲁棒优化。');self.notice.setWordWrap(True)
+        self.notice=QLabel('请先执行“建模与模型诊断”或鲁棒性优化设计。');self.notice.setWordWrap(True)
         layout.addWidget(self.notice)
         self.tabs=QTabWidget();layout.addWidget(self.tabs)
         for key,title in [('summary','拟合统计'),('coefficients','系数与区间'),('observations','逐点诊断')]:
@@ -91,7 +91,8 @@ class WorkbenchDiagnostics(QWidget):
     def render(self,*args):
         item=self.snapshot.get('responses',{}).get(self.response.currentText())
         if not item:return
-        for key in ('summary','coefficients','observations'):self.fill(self.tables[key],item[key])
+        for key in ('summary','coefficients','observations'):
+            self.fill(self.tables[key],item[key], statistic_columns=('统计量',) if key == 'summary' else ())
         self.notes.setPlainText('\n\n'.join(item['notes']))
         self.figure.clear()
         rows=item['observations']

@@ -20,10 +20,10 @@ _PB_CORES = {
 }
 
 SCREENING_KINDS = {
-    "full": "全因子 2^k",
-    "half": "部分析因 1/2 分数",
-    "quarter": "部分析因 1/4 分数",
-    "pb": "Plackett-Burman",
+    "full": "全因子设计",
+    "half": "二分之一部分因子设计",
+    "quarter": "四分之一部分因子设计",
+    "pb": "普拉克特–伯曼设计",
 }
 from .factors import _round_row, to_actual
 from .response_models import _design_matrix
@@ -110,7 +110,7 @@ def screening_coded_runs(k: int, kind: str):
         n = 12 if k <= 11 else 20
         matrix = _pb_matrix(n)
         rows = [row[:k] for row in matrix]
-        info_extra = f"Plackett-Burman {n} 次试验（主效应正交）"
+        info_extra = f"普拉克特–伯曼设计，{n} 次试验（主效应正交）"
     else:
         raise ValueError(kind)
     return rows, n, info_extra
@@ -127,11 +127,11 @@ def build_screening(factors, kind: str, seed: int, centers: int = 0,
     if kind == "full" and k > 7:
         raise ValueError("全因子设计仅支持不超过 7 个因子（试验次数 2^k 过大）")
     if kind == "half" and k > 10:
-        raise ValueError("1/2 部分析因仅支持不超过 10 个因子")
+        raise ValueError("二分之一部分因子设计仅支持不超过 10 个因子")
     if kind == "quarter" and k < 5:
-        raise ValueError("1/4 部分析因至少需要 5 个因子")
+        raise ValueError("四分之一部分因子设计至少需要 5 个因子")
     if kind == "pb" and k > 19:
-        raise ValueError("Plackett-Burman 最多支持 19 个因子")
+        raise ValueError("普拉克特–伯曼设计最多支持 19 个因子")
 
     coded, base_runs, info = screening_coded_runs(k, kind)
     all_coded = list(coded)
@@ -204,15 +204,15 @@ def build_response_surface(factors, rsm_type: str, alpha_mode: str,
     factors = [f for f in factors if f[3] is None]
     k = len(factors)
     if rsm_type not in ("CCD", "BBD"):
-        raise ValueError("响应曲面类型必须为 CCD 或 BBD")
+        raise ValueError("响应面试验设计必须为中心复合设计或博克斯–贝恩肯设计")
     if rsm_type == "BBD":
         if k < 3:
-            raise ValueError("Box-Behnken 设计至少需要 3 个因子")
+            raise ValueError("博克斯–贝恩肯设计至少需要 3 个因子")
         if k > 7:
-            raise ValueError("Box-Behnken 设计最多支持 7 个因子（试验次数过多）")
+            raise ValueError("博克斯–贝恩肯设计最多支持 7 个因子（试验次数过多）")
         coded = bbd_runs(k, centers)
         alpha = 0.0
-        design_label = f"Box-Behnken 设计（k={k}）"
+        design_label = f"博克斯–贝恩肯设计（k={k}）"
     else:
         if k < 2:
             raise ValueError("中心复合设计至少需要 2 个因子")
@@ -226,12 +226,12 @@ def build_response_surface(factors, rsm_type: str, alpha_mode: str,
         else:
             alpha = float(custom_alpha)
         if not math.isfinite(alpha) or alpha <= 0:
-            raise ValueError("CCD 轴值必须为正数")
+            raise ValueError("中心复合设计轴值必须为正数")
         coded = ccd_runs(k, alpha, centers)
-        design_label = f"中心复合设计 CCD（k={k}, α={alpha}）"
+        design_label = f"中心复合设计（k={k}, α={alpha}）"
 
     if _np.linalg.matrix_rank(_design_matrix(_np.asarray(coded, float))[0]) < (k + 1) * (k + 2) // 2:
-        raise ValueError("当前点型无法识别完整二次模型；请增加中心点或调整 CCD 轴值。")
+        raise ValueError("当前点型无法识别完整二次模型；请增加中心点或调整中心复合设计轴值。")
     rows = []
     for _ in range(max(1, replicates)):
         for coded_row in coded:
@@ -254,7 +254,7 @@ def build_response_surface(factors, rsm_type: str, alpha_mode: str,
         "replicates": replicates,
         "total_runs": len(rows),
         "active_factors": [f[0] for f in factors],
-        "bounds_note": "CCD 的 α>1 轴点超出所填低/高水平；这些水平对应编码 ±1，不是硬边界。" if rsm_type == "CCD" and alpha > 1 else "所有设计点位于所填低/高水平内。",
+        "bounds_note": "中心复合设计的 α>1 轴点超出所填低/高水平；这些水平对应编码 ±1，不是硬边界。" if rsm_type == "CCD" and alpha > 1 else "所有设计点位于所填低/高水平内。",
     }
     return rows, meta
 

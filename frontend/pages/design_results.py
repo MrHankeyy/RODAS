@@ -4,6 +4,7 @@ import math
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
 from frontend.math_widgets import MathTextEdit, install_delegate, decorate_item
+from frontend.terminology import apply_header_tooltips
 
 
 class DesignResultsPanel(QWidget):
@@ -16,10 +17,10 @@ class DesignResultsPanel(QWidget):
         row.addWidget(QLabel("响应："))
         self.response_combo = QComboBox()
         row.addWidget(self.response_combo)
-        factor_label = QLabel("绘图因子：")
+        factor_label = QLabel("绘图因子：", self)
         factor_label.setVisible(family == "taguchi")
         row.addWidget(factor_label)
-        self.factor_combo = QComboBox()
+        self.factor_combo = QComboBox(self)
         row.addWidget(self.factor_combo)
         row.addStretch()
         self.factor_combo.setVisible(family == "taguchi")
@@ -32,8 +33,8 @@ class DesignResultsPanel(QWidget):
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         details = QTabWidget()
-        details.addTab(self.table, "效应汇总" if family == "screening" else "水平响应")
-        self.runs_table = QTableWidget()
+        details.addTab(self.table, "主效应汇总" if family == "screening" else "水平响应")
+        self.runs_table = QTableWidget(self)
         self.runs_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
         self.runs_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.runs_table.setVisible(family == "taguchi")
@@ -55,6 +56,7 @@ class DesignResultsPanel(QWidget):
         install_delegate(table)
         table.setColumnCount(len(headers))
         table.setHorizontalHeaderLabels(headers)
+        apply_header_tooltips(table)
         table.setRowCount(len(rows))
         for i, row in enumerate(rows):
             for j, value in enumerate(row):
@@ -85,7 +87,7 @@ class DesignResultsPanel(QWidget):
         if error:
             lines.append(f"{name}：{error}")
         elif self.family == "screening" and item:
-            self.fill(self.table, ["排序", "因子", "高−低效应", "低水平均值", "高水平均值", "平方效应份额 %", "标准误", "未校正 p"],
+            self.fill(self.table, ["排序", "因子", "主效应", "低水平均值", "高水平均值", "主效应平方占比（%）", "标准误", "未校正 p"],
                       [[e["rank"], e["name"], e["effect"], e["low_mean"], e["high_mean"], e["share"], e["se"], e["p"]] for e in item["effects"]])
             lines += [item["note"], f"纯误差自由度：{item['pure_error_df']}；中心−角点均值差：{item['curvature']}",
                       self.result.get("diagnostic_summary", "")]
@@ -95,7 +97,7 @@ class DesignResultsPanel(QWidget):
             effects = item["effects"][:len(self.result.get("main_effects", [])) or 5]
             ax.bar([e["name"] for e in effects], [e["effect"] for e in effects])
             ax.axhline(0, color="gray", linewidth=.7)
-            ax.set_title(f"{name}：重点主效应（保留方向）")
+            ax.set_title(f"{name}：重点主效应")
             ax.set_ylabel("高水平均值 − 低水平均值")
         elif item:
             names = list(dict.fromkeys(r["factor"] for r in item["levels"]))
@@ -115,7 +117,7 @@ class DesignResultsPanel(QWidget):
                 ax = self.fig.add_subplot(1, 2, i+1)
                 ax.plot([r["level_value"] for r in rows], [r[key] if math.isfinite(r[key]) else float("nan") for r in rows], "o-")
                 if any(not math.isfinite(r[key]) for r in rows):
-                    ax.text(.02, .98, "零损失 S/N=+∞，详见表格", transform=ax.transAxes, va="top")
+                    ax.text(.02, .98, "零损失信噪比=+∞，详见表格", transform=ax.transAxes, va="top")
                 ax.set_title(label)
                 ax.set_xlabel(self.factor_combo.currentText())
         self.summary.setPlainText("\n".join(lines))

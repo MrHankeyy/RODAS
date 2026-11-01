@@ -25,7 +25,7 @@ def _model_probes(model):
     s = model.state
     if model.kind == 'kriging':
         count = len(s['span'])
-    elif model.kind in ('svr', 'krr'):
+    elif model.kind == 'svr':
         count = s['support'].shape[1]
     elif model.kind == 'ann':
         count = len(s['x_mean'])

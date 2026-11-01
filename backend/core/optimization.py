@@ -305,19 +305,19 @@ def robust_optimize(context, mode="multi", pop=60, gen=100, weight=0.5,
 
 
 def _robust_result_text(res):
-    mode_names = {"multi": "NSGA-II 多目标（均值 vs 稳定性）",
-                  "weighted": "加权单目标（权重可设）",
-                  "constraint": "约束型（稳定性转为独立约束）"}
+    mode_names = {"multi": "多目标优化（望性损失与归一化标准差）",
+                  "weighted": "加权单目标优化（权重可设）",
+                  "constraint": "约束优化（标准差转为独立约束）"}
     lines = [f"【{mode_names.get(res['mode'], res['mode'])}】",
-             f"约束安全系数 k={res['k_constraint']}，输入不确定性系数 k={res['k_design']}",
+             f"约束裕量系数 k={res['k_constraint']}，区间标准差换算系数 k={res['k_design']}",
              "输入标准差：" + "，".join(f"{n}={s:.6g}" for n, s in res.get("input_sigmas", {}).items()),
              "目标响应：" + "、".join(res.get("objective_names", [])),
              "约束响应：" + ("、".join(res.get("constraint_names", [])) or "无"),
-             "稳定性按响应数据极差归一化；均值和方差采用局部二阶近似。"]
+             "标准差按响应数据极差归一化；均值和方差采用局部二阶近似。"]
     if res["k_design"] < 3:
         lines.append("提示：区间因子的输入扰动较大，局部二阶近似可能失真，建议用扰动抽样复核。")
     if res["mode"] == "weighted":
-        lines.append(f"权重 λ(目标均值) = {res['weight']}，稳定性权重 = {round(1 - res['weight'], 2)}")
+        lines.append(f"望性损失权重 λ={res['weight']}，波动权重={round(1 - res['weight'], 2)}")
     lines.append(f"评估解数量：{res['evaluated_count']}")
     lines.append(f"可行解数量：{res.get('feasible_count', 0)}；图中只显示可行解，不把约束罚项作为响应波动。")
     lines.append("")
@@ -325,13 +325,13 @@ def _robust_result_text(res):
         lines.append(f"帕累托前沿解数量：{len(res['front'])}")
         knee = res.get("knee")
         if knee:
-            lines.append(f"Knee Point：{knee['x']} ｜ 目标值 {knee['obj']}")
+            lines.append(f"折中解：{knee['x']} ｜ 目标值 {knee['obj']}")
     best = res["best"]
     lines.append("")
     lines.append("★ 推荐优化设计（稳健设计点）" if res.get("feasible_count", 0)
                  else "尚未找到满足约束的设计；以下仅列出违例最小的候选点。")
     lines.append(f"  因子设置：{ {k: round(v, 5) for k, v in best['x'].items()} }")
-    lines.append(f"  综合望性均值 {best['mean_perf']} ｜ 归一化稳定性 {best['std_norm']} ｜ "
+    lines.append(f"  平均望性 {best['mean_perf']} ｜ 归一化标准差 {best['std_norm']} ｜ "
                  f"约束违例 {best['infeas']}")
     lines.append("  各响应（扰动后近似均值 μ、标准差 σ、望性 d）：")
     for item in best["responses"]:
@@ -347,7 +347,7 @@ def _design_bounds(context):
 
 
 def local_search(context, start, k_design, k_constraint=6.0, weight=.5,
-                 method="AOFAT", steps=12, step_frac=.1):
+                 method="自适应单因子搜索", steps=12, step_frac=.1):
     """Bounded surrogate proposals, feasibility first; never labels an infeasible point feasible."""
     if not context or not context["models"]:
         raise ValueError("无模型，无法执行优化工具")
@@ -372,7 +372,7 @@ def local_search(context, start, k_design, k_constraint=6.0, weight=.5,
     step=step_frac
     for iteration in range(1,steps+1):
         candidates=[]
-        if method=="最陡上升":
+        if method=="最陡下降搜索":
             grad=[]
             for j in range(len(z)):
                 zp=z.copy();zm=z.copy();zp[j]=min(1,z[j]+.001);zm[j]=max(0,z[j]-.001)
@@ -393,9 +393,9 @@ def local_search(context, start, k_design, k_constraint=6.0, weight=.5,
             z,current=min(better,key=lambda pair:key(pair[1]));path.append(current)
         else:
             step*=.5
-        if method=="EVOP" or step<1e-5:break
-    lines=[f"【{method} 模型辅助局部探索】", f"λ={weight:g}，输入 k={k_design:g}，约束 k={k_constraint:g}。先满足约束，再减小加权损失。",
-           "所有点为模型计算，不是新增实测；EVOP 为局部单因子试探，不替代实际重复试验。"]
+        if method=="单轮单因子搜索" or step<1e-5:break
+    lines=[f"【{method} · 模型辅助局部探索】", f"望性损失权重 λ={weight:g}，区间标准差换算系数 k={k_design:g}，约束裕量系数 k={k_constraint:g}。先满足约束，再减小加权损失。",
+           "所有点均由模型计算，不是新增实测；单轮单因子搜索不替代实际重复试验。"]
     for i,r in enumerate(path):
         lines.append(f"{i}: {r['x']}；望性={r['mean']:.5g}，σ归一={r['std']:.5g}，约束违反={r['violation']:.5g}，损失={r['score']:.5g}")
     lines.append("候选满足当前约束，需实测确认。" if current["feasible"] else "未找到可行候选，不能作为可行推荐。")
@@ -403,14 +403,14 @@ def local_search(context, start, k_design, k_constraint=6.0, weight=.5,
 
 
 def steepest_ascent(context,start,k_design,steps=6,step_frac=.08,k_constraint=6.,weight=.5):
-    r=local_search(context,start,k_design,k_constraint,weight,"最陡上升",steps,step_frac)
+    r=local_search(context,start,k_design,k_constraint,weight,"最陡下降搜索",steps,step_frac)
     return r["text"],r["path"]
 
 
 def evop_cycle(context,center,k_design,k_constraint=6.,weight=.5):
-    return local_search(context,center,k_design,k_constraint,weight,"EVOP",1,.05)["text"]
+    return local_search(context,center,k_design,k_constraint,weight,"单轮单因子搜索",1,.05)["text"]
 
 
 def aofat_search(context,center,k_design,rounds=4,k_constraint=6.,weight=.5):
-    r=local_search(context,center,k_design,k_constraint,weight,"AOFAT",rounds,.15)
+    r=local_search(context,center,k_design,k_constraint,weight,"自适应单因子搜索",rounds,.15)
     return r["text"],r["path"]
