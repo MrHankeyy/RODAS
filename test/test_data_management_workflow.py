@@ -37,15 +37,12 @@ class DataManagementTests(unittest.TestCase):
         for values in ([1, 2, 3, 4, 5], [], [2, 4, 6]):
             p.doe_matrix = [{'Y': value} for value in values]
             page._refresh_views()
-            table = page.statistics_view.table
-            for column in range(table.columnCount()):
-                header = table.horizontalHeaderItem(column)
-                self.assertEqual(header.toolTip(), statistic_tooltip(header.text()))
-                self.assertIn('\n', header.toolTip())
-            if values:
-                header = table.horizontalHeaderItem(4)
-                self.assertEqual(header.text(), '第一四分位数')
-                self.assertEqual(header.toolTip(), '第一四分位数（First Quartile，Q1）\n数据的25%分位数')
+            analysis = page.analysis_view
+            for key, item in analysis.stat_labels.items():
+                self.assertEqual(item.toolTip(), statistic_tooltip(key))
+                self.assertIn('\n', item.toolTip())
+            self.assertEqual(analysis.stat_labels['第一四分位数'].toolTip(),
+                             statistic_tooltip('第一四分位数'))
 
     def test_compact_summary_uses_generated_model_and_run_count(self):
         p = ProjectData(task_type='robust', factors=[
@@ -81,16 +78,15 @@ class DataManagementTests(unittest.TestCase):
                 page = DataManagementPage(project(method))
                 page.load_doe_matrix()
                 self.assertIsInstance(page.results_workspace, ResultsWorkspace)
-                self.assertEqual([page.tabs.tabText(i) for i in range(3)], ["试验数据", "数据检查", "描述统计"])
-                for index in (1, 2, 0):
+                self.assertEqual([page.tabs.tabText(i) for i in range(2)], ["数据录入", "数据分析"])
+                for index in (1, 0):
                     page.results_workspace.buttons[index].click()
                     self.assertEqual(page.tabs.currentIndex(), index)
                     self.assertTrue(page.results_workspace.buttons[index].isChecked())
-                self.assertEqual(page.check_view.progress_bars[0].value(), 1)
-                table = page.statistics_view.table
-                headers = [table.horizontalHeaderItem(i).text() for i in range(table.columnCount())]
-                self.assertEqual(table.item(0, headers.index("均值")).text(), "1")
-                self.assertEqual(table.item(0, headers.index("样本标准差")).text(), "—")
+                self.assertEqual(page.analysis_view.progress_bars[0].value(), 1)
+                values = page.analysis_view.stat_values
+                self.assertEqual(values["均值"].text(), "1")
+                self.assertEqual(values["样本标准差"].text(), "—")
                 page.close()
 
     def test_missing_nonfinite_and_nonnumeric_values_have_problem_locations(self):
@@ -104,7 +100,7 @@ class DataManagementTests(unittest.TestCase):
         page = DataManagementPage(p)
         page.load_doe_matrix()
         page.tabs.setCurrentIndex(1)
-        page.check_view._locate_issue(0, 0)
+        page.analysis_view._locate_issue(0, 0)
         self.assertEqual(page.tabs.currentIndex(), 0)
         self.assertEqual(page.table.currentRow(), 1)
         self.assertEqual(page.table.horizontalHeaderItem(page.table.currentColumn()).text(), "Y")
@@ -117,17 +113,17 @@ class DataManagementTests(unittest.TestCase):
         page.show()
         APP.processEvents()
         page.table.item(1, 2).setText("3")
-        page.tabs.setCurrentIndex(2)
-        self.assertIn("未保存", page.statistics_view.notice.text())
-        self.assertEqual(page.check_view.progress_bars[0].value(), 1)
+        page.tabs.setCurrentIndex(1)
+        self.assertIn("未保存", page.analysis_view.notice.text())
+        self.assertEqual(page.analysis_view.progress_bars[0].value(), 1)
         page.hide()
         page.show()
         self.assertEqual(page.table.item(1, 2).text(), "3")
         with patch("frontend.pages.data_management_page.Notice.information"):
             page.save_results()
         self.assertEqual(p.doe_matrix[1]["Y"], 3)
-        self.assertEqual(page.check_view.progress_bars[0].value(), 2)
-        self.assertNotIn("未保存", page.statistics_view.notice.text())
+        self.assertEqual(page.analysis_view.progress_bars[0].value(), 2)
+        self.assertNotIn("未保存", page.analysis_view.notice.text())
         self.assertFalse(p.rsm_result)
         self.assertFalse(page.table.item(0, 1).flags() & Qt.ItemFlag.ItemIsEditable)
         page.close()
@@ -142,7 +138,7 @@ class DataManagementTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(dir=root) as directory:
             target = Path(directory) / "stats.csv"
             with patch.object(QFileDialog, "getSaveFileName", return_value=(str(target), "")):
-                page.statistics_view.export_statistics()
+                page.analysis_view.export_statistics()
             self.assertIn("均值", target.read_text(encoding="utf-8-sig"))
         page.close()
 
@@ -160,8 +156,8 @@ class DataManagementTests(unittest.TestCase):
         p.doe_matrix = []
         page.show()
         self.assertEqual(page.table.rowCount(), 0)
-        self.assertEqual(page.check_view.progress_bars[0].value(), 0)
-        self.assertIn("没有试验数据", page.statistics_view.notice.text())
+        self.assertEqual(page.analysis_view.progress_bars[0].value(), 0)
+        self.assertIn("没有试验数据", page.analysis_view.notice.toolTip())
         page.close()
 
     def test_headings_use_tooltips_and_data_details_are_removed_from_four(self):
@@ -176,7 +172,7 @@ class DataManagementTests(unittest.TestCase):
                                  for label in window.module_heading.findChildren(QLabel)))
         opt = window.page_OPT
         self.assertFalse(hasattr(opt.overview, "readiness_table"))
-        self.assertNotIn("data", opt.diagnostics_panel.tables)
+        self.assertFalse(hasattr(opt, 'diagnostics_panel'))
         self.assertEqual(opt.stats_btn.text(), "建模与模型诊断")
         opt.overview.data_button.click()
         self.assertEqual(window.stacked_widget.currentIndex(), 2)

@@ -17,19 +17,17 @@ APP = QApplication.instance() or QApplication([])
 class ResultOverviewTests(unittest.TestCase):
     def test_summary_headers_have_shared_bilingual_explanations(self):
         self.assertTrue(all(0 < len(term[2]) <= 20 for term in STATISTICS.values()))
-        for method in ('响应曲面设计', '代理模型建模 · Kriging'):
-            p = self.project(method)
-            p.rsm_result = {'fit': {'Y': {'r2': .99, 'adj_r2': .98, 'rmse': .01}}}
-            p.surrogate_result = {'responses': {'Y': {'r2_test': .97, 'mape_test_%': 2}}}
-            view = ResultOverview()
-            self.addCleanup(view.close)
-            view.set_project(p)
-            table = view.result_tables[0]
-            for column in range(table.columnCount()):
-                header = table.horizontalHeaderItem(column)
-                self.assertEqual(header.toolTip(), statistic_tooltip(header.text()))
-                self.assertIn('\n', header.toolTip())
-            self.assertEqual(table.item(0, 0).text(), 'Y（mm）')
+        from test_workbench_analysis import make_context
+        p, _ = make_context()
+        p.responses[0].unit = 'mm'
+        page = OptimizationPage(p)
+        self.addCleanup(page.close)
+        page.run_statistics()
+        view = page.model_overview
+        self.assertEqual(view.response.currentText(), 'Y（mm）')
+        for key, item in view.summary.labels.items():
+            self.assertEqual(item.toolTip(), statistic_tooltip(key))
+            self.assertIn('\n', item.toolTip())
 
     def project(self, method="代理模型建模 · Kriging"):
         return ProjectData(design_method=method, responses=[ResponseItem(name="Y", unit="mm")],
@@ -56,7 +54,7 @@ class ResultOverviewTests(unittest.TestCase):
                 self.assertEqual(data["status"], "等待分析")
                 self.assertIn(action, data["next_step"])
 
-    def test_all_surrogate_models_share_test_set_columns(self):
+    def test_all_surrogate_models_use_model_overview_instead_of_old_fit_table(self):
         view = ResultOverview()
         for model in ("Kriging", "SVR", "ANN"):
             project = self.project(f"代理模型建模 · {model}")
@@ -64,11 +62,9 @@ class ResultOverviewTests(unittest.TestCase):
                 "train_samples": 8, "test_samples": 2, "params": {"model": model}}}}
             view.set_project(project)
             self.assertEqual(view.status_label.text(), "分析已完成")
-            header = view.result_tables[0].horizontalHeaderItem(1)
-            self.assertEqual(header.text(), "测试集决定系数")
-            self.assertIn("R²", header.toolTip())
-            self.assertEqual(view.result_tables[0].item(0, 1).text(), "0.97")
-        self.assertFalse(view.findChildren(QComboBox))
+            self.assertFalse(view.result_tables)
+            self.assertFalse(view.model_overview.isHidden())
+        self.assertEqual(len(view.findChildren(QComboBox)), 1)
         view.close()
 
     def test_rsm_uses_fit_metrics_and_keeps_partial_failures_visible(self):
@@ -80,8 +76,8 @@ class ResultOverviewTests(unittest.TestCase):
                                       "Z": {"error": "数据不足"}}}
         data = overview(project)
         self.assertEqual(data["status"], "部分响应分析失败")
-        self.assertEqual(data["sections"][0]["headers"][1], "拟合决定系数")
-        self.assertIn("数据不足", data["sections"][1]["message"])
+        self.assertEqual(len(data['sections']), 1)
+        self.assertIn("数据不足", data["sections"][0]["message"])
 
     def test_screening_preserves_signed_effects_for_each_response(self):
         project = self.project("两水平筛选设计")
@@ -109,11 +105,13 @@ class ResultOverviewTests(unittest.TestCase):
         page = OptimizationPage(project)
         project.surrogate_result = {"responses": {"Y": {"r2_test": .97, "params": {"kernel": "RBF"}}}}
         page._refresh_view()
-        self.assertEqual(len(page.overview.result_tables), 1)
+        self.assertFalse(page.overview.result_tables)
+        self.assertFalse(page.model_overview.isHidden())
         project.design_method = "两水平筛选设计"
         page._check_inputs()
         self.assertFalse(project.surrogate_result)
         self.assertFalse(page.overview.result_tables)
+        self.assertTrue(page.model_overview.isHidden())
         page.close()
 
 

@@ -10,7 +10,7 @@ import logging
 from frontend.notifications import Notice
 from frontend.numeric_inputs import commit_numeric_inputs
 from frontend.pages.qt_tasks import OptimizationWorker
-from frontend.pages.workbench_diagnostics import WorkbenchDiagnostics
+from frontend.pages.table_widgets import fill_records
 from backend.services import analysis_service, model_service
 
 
@@ -69,7 +69,7 @@ class OptimizationController:
             page._oe_context = None
             page._robust_res = {}
             page._param_res = {}
-            page.diagnostics_panel.clear()
+            page.model_overview.clear()
             page.screening_panel.set_result({})
             page.taguchi_panel.set_result({})
             page.tol_table.setRowCount(0)
@@ -205,7 +205,7 @@ class OptimizationController:
             page.robust_results.clear()
             page._plot_pareto({})
             page._update_analysis(context, {})
-            page.tabs.setCurrentWidget(page.diagnostics_panel)
+            page.tabs.setCurrentWidget(page.tab_overview)
             page.status_label.setText("建模与统计分析完成，未执行鲁棒性优化设计。")
             page.optimization_finished.emit()
         except Exception as exc:
@@ -236,9 +236,8 @@ class OptimizationController:
         page._plot_factor(page._param_res.get("factor_plots", []))
         page.tol_text.setText(bundle["tolerance_text"])
     
-        page.diagnostics_panel.set_context(
-            context, robust, kd, kc, snapshot=bundle["snapshot"])
-        page.diagnostics_panel.fill(
+        page.model_overview.set_result(context, bundle["snapshot"])
+        fill_records(
             page.tol_table,
             [{"响应": name, "因子": row["name"],
               "局部方差": row["variance"], "份额 %": row["share"]}
@@ -298,17 +297,17 @@ class OptimizationController:
         if snapshot:
             for panel in (page.signif_panel, page.cv_panel, page.model_panel):
                 panel.set_result(context, snapshot)
-            page.diagnostics_panel.set_context(context, robust, kd, kc, snapshot=snapshot)
+            page.model_overview.set_result(context, snapshot)
         page._param_res = snapshot.get('parameter_design', {})
         page.param_text.setText(page._param_res.get('text', ''))
         page._plot_factor(page._param_res.get('factor_plots', []))
         page.tol_text.setText('已恢复保存的容差分析结果。' if snapshot.get('tolerance') else '')
-        page.diagnostics_panel.fill(page.tol_table, [
+        fill_records(page.tol_table, [
             {'响应': name, '因子': row['name'], '局部方差': row['variance'], '份额 %': row['share']}
             for name, rows in snapshot.get('tolerance', {}).items() for row in rows])
         local = snapshot.get('local_search', {})
         page.tool_text.setText(local.get('text', ''))
-        page.diagnostics_panel.fill(page.tool_table, local.get('path', []))
+        fill_records(page.tool_table, local.get('path', []))
         page.status_label.setText('已恢复任务中的模型与结果，可直接预测或继续分析。')
 
     def _run_tool(self):
@@ -321,15 +320,7 @@ class OptimizationController:
         tool = page.tool_combo.currentData()
         k_design = page.k_design_spin.value()
         start = (page._param_res or {}).get("recommended")
-        if page.tool_start.currentText() == "手动核验点":
-            start = (
-                page.diagnostics_panel.snapshot.get("point_evaluation")
-                or {}).get("point")
-            if not start:
-                Notice.warning(
-                    page, "缺少起点", "请先在模型诊断页计算手动设计点。")
-                return
-        elif page.tool_start.currentText() == "区间中心":
+        if page.tool_start.currentText() == "区间中心":
             start = None
         if not start:
             page.tool_start.setCurrentText("区间中心")
@@ -347,21 +338,21 @@ class OptimizationController:
                 page.k_constraint_spin.value(), page.tool_weight.value(),
                 method, page.tool_steps.value(), page.tool_step.value())
             page.tool_text.setPlainText(result["text"])
-            page.diagnostics_panel.fill(
+            fill_records(
                 page.tool_table,
                 [{"轮次": row["iteration"], **row["x"],
                   "望性": row["mean"], "归一标准差": row["std"],
                   "约束违反": row["violation"], "加权损失": row["score"],
                   "可行": row["feasible"]}
                  for row in result["trials"]])
-            page.diagnostics_panel.snapshot["local_search"] = result
+            page.model_overview.snapshot["local_search"] = result
             service.update_workbench(
                 local_search=reports.serializable(result))
             service.record_operation(
                 "局部探索",
                 "完成" if result["best"]["feasible"] else "未通过",
                 {"workbench": reports.serializable(
-                    page.diagnostics_panel.snapshot)},
+                    page.model_overview.snapshot)},
                 result["text"])
         except Exception as exc:
             page.tool_table.setRowCount(0)

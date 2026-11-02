@@ -179,9 +179,10 @@ class ConfigurationWorkflowTests(unittest.TestCase):
                 else:
                     page._run_surrogate()
                     self.assertNotIn("error", p.surrogate_result["responses"]["Y"])
-                page._refresh_view()
+                page.run_statistics()
                 self.assertEqual(page.overview.status_label.text(), "分析已完成")
-                self.assertTrue(page.overview.result_tables)
+                self.assertTrue(page.model_overview.summary.tables)
+                self.assertFalse(page.overview.result_tables)
                 page.close()
 
     def test_keyboard_entry_drafts_and_generated_config_restore(self):

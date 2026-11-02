@@ -9,13 +9,12 @@ from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 
 from frontend.pages.design_results import DesignResultsPanel
-from frontend.pages.result_overview import ResultOverview
+from frontend.pages.result_overview import ResultOverview, label
 from frontend.pages.analysis_results import AnalysisResults
 from frontend.pages.robust_results import RobustResults
 from backend.reporting.math_format import rich_text
 from frontend.math_widgets import MathTextEdit
 from frontend.numeric_inputs import numeric_input
-from frontend.pages.workbench_diagnostics import WorkbenchDiagnostics
 from frontend.terminology import add_combo_item, apply, name, tooltip
 
 
@@ -62,7 +61,8 @@ def build(owner):
         owner.tabs.addTab(owner.tab_param, "参数取值")
         index = owner.tabs.addTab(owner.tab_tol, name("local_variance_contribution"))
         owner.tabs.setTabToolTip(index, tooltip("local_variance_contribution"))
-        owner.tabs.addTab(owner.tab_model, "模型提取")
+        index = owner.tabs.addTab(owner.tab_model, name("model_coefficients"))
+        owner.tabs.setTabToolTip(index, tooltip("model_coefficients"))
         owner.tabs.addTab(owner.tab_tools, "优化工具集")
         owner.screening_panel = DesignResultsPanel("screening")
         owner.taguchi_panel = DesignResultsPanel("taguchi")
@@ -70,9 +70,6 @@ def build(owner):
         owner.tabs.setTabToolTip(index, tooltip("main_effect_analysis"))
         index = owner.tabs.addTab(owner.taguchi_panel, name("taguchi_analysis"))
         owner.tabs.setTabToolTip(index, tooltip("taguchi_analysis"))
-        owner.diagnostics_panel = WorkbenchDiagnostics()
-        index = owner.tabs.addTab(owner.diagnostics_panel, name("model_diagnostics"))
-        owner.tabs.setTabToolTip(index, tooltip("model_diagnostics"))
         from frontend.theme import ResultsWorkspace, primary
         owner.results_workspace = ResultsWorkspace(owner.tabs)
         main_layout.addWidget(owner.results_workspace, 1)
@@ -88,16 +85,15 @@ def build(owner):
 
 def build_overview_tab(owner):
         layout = QVBoxLayout(owner.tab_overview)
-        head = QHBoxLayout()
-        head.addWidget(QLabel("方案 / 结果汇总"))
-        head.addStretch()
-        layout.addLayout(head)
         owner.overview = ResultOverview()
+        owner.model_overview = owner.overview.model_overview
+        owner.model_overview.detail_requested.connect(owner._show_model_detail)
         layout.addWidget(owner.overview)
         owner._refresh_view()
 
 def build_robust_tab(owner):
         layout = QVBoxLayout(owner.tab_robust)
+        layout.addWidget(label(name('robust_optimization'), 'heading'))
         controls = QHBoxLayout()
         controls.addWidget(QLabel("优化模式："))
         owner.robust_mode_combo = QComboBox()
@@ -211,7 +207,7 @@ def build_tools_tab(owner):
         head = QHBoxLayout()
         head.addWidget(QLabel("探索方法"))
         head.addWidget(owner.tool_combo)
-        owner.tool_start = QComboBox(); owner.tool_start.addItems(["优化返回点", "手动核验点", "区间中心"])
+        owner.tool_start = QComboBox(); owner.tool_start.addItems(["优化返回点", "区间中心"])
         head.addWidget(owner.tool_start)
         owner.tool_weight = numeric_input(float, 0, 1, .5)
         weight_label = apply(QLabel(), "desirability_loss_weight")

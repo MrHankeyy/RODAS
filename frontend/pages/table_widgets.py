@@ -1,6 +1,6 @@
 """Reusable table widgets shared by workflow pages."""
 from PyQt6 import QtGui
-from PyQt6.QtCore import Qt, QEvent, QTimer
+from PyQt6.QtCore import Qt, QEvent, QTimer, QObject
 from PyQt6.QtWidgets import QApplication, QTableWidget, QTableWidgetItem, QHeaderView
 
 
@@ -33,6 +33,38 @@ class BalancedColumnsTable(QTableWidget):
         for column, width in enumerate(widths):
             if self.columnWidth(column) != width:
                 self.setColumnWidth(column, width)
+
+
+class ContentColumnBalancer(QObject):
+    """Preserve measured content widths and share spare space across columns."""
+
+    def __init__(self, table):
+        super().__init__(table)
+        self.table = table
+        header = table.horizontalHeader()
+        header.setStretchLastSection(False)
+        header.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
+        table.resizeColumnsToContents()
+        self.minimum_widths = [table.columnWidth(i) for i in range(table.columnCount())]
+        header.setSectionResizeMode(QHeaderView.ResizeMode.Fixed)
+        table.viewport().installEventFilter(self)
+        self.pending = False
+        self.fit_columns()
+
+    def eventFilter(self, watched, event):
+        if event.type() == QEvent.Type.Resize and not self.pending:
+            self.pending = True
+            QTimer.singleShot(0, self.fit_columns)
+        return super().eventFilter(watched, event)
+
+    def fit_columns(self):
+        self.pending = False
+        if not self.minimum_widths:
+            return
+        extra, remainder = divmod(max(0, self.table.viewport().width() - sum(self.minimum_widths)),
+                                 len(self.minimum_widths))
+        for column, minimum in enumerate(self.minimum_widths):
+            self.table.setColumnWidth(column, minimum + extra + (column < remainder))
 
 
 class ExcelLikeTableWidget(QTableWidget):

@@ -126,13 +126,14 @@ class WelcomeWorkspaceTests(unittest.TestCase):
         with patch.object(QFileDialog, 'getOpenFileName', return_value=('', '')) as dialog:
             w.page_DM.import_from_csv()
         self.assertEqual(dialog.call_args.args[2], str(self.root))
-        panel = w.page_OPT.diagnostics_panel
-        panel.context = {'available': True}
+        panel = w.page_OPT.model_overview
+        panel.snapshot = {'available': True}
         with patch.object(QFileDialog, 'getSaveFileName', return_value=('', '')) as dialog:
             panel.export_json()
         self.assertEqual(dialog.call_args.args[2], str(self.root))
         with patch.object(QFileDialog, 'getSaveFileName', return_value=('', '')) as dialog:
-            panel.export_plot()
+            w.page_OPT.cv_panel.figure = __import__('matplotlib.figure', fromlist=['Figure']).Figure()
+            w.page_OPT.cv_panel.export_plot()
         self.assertEqual(dialog.call_args.args[2], str(self.root))
         with patch.object(w.page_REP, 'run_analysis'), patch.object(
                 QFileDialog, 'getSaveFileName', return_value=('', '')) as dialog:

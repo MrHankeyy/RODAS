@@ -108,7 +108,7 @@ class TaskUITests(unittest.TestCase):
         self.assertEqual(len(self.w.page_MOD.design_factors.editors), 2)
         self.assertEqual(self.w.page_MOD.responses.editors[0].name.text(), 'Y')
         self.assertIsNotNone(self.w.page_OPT.model_panel.context)
-        self.assertIsNotNone(self.w.page_OPT.diagnostics_panel.context)
+        self.assertIsNotNone(self.w.page_OPT.model_overview.context)
         self.w.switch_page(2)
         APP.processEvents()
         self.assertEqual(self.w.page_DM.table.rowCount(), len(project.doe_matrix))

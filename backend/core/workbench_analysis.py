@@ -73,9 +73,20 @@ def diagnostics(context, name):
         predicted = np.asarray([model_predict(model,row) for row in x])
         source = '训练集拟合（不是外部验证）'
     if len(actual) != len(predicted) or not len(actual) or not np.all(np.isfinite(actual+predicted)):
-        return {'summary':[], 'coefficients':[], 'observations':[], 'notes':['没有匹配的有限观测与预测。'], 'source':source,
+        return {'summary':[], 'coefficients':[], 'observations':[], 'prediction_groups':[], 'notes':['没有匹配的有限观测与预测。'], 'source':source,
                 'missing_reasons': missing}
     residual = actual-predicted
+    plot_inputs = val['validation_inputs'] if surrogate else x
+    grouped = {}
+    for inputs, measured, fitted in zip(plot_inputs, actual, predicted):
+        group = grouped.setdefault(tuple(inputs), ([], []))
+        group[0].append(float(measured))
+        group[1].append(float(fitted))
+    prediction_groups = [
+        {'预测': float(np.mean(fitted)), '观测均值': float(np.mean(measured)),
+         '观测标准差': float(np.std(measured, ddof=1)) if len(measured) > 1 else None,
+         '观测数': len(measured)}
+        for measured, fitted in grouped.values()]
     n = len(actual)
     sse = float(residual@residual)
     sst = float(np.sum((actual-actual.mean())**2))
@@ -179,6 +190,7 @@ def diagnostics(context, name):
                                      '有效残差超过5000个，超出当前正态性检验的样本范围。' if n > 5000 else
                                      '残差变化幅度过小，当前规则不执行残差正态性检验。')
     return {'summary':[{'统计量':k,'值':v} for k,v in measures.items()], 'coefficients':coefficients,
+            'prediction_groups': prediction_groups,
             'observations':observations,'notes':notes,'source':source,'missing_reasons':missing}
 
 

@@ -79,7 +79,7 @@ class WorkbenchAnalysisTests(unittest.TestCase):
         self.assertAlmostEqual(measures['失拟 F'],expected)
 
     def test_surrogate_holdout_never_claims_ols_inference(self):
-        p,c=make_context();c['models']['Y']={'predict_fn':lambda x:0,'validation':{'actual':[1,2,3],'predicted':[1,2.5,3]}}
+        p,c=make_context();c['models']['Y']={'predict_fn':lambda x:0,'validation':{'actual':[1,2,3],'predicted':[1,2.5,3],'validation_inputs':[[0,0],[1,0],[2,0]]}}
         r=wa.diagnostics(c,'Y')
         self.assertFalse(r['coefficients']);self.assertNotIn('杠杆值',r['observations'][0])
         self.assertIn('留出',r['source'])
@@ -117,11 +117,12 @@ class WorkbenchAnalysisTests(unittest.TestCase):
         p,c=make_context();page=OptimizationPage(p)
         with patch.object(oe,'robust_optimize',side_effect=AssertionError('statistics ran optimizer')),patch.object(QMessageBox,'warning') as warning:
             page.run_statistics();warning.assert_not_called()
-        panel=page.diagnostics_panel
+        panel=page.model_overview
         raw_summary = panel.snapshot['responses']['Y']['summary']
         summary = panel.summary
-        self.assertEqual(len(summary.values) + 1, len(raw_summary))
-        self.assertEqual(summary.source_value.text(), '训练集')
+        self.assertEqual(len(summary.values) + 1, len(panel.summary.records))
+        self.assertIn('训练集', panel.heading.toolTip())
+        self.assertIs(page.tabs.currentWidget(), page.tab_overview)
         for record in raw_summary:
             if record['统计量'] == '数据来源':
                 continue
@@ -130,18 +131,17 @@ class WorkbenchAnalysisTests(unittest.TestCase):
             self.assertEqual(item.toolTip(), statistic_tooltip(record['统计量']))
             self.assertIn('\n', item.toolTip())
         self.assertIn('LOO PRESS', [record['统计量'] for record in raw_summary])
-        self.assertEqual(panel.tables['observations'].rowCount(),35)
-        self.assertEqual(panel.tables['coefficients'].rowCount(),6)
-        panel.evaluate_point();self.assertEqual(panel.point_table.rowCount(),1)
-        with tempfile.TemporaryDirectory() as d:
+        self.assertFalse(hasattr(page, 'diagnostics_panel'))
+        self.assertEqual(page.model_panel.result_tables[-1][1].rowCount(), 6)
+        self.assertEqual(len(page.cv_panel.figure.axes), 4)
+        with tempfile.TemporaryDirectory(dir=Path(__file__).resolve().parents[1] / 'temp') as d:
             json_path=str(Path(d)/'statistics.json');csv_path=str(Path(d)/'statistics.csv')
             with patch.object(QFileDialog,'getSaveFileName',return_value=(json_path,'')):panel.export_json()
             self.assertEqual(len(json.loads(Path(json_path).read_text(encoding='utf-8'))['responses']['Y']['observations']),35)
-            panel.tabs.setCurrentWidget(panel.tables['observations'])
             with patch.object(QFileDialog,'getSaveFileName',return_value=(csv_path,'')):panel.export_csv()
-            self.assertEqual(len(Path(csv_path).read_text(encoding='utf-8-sig').splitlines()),36)
+            self.assertEqual(len(Path(csv_path).read_text(encoding='utf-8-sig').splitlines()),len(panel.summary.records)+1)
         p.doe_matrix[0]['Y']+=1;page._check_inputs()
-        self.assertIsNone(panel.context);self.assertEqual(panel.tables['observations'].rowCount(),0)
+        self.assertIsNone(panel.context);self.assertFalse(panel.summary.records)
         page.close()
 
 

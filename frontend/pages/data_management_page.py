@@ -11,7 +11,7 @@ from backend.services.project_service import ProjectService
 from frontend.pages.table_widgets import ExcelLikeTableWidget
 from frontend.workspace import dialog_path
 from frontend.theme import ResultTabs, ResultsWorkspace
-from frontend.pages.data_inspection import DataInspection
+from frontend.pages.data_inspection import DataAnalysis
 from backend.services.data_service import data_overview
 from frontend.pages.model_configuration import MODEL_TITLES, MODEL_TERM_KEYS
 from frontend.terminology import tooltip
@@ -55,6 +55,10 @@ class DataManagementPage(QWidget):
 
         # ========= 顶部控制栏 =========
         ctrl_layout = QHBoxLayout()
+        self.entry_heading = QLabel('数据录入')
+        self.entry_heading.setProperty('role', 'heading')
+        self.entry_heading.setToolTip('数据录入（Data Entry）\n支持导入或编辑响应；因子列只读。')
+        ctrl_layout.addWidget(self.entry_heading)
         
         self.load_btn = QPushButton("加载当前试验矩阵")
         self.load_btn.setStyleSheet("background-color: #6c757d; color: white;")
@@ -96,13 +100,11 @@ class DataManagementPage(QWidget):
         btn_layout.addWidget(self.save_btn)
         main_layout.addLayout(btn_layout)
 
-        self.check_view = DataInspection(self.project_data, "check")
-        self.statistics_view = DataInspection(self.project_data, "statistics")
-        self.check_view.issue_requested.connect(self._locate_issue)
-        for view, title in ((trial, "试验数据"), (self.check_view, "数据检查"),
-                            (self.statistics_view, "描述统计")):
+        self.analysis_view = DataAnalysis(self.project_data)
+        self.analysis_view.issue_requested.connect(self._locate_issue)
+        for view, title in ((trial, "数据录入"), (self.analysis_view, "数据分析")):
             self.tabs.addTab(view, title)
-        self.results_workspace = ResultsWorkspace(self.tabs, [("数据管理", [0, 1, 2])])
+        self.results_workspace = ResultsWorkspace(self.tabs, [("数据管理", [0, 1])])
         root.addWidget(self.results_workspace, 1)
         self.tabs.currentChanged.connect(self._refresh_views)
         from frontend.theme import primary
@@ -118,14 +120,11 @@ class DataManagementPage(QWidget):
         self.run_count_value.setText(count)
         key = next((key for key, title in MODEL_TITLES.items() if title == model), None)
         self.model_value.setToolTip(tooltip(MODEL_TERM_KEYS[key]) if key else "")
-        self.check_view.refresh(self._dirty, data)
-        self.statistics_view.refresh(self._dirty, data)
+        self.analysis_view.refresh(self._dirty, data)
 
     def _mark_dirty(self, *_args):
         self._dirty = True
-        for view in (self.check_view, self.statistics_view):
-            view.dirty = True
-            view.notice.setText("有未保存修改；以下为已保存数据，请先保存响应数据。")
+        self.analysis_view.set_dirty(True)
 
     def _locate_issue(self, row, response):
         self.tabs.setCurrentIndex(0)

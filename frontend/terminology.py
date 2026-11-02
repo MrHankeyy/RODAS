@@ -41,13 +41,13 @@ TERMS = {
     "weighted_single_objective": ("加权单目标优化", "Weighted Single-Objective Optimization", ""),
     "constrained_optimization": ("约束优化", "Constrained Optimization", ""),
     "robust_optimization": ("鲁棒性优化设计", "Robust Design Optimization", "RDO"),
-    "regression_significance_lof": ("回归显著性与失拟检验", "Regression Significance and Lack-of-Fit Test", "LOF"),
+    "regression_significance_lof": ("统计检验", "Statistical Tests", ""),
     "holdout_validation": ("留出法验证", "Holdout Validation", ""),
-    "cross_validation_residuals": ("交叉验证与残差分析", "Cross-Validation and Residual Analysis", ""),
+    "cross_validation_residuals": ("验证与残差", "Validation and Residuals", ""),
+    "model_coefficients": ("模型与系数", "Model and Coefficients", ""),
     "local_variance_contribution": ("局部方差贡献分析", "Local Variance Contribution Analysis", ""),
     "main_effect_analysis": ("主效应分析", "Main-Effect Analysis", ""),
     "taguchi_analysis": ("田口分析", "Taguchi Analysis", ""),
-    "model_diagnostics": ("模型诊断与核验", "Model Diagnostics and Verification", ""),
     "steepest_descent": ("最陡下降搜索", "Steepest Descent Search", ""),
     "one_pass_ofat": ("单轮单因子搜索", "One-Pass One-Factor-at-a-Time Search", "OFAT"),
     "adaptive_ofat": ("自适应单因子搜索", "Adaptive One-Factor-at-a-Time Search", "AOFAT"),
@@ -75,6 +75,20 @@ TERMS = {
 
 # Chinese display name: (English name, abbreviation or symbol, short explanation)
 STATISTICS = {
+    "模型类型": ("Model Type", "", "当前已训练模型的类型"),
+    "训练样本数": ("Training Sample Size", "", "参与当前模型训练的数据条数"),
+    "有效验证样本数": ("Validation Sample Size", "", "参与有效验证的数据条数"),
+    "交叉验证决定系数": ("Cross-Validated Coefficient of Determination", "CV R²", "基于分折留出预测计算的决定系数"),
+    "交叉验证均方根误差": ("Cross-Validated Root Mean Squared Error", "CV RMSE", "分折留出预测的误差大小，单位同响应"),
+    "编码项": ("Coded Model Term", "", "系数对应的编码变量模型项"),
+    "估计值": ("Coefficient Estimate", "", "当前模型项的系数估计"),
+    "标准误": ("Standard Error", "SE", "系数估计的标准误差"),
+    "系数检验统计量": ("Coefficient t-statistic", "t", "系数估计值与标准误的比值"),
+    "检验统计量": ("F-statistic", "F", "整体回归或失拟检验的统计量"),
+    "概率值": ("p-value", "p", "在零假设下观察到当前或更极端统计量的概率"),
+    "未校正概率值": ("Unadjusted p-value", "p", "检验系数是否为零，未校正多重比较"),
+    "95%下限": ("Lower Confidence Limit", "", "系数95%置信区间下限，不是响应预测区间"),
+    "95%上限": ("Upper Confidence Limit", "", "系数95%置信区间上限，不是响应预测区间"),
     "响应": ("Response", "", "当前统计所对应的响应变量"),
     "有效数": ("Valid Count", "", "可用于统计的有效数值个数"),
     "缺失或无效": ("Missing or Invalid Count", "", "缺失、非数值或非有限值的个数"),
@@ -130,6 +144,7 @@ STATISTICS = {
 }
 
 STATISTIC_ALIASES = {
+    "t": "系数检验统计量", "未校正 p": "未校正概率值",
     "R²": "决定系数", "RMSE": "均方根误差", "MAE": "平均绝对误差",
     "参数数": "参数数量", "回归 F": "回归检验统计量", "回归 p": "回归检验概率值",
     "失拟 F": "失拟检验统计量", "失拟 p": "失拟检验概率值",
@@ -143,7 +158,7 @@ def statistic_name(text):
 
 
 def statistic_tooltip(text):
-    chinese = statistic_name(text).removesuffix("（%）").removesuffix("（dB）")
+    chinese = statistic_name(text).split('（')[0]
     term = STATISTICS.get(chinese)
     if term is None:
         return ""
@@ -237,4 +252,6 @@ def apply_item_tooltip(item):
     key = CELL_TERMS.get(item.text())
     if key:
         item.setToolTip(tooltip(key))
+    elif statistical := statistic_tooltip(item.text()):
+        item.setToolTip(statistical)
     return item

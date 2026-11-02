@@ -28,6 +28,9 @@ QPushButton#workingDirectory { text-align:left; color:#65768a; background:transp
 QPushButton#workingDirectory:hover { color:#173b64; background:#edf4fa; }
 QWidget#pageHeading { background:#fff; border-bottom:1px solid #d7dee7; }
 QLabel[role="heading"] { font-size:20px; font-weight:600; color:#20374f; }
+QLabel[role="sectionHeading"] { font-size:16px; font-weight:600; color:#20374f; }
+QWidget#resultsSurface { background:#fff; }
+QWidget#contentZone { background:#eef0f3; border-radius:4px; }
 QLabel[role="muted"] { color:#65768a; }
 QLabel[role="badge"] { color:#365d80; background:#edf3f9; border:1px solid #d6e3ef; padding:5px 10px; border-radius:3px; }
 QPushButton { background:#fff; border:1px solid #bbc9d7; border-radius:3px; padding:5px 12px; min-height:20px; }
@@ -100,6 +103,15 @@ def primary(button):
     button.setProperty('role', 'primary')
 
 
+def content_zone():
+    zone = QWidget()
+    zone.setObjectName('contentZone')
+    layout = QVBoxLayout(zone)
+    layout.setContentsMargins(16, 16, 16, 16)
+    layout.setSpacing(14)
+    return zone, layout
+
+
 def polish_tables(root):
     for table in root.findChildren(QTableWidget):
         table.setAlternatingRowColors(True)
@@ -111,7 +123,7 @@ def polish_tables(root):
 
 class ResultsWorkspace(QWidget):
     """Expose a grouped result navigator for the analysis pages."""
-    GROUPS = [('设计分析', [0, 1, 8, 9]), ('模型与数据', [2, 3, 6, 10]), ('取值与改进', [4, 5, 7])]
+    GROUPS = [('设计分析', [0, 1, 8, 9]), ('模型与数据', [2, 3, 6]), ('取值与改进', [4, 5, 7])]
 
     def __init__(self, tabs, groups=None):
         super().__init__()

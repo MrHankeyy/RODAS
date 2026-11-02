@@ -49,7 +49,7 @@ w.page_OPT.gen_spin.setValue(30)
 w.page_OPT._execute_workbench()
 w.page_OPT.tabs.setCurrentIndex(1)
 capture('04-optimize')
-w.page_OPT.tabs.setCurrentWidget(w.page_OPT.diagnostics_panel)
+w.page_OPT.tabs.setCurrentWidget(w.page_OPT.tab_overview)
 capture('04-diagnostics')
 for index in (0, 2, 3, 4, 5, 6, 7):
     w.page_OPT.tabs.setCurrentIndex(index)

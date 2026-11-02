@@ -201,7 +201,7 @@ def build_report(data,kind='model',record_id=None,include_raw=False):
             except (ValueError,TypeError):continue
             if math.isfinite(v):vals.append(v)
         complete.append({'响应':name,'有效数':len(vals),'总行数':len(matrix),'缺失或无效':len(matrix)-len(vals)})
-    analysis_present=bool(wb.get('responses') or wb.get('point_evaluation') or (res.get('rsm') or {}).get('fit') or
+    analysis_present=bool(wb.get('responses') or (res.get('rsm') or {}).get('fit') or
         (res.get('surrogate') or {}).get('responses') or (res.get('screening') or {}).get('response_analysis') or
         (res.get('taguchi') or {}).get('response_analysis'))
     risks=['模型计算不等于工程实测确认；是否满足最终产品要求需结合独立确认试验。']
@@ -295,8 +295,6 @@ def build_report(data,kind='model',record_id=None,include_raw=False):
     if (res.get('taguchi') or {}).get('recommendation'):blocks.append(text(res['taguchi']['recommendation']))
     if wb.get('parameter_design',{}).get('text'):blocks.append(text(wb['parameter_design']['text']))
     for name,rows in wb.get('tolerance',{}).items():blocks.append(table(f'{name} · 局部方差贡献分析',[{'来源':r['name'],'方差':r.get('variance'),'份额%':r['share']} for r in rows]))
-    if wb.get('point_evaluation'):
-        evaluation=wb['point_evaluation'];blocks += [text('手动核验点：'+fmt(evaluation.get('point'))),table('手动点约束核验',evaluation.get('responses',[])),text(evaluation.get('note',''))]
     if wb.get('local_search'):
         local=wb['local_search'];blocks += [text(local.get('text','')),table('局部探索接受路径',[{'设置':r['x'],'平均望性':r['mean'],'归一化标准差':r['std'],'约束违反':r['violation'],'加权损失':r['score']} for r in local.get('path',[])])]
     if wb.get('model_formulas'):

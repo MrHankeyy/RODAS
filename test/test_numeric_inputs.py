@@ -14,7 +14,6 @@ from frontend.main_window import MainWindow
 from frontend.numeric_inputs import commit_numeric_inputs, numeric_input
 from frontend.pages.configuration_page import ConfigurationPage
 from frontend.pages.optimization_page import OptimizationPage
-from frontend.pages.workbench_diagnostics import WorkbenchDiagnostics
 
 APP = QApplication.instance() or QApplication([])
 
@@ -142,24 +141,12 @@ class NumericInputTests(unittest.TestCase):
         self.assertEqual(page.k_design_spin.value(), 4.25)
         page.close()
 
-    def test_dynamic_factor_bounds_and_point_evaluation_commit(self):
-        project = ProjectData(factors=[FactorItem(name="X", param1="-2", param2="3")])
-        context = {"_project": project, "models": {"Y": {}}}
-        panel = WorkbenchDiagnostics()
-        with patch("frontend.pages.workbench_diagnostics.oe.design_inputs", return_value=project.factors):
-            panel.set_context(context, snapshot={"data": []})
-        control = panel.controls["X"]
-        self.assertEqual((control.minimum(), control.maximum(), control.decimals()), (-2, 3, 8))
-        self.assertEqual(control.value(), .5)
-        type_number(control, "-1.23456789")
-        self.assertEqual(control.value(), .5)
-        result = {"feasible": True, "responses": [], "note": "checked"}
-        with patch("frontend.pages.workbench_diagnostics.analysis_service.evaluate_point",
-                   return_value=result) as evaluate:
-            panel.evaluate_point()
-        self.assertEqual(evaluate.call_args.args[1], {"X": -1.23456789})
-        self.assertEqual(panel.snapshot["point_evaluation"], result)
-        panel.close()
+    def test_removed_manual_verification_is_not_a_tool_start(self):
+        page = OptimizationPage(ProjectData())
+        self.assertEqual([page.tool_start.itemText(i) for i in range(page.tool_start.count())],
+                         ['优化返回点', '区间中心'])
+        self.assertFalse(hasattr(page, 'diagnostics_panel'))
+        page.close()
 
 
 if __name__ == "__main__":

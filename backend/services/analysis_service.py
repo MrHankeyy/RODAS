@@ -49,7 +49,7 @@ def analyze(project, context, robust, k_design=6, k_constraint=6):
         if robust else {
             "text": (
                 "尚未执行鲁棒性优化设计，无推荐点；"
-                "可在统计诊断页手动核验设计点。"),
+                "请先执行鲁棒性优化设计以获得推荐点。"),
             "factor_plots": [],
         })
     tolerance_text, tolerance = optimizer.tolerance_contribution(

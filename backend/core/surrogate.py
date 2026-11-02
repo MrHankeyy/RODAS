@@ -257,5 +257,6 @@ def train_surrogate(x_rows, response_values, test_ratio=0.2, seed=2026,
         "mape_test_%": round(mape_test, 4),
         "r2_test": round(r2_test, 4),
         "actual": [float(v) for v in yte],
+        "validation_inputs": Xte.tolist(),
         "predicted": [float(v) for v in pred],
     }

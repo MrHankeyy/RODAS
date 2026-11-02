@@ -8,6 +8,7 @@ from PyQt6.QtWidgets import (
 from frontend.pages.result_summary import display, overview
 from frontend.math_widgets import MathLabel, install_delegate, decorate_item
 from frontend.terminology import apply_header_tooltips, apply_item_tooltip
+from frontend.theme import content_zone
 
 
 def label(text="", role=None):
@@ -50,11 +51,14 @@ class ResultOverview(QScrollArea):
         self.setWidgetResizable(True)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         content = QWidget()
+        content.setObjectName('resultsSurface')
         self.column = QVBoxLayout(content)
         self.column.setContentsMargins(8, 6, 8, 12)
-        self.column.setSpacing(12)
+        self.column.setSpacing(24)
         self.status_label = label(role="badge")
         row = QHBoxLayout()
+        self.heading = label('方案与结果汇总', 'heading')
+        row.addWidget(self.heading)
         row.addStretch()
         row.addWidget(self.status_label)
         self.data_button = QPushButton("前往数据管理")
@@ -71,11 +75,16 @@ class ResultOverview(QScrollArea):
             field.addWidget(value)
             info_layout.addLayout(field, 1)
             self.info_values.append((caption, value))
-        self.column.addWidget(self.info)
-        self.next_step = label(role="muted")
-        self.column.addWidget(self.next_step)
-        self.body = QVBoxLayout()
-        self.column.addLayout(self.body)
+        self.scheme_zone, scheme_layout = content_zone()
+        scheme_layout.addWidget(self.info)
+        self.column.addWidget(self.scheme_zone)
+        self.result_body = QWidget()
+        self.body = QVBoxLayout(self.result_body)
+        self.body.setContentsMargins(0, 0, 0, 0)
+        self.column.addWidget(self.result_body)
+        from frontend.pages.model_overview import ModelOverview
+        self.model_overview = ModelOverview()
+        self.column.addWidget(self.model_overview)
         self.column.addStretch()
         self.setWidget(content)
 
@@ -92,14 +101,18 @@ class ResultOverview(QScrollArea):
             caption.setText(name)
             value.setText(text)
         self.status_label.setText(data["status"])
-        self.next_step.setText(data["next_step"])
+        self.heading.setToolTip(data["next_step"])
         self.data_button.setVisible(data["status"] in ("尚未生成方案", "等待响应数据"))
         while self.body.count():
             old = self.body.takeAt(0).widget()
             old.hide()
             old.deleteLater()
         self.result_tables = []
+        modeled = bool(project.design_method) and not any(key in project.design_method for key in ('筛选', '田口'))
+        self.model_overview.setVisible(modeled)
         for section in data["sections"]:
+            if modeled and '分析失败' not in section['title']:
+                continue
             layout = self._section(section["title"])
             if section["rows"]:
                 table = SummaryTable(section["headers"], section["rows"], missing_reasons=section['missing_reasons'])
@@ -107,3 +120,4 @@ class ResultOverview(QScrollArea):
                 self.result_tables.append(table)
             if section["message"]:
                 layout.addWidget(label(section["message"], "muted"))
+        self.result_body.setVisible(self.body.count() > 0)

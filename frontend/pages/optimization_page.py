@@ -62,7 +62,7 @@ class OptimizationPage(QWidget):
 
     def _settings_changed(self, *_args):
         if self._oe_context:
-            self.diagnostics_panel.clear()
+            self.model_overview.clear()
             self._oe_context = None
             self._robust_res = {}
             self.robust_results.clear()
@@ -87,7 +87,6 @@ class OptimizationPage(QWidget):
             self.tabs.setTabVisible(index, not is_special)
         self.tabs.setTabVisible(8, is_screening)
         self.tabs.setTabVisible(9, is_taguchi)
-        self.tabs.setTabVisible(10, not is_special)
         self.stats_btn.setVisible(not is_special)
         if hasattr(self, "results_workspace"):
             self.results_workspace.refresh()
@@ -108,6 +107,11 @@ class OptimizationPage(QWidget):
 
     def _build_overview_tab(self):
         return optimization_panels.build_overview_tab(self)
+
+    def _show_model_detail(self, kind, response):
+        panel = {'significance': self.signif_panel, 'validation': self.cv_panel, 'model': self.model_panel}[kind]
+        panel.response.setCurrentIndex(panel.response.findData(response))
+        self.tabs.setCurrentWidget(panel.parentWidget())
 
     def _build_robust_tab(self):
         return optimization_panels.build_robust_tab(self)
