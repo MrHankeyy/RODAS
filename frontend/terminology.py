@@ -37,9 +37,10 @@ TERMS = {
     "uniform_grid": ("均匀网格采样", "Uniform Grid Sampling", ""),
     "low_dimensional_combination": ("低维组合采样", "Low-Dimensional Combination Sampling", ""),
     "random_sampling": ("随机采样", "Random Sampling", ""),
-    "multiobjective_nsga2": ("多目标优化", "Non-dominated Sorting Genetic Algorithm II", "NSGA-II"),
-    "weighted_single_objective": ("加权单目标优化", "Weighted Single-Objective Optimization", ""),
-    "constrained_optimization": ("约束优化", "Constrained Optimization", ""),
+    "robust_strategy": ("鲁棒优化策略", "Robust Optimization Strategy", ""),
+    "multiobjective_nsga2": ("多目标优化（帕累托）", "Pareto Multi-Objective Optimization", ""),
+    "weighted_single_objective": ("加权目标优化", "Weighted-Objective Optimization", ""),
+    "constrained_optimization": ("波动约束优化", "Variability-Constrained Optimization", ""),
     "robust_optimization": ("鲁棒性优化设计", "Robust Design Optimization", "RDO"),
     "regression_significance_lof": ("统计检验", "Statistical Tests", ""),
     "holdout_validation": ("留出法验证", "Holdout Validation", ""),
@@ -177,7 +178,13 @@ def tooltip(key):
     if statistical:
         return statistical
     suffix = f"，{abbreviation}" if abbreviation else ""
-    return f"{chinese}（{english}{suffix}）"
+    explanation = {
+        "robust_strategy": "选择如何在优化中处理响应的目标表现与波动性；三种策略均遵守业务建模中定义的响应约束。",
+        "multiobjective_nsga2": "将目标表现与波动性分别作为优化目标，得到多个折中方案。",
+        "constrained_optimization": "为波动性设置上限，在满足限制的条件下优化目标表现。",
+        "weighted_single_objective": "将归一化的目标损失与波动性按权重合成为一个优化目标。",
+    }.get(key, "")
+    return f"{chinese}（{english}{suffix}）" + ("\n" + explanation if explanation else "")
 
 
 def apply(widget, key):
@@ -236,9 +243,9 @@ CELL_TERMS = {
     "克里金模型": "kriging",
     "支持向量回归模型": "svr",
     "神经网络模型": "bpnn",
-    "多目标优化": "multiobjective_nsga2",
-    "加权单目标优化": "weighted_single_objective",
-    "约束优化": "constrained_optimization",
+    "多目标优化（帕累托）": "multiobjective_nsga2",
+    "加权目标优化": "weighted_single_objective",
+    "波动约束优化": "constrained_optimization",
     "约束裕量系数 k": "constraint_margin_multiplier",
     "区间标准差换算系数 k": "interval_std_factor",
     "望性损失权重 λ": "desirability_loss_weight",

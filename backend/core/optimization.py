@@ -69,10 +69,10 @@ def _crowding_distance(fitness, front):
     return dist
 
 
-def _sbx_crossover(p1, p2, eta, lo, hi, rng):
+def _sbx_crossover(p1, p2, eta, lo, hi, rng, pc=0.5):
     c1, c2 = list(p1), list(p2)
     for i in range(len(p1)):
-        if rng.random() > 0.5:
+        if rng.random() >= pc:
             continue
         if abs(p1[i] - p2[i]) < 1e-12:
             continue
@@ -91,7 +91,7 @@ def _sbx_crossover(p1, p2, eta, lo, hi, rng):
 def _polynomial_mutation(x, eta, pm, lo, hi, rng):
     out = list(x)
     for i in range(len(x)):
-        if rng.random() > pm:
+        if rng.random() >= pm:
             continue
         u = rng.random()
         delta = (2.0 * u) ** (1.0 / (eta + 1)) - 1.0 if u < 0.5 else \
@@ -100,10 +100,18 @@ def _polynomial_mutation(x, eta, pm, lo, hi, rng):
     return out
 
 
-def nsga2(evaluate, lo, hi, pop=60, gen=100, seed=1, eta_c=15.0, eta_m=20.0, progress=None):
+def nsga2(evaluate, lo, hi, pop=60, gen=100, seed=1, eta_c=15.0, eta_m=20.0, progress=None, pc=0.5, pm=None):
     """Elitist NSGA-II with feasibility-first survival and tournament selection."""
     if pop < 2 or gen < 1:
         raise ValueError("种群至少为 2，迭代代数至少为 1。")
+    if len(lo) == 0 or len(lo) != len(hi):
+        raise ValueError("设计因子边界不能为空，且上下界数量必须一致。")
+    mutation_probability = 1.0 / len(lo) if pm is None else pm
+    for label, value in (("逐变量交叉概率", pc), ("逐变量变异概率", mutation_probability)):
+        if value is None or not math.isfinite(value) or not 0 <= value <= 1:
+            raise ValueError(label + "必须在 0 到 1 之间。")
+    if any(not math.isfinite(v) or v <= 0 for v in (eta_c, eta_m)):
+        raise ValueError("交叉和变异分布指数必须为有限正数。")
     rng = _np.random.default_rng(seed)
     n = len(lo)
     evaluated = {}
@@ -137,8 +145,8 @@ def nsga2(evaluate, lo, hi, pop=60, gen=100, seed=1, eta_c=15.0, eta_m=20.0, pro
             return population[a if keys[a] <= keys[b] else b]
         children = []
         while len(children) < pop:
-            c1, c2 = _sbx_crossover(parent(), parent(), eta_c, lo, hi, rng)
-            children.extend([_polynomial_mutation(c, eta_m, 1.0/n, lo, hi, rng) for c in (c1,c2)])
+            c1, c2 = _sbx_crossover(parent(), parent(), eta_c, lo, hi, rng, pc)
+            children.extend([_polynomial_mutation(c, eta_m, mutation_probability, lo, hi, rng) for c in (c1,c2)])
         combined = population + children[:pop]
         indices, _ = order(combined)
         population = [combined[i] for i in indices[:pop]]
@@ -182,16 +190,17 @@ def _knee_point(front):
 
 
 def robust_optimize(context, mode="multi", pop=60, gen=100, weight=0.5,
-                    k_design=6.0, k_constraint=6.0, seed=1, sigma_limits=None, progress=None):
+                    k_design=6.0, k_constraint=6.0, seed=1, sigma_limits=None, progress=None,
+                    pc=0.5, pm=None, eta_c=15.0, eta_m=20.0):
     """执行鲁棒优化，返回结果 dict。"""
     if mode not in ("multi", "weighted", "constraint"):
-        raise ValueError("未知优化模式")
+        raise ValueError("未知鲁棒优化策略")
     context = dict(context)
     context.pop("sigma_limits", None)
     if mode == "constraint":
         objective_names = {r.name for r in project_responses(context) if not self_is_constraint(r) or "目标" in r.kind}
         if not objective_names:
-            raise ValueError("独立约束模式需要至少一个目标响应。")
+            raise ValueError("波动约束优化需要至少一个目标响应。")
         limits = sigma_limits or {}
         if set(limits) != objective_names:
             raise ValueError("请为每个目标响应设置独立标准差上限：" + "、".join(sorted(objective_names)))
@@ -237,7 +246,8 @@ def robust_optimize(context, mode="multi", pop=60, gen=100, weight=0.5,
             obj = list(r["obj"])
         return obj, {"x": xd, "r": r}
 
-    population, evaluated = nsga2(evaluate, lo, hi, pop=pop, gen=gen, seed=seed, progress=progress)
+    population, evaluated = nsga2(evaluate, lo, hi, pop=pop, gen=gen, seed=seed, progress=progress,
+                                   pc=pc, pm=pm, eta_c=eta_c, eta_m=eta_m)
     pairs = []
     for vec_tuple, _obj in evaluated:
         vec = list(vec_tuple)
@@ -278,6 +288,8 @@ def robust_optimize(context, mode="multi", pop=60, gen=100, weight=0.5,
     result = {
         "sigma_limits": context.get("sigma_limits", {}),
         "population_size": pop, "generations": gen, "seed": seed,
+        "pc": pc, "pm": pm, "effective_pm": 1.0 / len(dnames) if pm is None else pm,
+        "eta_c": eta_c, "eta_m": eta_m,
         "mode": mode, "weight": weight, "k_design": k_design,
         "k_constraint": k_constraint, "design_names": dnames,
         "input_sigmas": {f.name: _sigma_of_factor(f, k_design) for f in context["inputs"]},
@@ -305,9 +317,9 @@ def robust_optimize(context, mode="multi", pop=60, gen=100, weight=0.5,
 
 
 def _robust_result_text(res):
-    mode_names = {"multi": "多目标优化（望性损失与归一化标准差）",
-                  "weighted": "加权单目标优化（权重可设）",
-                  "constraint": "约束优化（标准差转为独立约束）"}
+    mode_names = {"multi": "多目标优化（帕累托）",
+                  "weighted": "加权目标优化",
+                  "constraint": "波动约束优化"}
     lines = [f"【{mode_names.get(res['mode'], res['mode'])}】",
              f"约束裕量系数 k={res['k_constraint']}，区间标准差换算系数 k={res['k_design']}",
              "输入标准差：" + "，".join(f"{n}={s:.6g}" for n, s in res.get("input_sigmas", {}).items()),

@@ -127,8 +127,8 @@ _TERM_VALUES = {
     '常数（Ordinary）': '常数趋势', 'RBF 核': '径向基函数核',
     'Sigmoid 核': '双曲正切核', 'sigmoid': '逻辑S形函数',
     'tanh': '双曲正切函数', 'relu': '修正线性单元',
-    'multi': '多目标优化', 'weighted': '加权单目标优化',
-    'constraint': '约束优化',
+    'multi': '多目标优化（帕累托）', 'weighted': '加权目标优化',
+    'constraint': '波动约束优化',
 }
 
 _CONFIG_KEYS = {
@@ -235,10 +235,13 @@ def build_report(data,kind='model',record_id=None,include_raw=False):
         table('试验设计配置',[{'配置项':_CONFIG_KEYS.get(k,k),'值':v} for k,v in (params.get('meta') or params).items() if k!='groups']),
         table('响应完整性',complete)]
     if source.get('surrogate_config'):blocks.append(table('代理模型配置',[{'配置项':_CONFIG_KEYS.get(k,k),'值':v} for k,v in source['surrogate_config'].items()]))
-    if optimization:blocks.append(table('优化条件',[{'模式':{'multi':'多目标优化','weighted':'加权单目标优化','constraint':'约束优化'}.get(optimization.get('mode'),optimization.get('mode')),'望性损失权重':optimization.get('weight'),
+    if optimization:blocks.append(table('优化条件',[{'鲁棒优化策略':{'multi':'多目标优化（帕累托）','weighted':'加权目标优化','constraint':'波动约束优化'}.get(optimization.get('mode'),optimization.get('mode')),'望性损失权重':optimization.get('weight'),
         '区间标准差换算系数':optimization.get('k_design'),'约束裕量系数':optimization.get('k_constraint'),
         '可行候选数':optimization.get('feasible_count'),'评价数':optimization.get('evaluated_count'),
-        '种群数':optimization.get('population_size'),'代数':optimization.get('generations'),'种子':optimization.get('seed')}]))
+        '种群数':optimization.get('population_size'),'代数':optimization.get('generations'),'随机种子':optimization.get('seed'),
+        '逐变量交叉概率':optimization.get('pc'), '逐变量变异概率':optimization.get('effective_pm'),
+        '变异概率设置':'自动（1/设计因子数）' if optimization.get('pm') is None else '手动设置',
+        '交叉分布指数':optimization.get('eta_c'), '变异分布指数':optimization.get('eta_m')}]))
     if kind=='trial':
         blocks.append(text('操作说明：'+record.get('message','')))
         if payload.get('settings'):blocks.append(table('当时的运行设置',[{'设置':k,'值':v} for k,v in payload['settings'].items()]))

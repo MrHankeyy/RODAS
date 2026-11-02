@@ -86,7 +86,7 @@ def taguchi_plan(project, method, inner, outer, levels, seed, replicates,
         "groups": groups,
         "recommendation": (
             "内表×外表叉积试验已完成安排。在【数据管理】填入各次试验响应后，"
-            "可到【设计优化】计算均值响应表、信噪比表并给出待确认的候选水平组合。"),
+            "可到【优化设计】计算均值响应表、信噪比表并给出待确认的候选水平组合。"),
         "summary": (
             f"已按内表 {meta['inner_label']}（{meta['inner_runs']} 组）×"
             f"外表 {meta['outer_label']}（{meta['outer_runs']} 组）生成"

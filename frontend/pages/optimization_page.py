@@ -1,4 +1,4 @@
-"""设计优化页面：把方案配置生成的设计在填入响应数据后做后端分析并展示。
+"""优化设计页面：把方案配置生成的设计在填入响应数据后做后端分析并展示。
 
 支持的结果视图：
 - 方案设计摘要与设计诊断；
@@ -71,8 +71,9 @@ class OptimizationPage(QWidget):
 
     def _update_method_actions(self):
         """按方案类型切换主动作，避免把筛选/田口误导成鲁棒优化。"""
-        if hasattr(self, "uncertainty_label"):
-            self._update_uncertainty_label()
+        if hasattr(self, "k_design_spin"):
+            self._update_uncertainty_tooltip()
+            self._update_mutation_probability()
         method = self._method()
         is_screening = "筛选" in method
         is_taguchi = "田口" in method
@@ -118,21 +119,30 @@ class OptimizationPage(QWidget):
 
     def _on_robust_mode(self, _text=None):
         mode = self.robust_mode_combo.currentData()
-        self.sigma_limits_table.setVisible(mode == "constraint")
+        self.sigma_limits_group.setVisible(mode == "constraint")
         if mode == "constraint":
-            self.sigma_limits_table.blockSignals(True)
-            saved = {self.sigma_limits_table.item(i,0).data(256): self.sigma_limits_table.item(i,1).text()
-                     for i in range(self.sigma_limits_table.rowCount()) if self.sigma_limits_table.item(i,1)}
-            responses = [r for r in self.project_data.responses if not oe.self_is_constraint(r) or "目标" in r.kind]
+            from frontend.numeric_inputs import numeric_text_input
+            saved = {name: editor.text() for name, editor in self.sigma_limit_inputs.items()}
+            responses = [r for r in self.project_data.responses if r.name and (not oe.self_is_constraint(r) or "目标" in r.kind)]
+            self.sigma_limit_inputs = {}
+            self.sigma_limits_table.setRowCount(0)
             self.sigma_limits_table.setRowCount(len(responses))
-            from PyQt6.QtCore import Qt
             for i,r in enumerate(responses):
-                label = QTableWidgetItem(r.name + (" (" + r.unit + ")" if r.unit else ""))
-                label.setData(256, r.name)
-                label.setFlags(label.flags() & ~Qt.ItemFlag.ItemIsEditable)
-                self.sigma_limits_table.setItem(i,0,label)
-                self.sigma_limits_table.setItem(i,1,QTableWidgetItem(saved.get(r.name,"")))
-            self.sigma_limits_table.blockSignals(False)
+                self.sigma_limits_table.setItem(i, 0, QTableWidgetItem(r.name))
+                self.sigma_limits_table.setItem(i, 2, QTableWidgetItem(r.unit or "—"))
+                editor = numeric_text_input(saved.get(r.name, ""))
+                editor.setPlaceholderText("请输入正数")
+                editor.setStyleSheet("QLineEdit { border:1px solid #bdcbd8; border-radius:3px; "
+                                    "margin:3px 8px; padding:3px 7px; background:#f8fbfe; }")
+                editor.setToolTip(f"{r.name} 的标准差上限（Standard Deviation Limit）\n"
+                                  f"单位：{r.unit or '无量纲'}。填写大于零的数值，限制该响应的波动程度。")
+                editor.textChanged.connect(self._settings_changed)
+                self.sigma_limit_inputs[r.name] = editor
+                self.sigma_limits_table.setCellWidget(i, 1, editor)
+                self.sigma_limits_table.setRowHeight(i, 38)
+            self.sigma_limits_table.setFixedHeight(
+                self.sigma_limits_table.horizontalHeader().height() + 38 * min(max(len(responses), 1), 5) + 4)
+        self.weight_fields.setVisible(mode == "weighted")
         self.weight_spin.setEnabled(mode == "weighted")
         self.k_constraint_spin.setEnabled(True)
 
@@ -140,10 +150,9 @@ class OptimizationPage(QWidget):
         if self.robust_mode_combo.currentData() != "constraint":
             return {}
         limits = {}
-        for i in range(self.sigma_limits_table.rowCount()):
-            name = self.sigma_limits_table.item(i, 0).data(256)
+        for name, editor in self.sigma_limit_inputs.items():
             try:
-                value = float(self.sigma_limits_table.item(i, 1).text())
+                value = float(editor.text())
             except (ValueError, AttributeError):
                 raise ValueError(f"请填写 {name} 的允许最大标准差。")
             if not math.isfinite(value) or value <= 0:
@@ -151,10 +160,29 @@ class OptimizationPage(QWidget):
             limits[name] = value
         return limits
 
-    def _update_uncertainty_label(self, *_args):
+    def _update_uncertainty_tooltip(self, *_args):
         sigmas = [f"{f.name}: σ={oe._sigma_of_factor(f, self.k_design_spin.value()):.6g}"
                   for f in self.project_data.factors if f.name]
-        self.uncertainty_label.setText(rich_text("当前矩近似的输入标准差（设计使用偏差区间，环境使用实际区间；不使用名义设计范围推导）：" + "；".join(sigmas)))
+        self.k_design_spin.setToolTip(
+            "区间标准差换算系数（Interval-to-Standard-Deviation Conversion Factor）\n"
+            "矩近似中，设计因子用偏差宽度/(2k)、环境因子用实际区间宽度/(2k)换算标准差；"
+            "不由名义设计范围推导。概率输入直接采用所填方差。\n当前输入标准差：" + "；".join(sigmas))
+
+    def _update_mutation_probability(self, *_args):
+        automatic = self.mutation_mode_combo.currentData() == "auto"
+        self.mutation_spin.setEnabled(not automatic)
+        if automatic:
+            count = len([f for f in self.project_data.factors if f.name and f.source == "设计"])
+            self.mutation_spin.setValue(1.0 / max(count, 1))
+
+    def _optimizer_settings(self):
+        return dict(mode=self.robust_mode_combo.currentData(), pop=self.pop_spin.value(),
+                    gen=self.gen_spin.value(), weight=self.weight_spin.value(),
+                    k_design=self.k_design_spin.value(), k_constraint=self.k_constraint_spin.value(),
+                    seed=self.seed_spin.value(), pc=self.crossover_spin.value(),
+                    pm=None if self.mutation_mode_combo.currentData() == "auto" else self.mutation_spin.value(),
+                    eta_c=self.eta_c_spin.value(), eta_m=self.eta_m_spin.value(),
+                    sigma_limits=self._sigma_limits())
 
     def _new_text(self):
         text = MathTextEdit()
@@ -288,7 +316,11 @@ class OptimizationPage(QWidget):
     def _analysis_settings(self):
         return {"mode": self.robust_mode_combo.currentData(), "k_design": self.k_design_spin.value(),
                 "k_constraint": self.k_constraint_spin.value(), "weight": self.weight_spin.value(),
-                "sigma_limits": {self.sigma_limits_table.item(i,0).data(256): self.sigma_limits_table.item(i,1).text() for i in range(self.sigma_limits_table.rowCount()) if self.sigma_limits_table.item(i,1)}, "population": self.pop_spin.value(), "generations": self.gen_spin.value(), "seed": 7}
+                "sigma_limits": {name: editor.text() for name, editor in self.sigma_limit_inputs.items()},
+                "population": self.pop_spin.value(), "generations": self.gen_spin.value(),
+                "seed": self.seed_spin.value(), "pc": self.crossover_spin.value(),
+                "mutation_mode": self.mutation_mode_combo.currentData(), "pm": self.mutation_spin.value(),
+                "eta_c": self.eta_c_spin.value(), "eta_m": self.eta_m_spin.value()}
 
     def run_workbench(self):
         return self.controller.run_workbench()

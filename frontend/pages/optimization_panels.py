@@ -78,10 +78,11 @@ def build(owner):
         owner.setLayout(main_layout)
         owner._oe_context = None
         owner._update_method_actions()
-        for control in (owner.k_design_spin, owner.k_constraint_spin, owner.weight_spin, owner.pop_spin, owner.gen_spin):
+        for control in (owner.k_design_spin, owner.k_constraint_spin, owner.weight_spin, owner.pop_spin, owner.gen_spin,
+                        owner.seed_spin, owner.crossover_spin, owner.mutation_spin, owner.eta_c_spin, owner.eta_m_spin):
             control.valueChanged.connect(owner._settings_changed)
         owner.robust_mode_combo.currentTextChanged.connect(owner._settings_changed)
-        owner.sigma_limits_table.itemChanged.connect(owner._settings_changed)
+        owner.mutation_mode_combo.currentIndexChanged.connect(owner._settings_changed)
 
 def build_overview_tab(owner):
         layout = QVBoxLayout(owner.tab_overview)
@@ -92,66 +93,27 @@ def build_overview_tab(owner):
         owner._refresh_view()
 
 def build_robust_tab(owner):
+        from PyQt6.QtWidgets import QScrollArea
+        from frontend.pages.robust_settings import build_settings
         layout = QVBoxLayout(owner.tab_robust)
         layout.addWidget(label(name('robust_optimization'), 'heading'))
-        controls = QHBoxLayout()
-        controls.addWidget(QLabel("优化模式："))
-        owner.robust_mode_combo = QComboBox()
-        for term, value in (("multiobjective_nsga2", "multi"),
-                            ("weighted_single_objective", "weighted"),
-                            ("constrained_optimization", "constraint")):
-            add_combo_item(owner.robust_mode_combo, term, value)
-        controls.addWidget(owner.robust_mode_combo)
-        controls.addSpacing(16)
-        controls.addWidget(QLabel("种群数："))
-        owner.pop_spin = numeric_input(int, 20, 300, 80)
-        controls.addWidget(owner.pop_spin)
-        controls.addSpacing(8)
-        controls.addWidget(QLabel("代数："))
-        owner.gen_spin = numeric_input(int, 30, 1000, 160)
-        controls.addWidget(owner.gen_spin)
-        controls.addStretch()
-        layout.addLayout(controls)
-
-        controls2 = QHBoxLayout()
-        weight_label = apply(QLabel(), "desirability_loss_weight")
-        weight_label.setText(weight_label.text() + " λ：")
-        controls2.addWidget(weight_label)
-        owner.weight_spin = numeric_input(float, 0.0, 1.0, 0.5)
-        controls2.addWidget(owner.weight_spin)
-        controls2.addSpacing(16)
-        constraint_label = apply(QLabel(), "constraint_margin_multiplier")
-        constraint_label.setText(constraint_label.text() + " k：")
-        controls2.addWidget(constraint_label)
-        owner.k_constraint_spin = numeric_input(float, 1.0, 10.0, 6.0)
-        owner.k_constraint_spin.setToolTip(rich_text("在所有优化模式中执行已勾选约束。例如望小约束：均值 + k×标准差 ≤ 上限。"))
-        controls2.addWidget(owner.k_constraint_spin)
-        controls2.addSpacing(8)
-        interval_label = apply(QLabel(), "interval_std_factor")
-        interval_label.setText(interval_label.text() + " k：")
-        controls2.addWidget(interval_label)
-        owner.k_design_spin = numeric_input(float, 1.0, 10.0, 6.0)
-        owner.k_design_spin.setToolTip("当前仍采用矩近似：设计因子用偏差宽度/(2k)，环境因子用实际区间宽度/(2k)换算标准差；均不由名义设计范围推导。概率输入直接采用所填方差，并非区间最坏情况传播。")
-        controls2.addWidget(owner.k_design_spin)
-        controls2.addStretch()
-        layout.addLayout(controls2)
-        owner.sigma_limits_table = QTableWidget(0, 2)
-        owner.sigma_limits_table.setHorizontalHeaderLabels(["目标响应（原单位）", "允许的最大标准差 σ"])
-        owner.sigma_limits_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        owner.sigma_limits_table.setFixedHeight(85)
-        layout.addWidget(owner.sigma_limits_table)
-        owner.uncertainty_label = QLabel()
-        owner.uncertainty_label.setWordWrap(True)
-        layout.addWidget(owner.uncertainty_label)
-        owner.k_design_spin.valueChanged.connect(owner._update_uncertainty_label)
-        owner._update_uncertainty_label()
-
+        owner.robust_scroll = QScrollArea()
+        owner.robust_scroll.setWidgetResizable(True)
+        owner.robust_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        content = QWidget()
+        column = QVBoxLayout(content)
+        column.setContentsMargins(0, 0, 0, 0)
+        column.setSpacing(18)
+        build_settings(owner, column)
         owner.robust_mode_combo.currentTextChanged.connect(owner._on_robust_mode)
-        owner._on_robust_mode(owner.robust_mode_combo.currentText())
+        owner._on_robust_mode()
         owner.pareto_fig = Figure(figsize=(5, 3.6), dpi=100, layout="constrained")
         owner.pareto_canvas = FigureCanvas(owner.pareto_fig)
         owner.robust_results = RobustResults(owner.pareto_canvas)
-        layout.addWidget(owner.robust_results, 1)
+        column.addWidget(owner.robust_results)
+        column.addStretch()
+        owner.robust_scroll.setWidget(content)
+        layout.addWidget(owner.robust_scroll)
 
 def build_signif_tab(owner):
         layout = QVBoxLayout(owner.tab_signif)

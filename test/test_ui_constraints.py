@@ -96,7 +96,7 @@ class ConstraintTests(unittest.TestCase):
         page.pop_spin.setValue(20)
         page.gen_spin.setValue(30)
         page.robust_mode_combo.setCurrentIndex(page.robust_mode_combo.findData('constraint'))
-        page.sigma_limits_table.item(0,1).setText('0.1')
+        page.sigma_limit_inputs['Y'].setText('0.1')
         messages = []
         def receive(*args): messages.append(args)
         bus.posted.connect(receive)

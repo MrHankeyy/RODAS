@@ -1,7 +1,6 @@
 """Structured robust-design results shared by all surrogate models and modes."""
-from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor
-from PyQt6.QtWidgets import QGroupBox, QHBoxLayout, QScrollArea, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import QGroupBox, QHBoxLayout, QVBoxLayout, QWidget
 
 from backend.reporting.math_format import Math, formula_html, number
 from frontend.pages.result_overview import SummaryTable, label
@@ -9,13 +8,11 @@ from frontend.pages.result_summary import display
 from frontend.terminology import name as term_name, tooltip
 
 
-class RobustResults(QScrollArea):
+class RobustResults(QWidget):
     def __init__(self, canvas, parent=None):
         super().__init__(parent)
-        self.setWidgetResizable(True)
-        self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        content = QWidget()
-        column = QVBoxLayout(content)
+        column = QVBoxLayout(self)
+        column.setContentsMargins(0, 0, 0, 0)
         self.status = label(role="badge")
         column.addWidget(self.status)
         self.body = QVBoxLayout()
@@ -27,7 +24,6 @@ class RobustResults(QScrollArea):
         self.footer = QVBoxLayout()
         column.addLayout(self.footer)
         column.addStretch()
-        self.setWidget(content)
         self.clear()
 
     def clear(self):
@@ -39,7 +35,6 @@ class RobustResults(QScrollArea):
         self.tables = {}
         self.status.setText("尚无优化结果，请执行鲁棒性优化设计。")
         self.plot.hide()
-        self.verticalScrollBar().setValue(0)
 
     def _section(self, title, footer=False):
         group = QGroupBox(title)
@@ -128,8 +123,14 @@ class RobustResults(QScrollArea):
             section.addWidget(label("本次未设置响应约束或独立标准差约束。", "muted"))
         mode = result["mode"]
         settings = self._section("求解统计与设置", footer=True)
-        rows = [["优化模式", {"constraint": "约束优化", "multi": "多目标优化", "weighted": "加权单目标优化"}[mode]],
+        rows = [["鲁棒优化策略", {"constraint": "波动约束优化", "multi": "多目标优化（帕累托）", "weighted": "加权目标优化"}[mode]],
                 ["评估解 / 可行解", f"{result['evaluated_count']} / {result['feasible_count']}"],
+                ["种群数 / 代数", f"{result['population_size']} / {result['generations']}"],
+                ["随机种子", result['seed']],
+                ["逐变量交叉概率", result['pc']],
+                ["变异概率设置", "自动（1/设计因子数）" if result['pm'] is None else "手动设置"],
+                ["逐变量变异概率", result['effective_pm']],
+                ["交叉分布指数", result['eta_c']], ["变异分布指数", result['eta_m']],
                 ["约束裕量系数 k", result["k_constraint"]], ["区间标准差换算系数 k", result["k_design"]],
                 ["目标响应", "、".join(result.get("objective_names", [])) or "无"],
                 ["约束响应", "、".join(result.get("constraint_names", [])) or "无"]]

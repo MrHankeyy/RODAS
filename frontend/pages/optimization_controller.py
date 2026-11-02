@@ -96,13 +96,10 @@ class OptimizationController:
             page._check_inputs()
             bus.post("进度", "模型准备", "检查数据与当前模型配置")
             context = page._prepare_context()
-            mode = page.robust_mode_combo.currentData()
-            limits = page._sigma_limits() if mode == "constraint" else {}
+            settings = page._optimizer_settings()
             page.project_service.clear_workbench()
             page._run_signature = page.project_service.input_signature()
-            page._worker = OptimizationWorker(context, dict(mode=mode, pop=page.pop_spin.value(), gen=page.gen_spin.value(),
-                weight=page.weight_spin.value(), k_design=page.k_design_spin.value(), k_constraint=page.k_constraint_spin.value(),
-                seed=7, sigma_limits=limits), page)
+            page._worker = OptimizationWorker(context, settings, page)
             page.setEnabled(False)
             page._worker.progress.connect(lambda done,total: bus.post("进度", "鲁棒性优化设计", f"已完成 {done}/{total} 代"))
             page._worker.result_ready.connect(page._optimization_ready)
@@ -152,16 +149,8 @@ class OptimizationController:
             page.run_optimization()
             return
         context = page._prepare_context()
-        mode = page.robust_mode_combo.currentData()
-        pop = page.pop_spin.value()
-        gen = page.gen_spin.value()
-        weight = page.weight_spin.value()
-        kd = page.k_design_spin.value()
-        kc = page.k_constraint_spin.value()
         page.status_label.setText("正在执行鲁棒性优化设计与统计分析…（可能稍候）")
-        robust = oe.robust_optimize(context, mode=mode, pop=pop, gen=gen,
-                                    weight=weight, k_design=kd,
-                                    k_constraint=kc, seed=7, sigma_limits=page._sigma_limits() if mode == "constraint" else None)
+        robust = oe.robust_optimize(context, **page._optimizer_settings())
         if robust.get("error"):
             raise ValueError(robust["error"])
         context["sigma_limits"] = robust.get("sigma_limits", {})
@@ -257,24 +246,28 @@ class OptimizationController:
 
     def restore_results(self):
         """Repopulate saved views using restored predictors; never fit a model."""
-        from PyQt6.QtWidgets import QTableWidgetItem
         page = self.page
         project = page.project_data
         snapshot = project.workbench_result
         settings = snapshot.get('settings', {})
         for key, control in (('population', page.pop_spin), ('generations', page.gen_spin),
                              ('weight', page.weight_spin), ('k_design', page.k_design_spin),
-                             ('k_constraint', page.k_constraint_spin)):
+                             ('k_constraint', page.k_constraint_spin), ('seed', page.seed_spin),
+                             ('pc', page.crossover_spin), ('eta_c', page.eta_c_spin),
+                             ('eta_m', page.eta_m_spin)):
             if key in settings:
                 control.setValue(settings[key])
         if 'mode' in settings:
             index = page.robust_mode_combo.findData(settings['mode'])
             if index >= 0:
                 page.robust_mode_combo.setCurrentIndex(index)
-        for i in range(page.sigma_limits_table.rowCount()):
-            name = page.sigma_limits_table.item(i, 0).data(256)
+        if 'mutation_mode' in settings:
+            page.mutation_mode_combo.setCurrentIndex(page.mutation_mode_combo.findData(settings['mutation_mode']))
+        if settings.get('mutation_mode') == 'manual':
+            page.mutation_spin.setValue(settings['pm'])
+        for name, editor in page.sigma_limit_inputs.items():
             if name in settings.get('sigma_limits', {}):
-                page.sigma_limits_table.setItem(i, 1, QTableWidgetItem(settings['sigma_limits'][name]))
+                editor.setText(settings['sigma_limits'][name])
         page._refresh_view()
         page.screening_panel.set_result(project.screening_result)
         page.taguchi_panel.set_result(project.taguchi_result)
