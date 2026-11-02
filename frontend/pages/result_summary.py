@@ -3,7 +3,7 @@ import math
 from backend.services.data_service import data_overview
 
 
-def display(value):
+def display(value, precision=5):
     if value is None:
         return "—"
     if isinstance(value, float):
@@ -11,7 +11,7 @@ def display(value):
             return "—"
         if math.isinf(value):
             return "+∞" if value > 0 else "−∞"
-        return f"{value:.5g}"
+        return f"{value:.{precision}g}"
     return str(value)
 
 
@@ -19,15 +19,15 @@ def named(item):
     return f"{item.name}（{item.unit}）" if item.unit else item.name
 
 
-def section(title, headers=(), rows=(), message=""):
-    return dict(title=title, headers=headers, rows=rows, message=message)
+def section(title, headers=(), rows=(), message="", missing_reasons=None):
+    return dict(title=title, headers=headers, rows=rows, message=message, missing_reasons=missing_reasons or {})
 
 
 def _model_results(project, labels):
     surrogate = "代理模型" in project.design_method
     result = project.surrogate_result if surrogate else project.rsm_result
     items = result.get("responses" if surrogate else "fit", {})
-    rows, errors = [], []
+    rows, errors, missing = [], [], {}
     for name, item in items.items():
         if item.get("error"):
             errors.append(section(f"{labels.get(name, name)} · 分析失败", message=item["error"]))
@@ -36,12 +36,16 @@ def _model_results(project, labels):
             rows.append([labels.get(name, name), item.get("r2_test"), item.get("mape_test_%")])
         else:
             rows.append([labels.get(name, name), item.get("r2"), item.get("adj_r2"), item.get("rmse")])
+        keys = ('r2_test', 'mape_test_%') if surrogate else ('r2', 'adj_r2', 'rmse')
+        for column, key in enumerate(keys, 1):
+            if item.get(key) is None:
+                missing[len(rows)-1, column] = item.get('message') or '该响应的模型结果未提供此项指标。'
     title = "模型训练结果" if surrogate else "二次响应面模型拟合结果"
     headers = (["响应", "测试集决定系数", "归一化平均绝对误差（%）"] if surrogate else
                ["响应", "拟合决定系数", "调整决定系数", "拟合均方根误差"])
     note = ("下一步：在「交叉验证与残差分析」检查预测误差，再进行鲁棒性优化设计。" if surrogate else
             "均方根误差单位同响应。下一步：检查「回归显著性与失拟检验」与「交叉验证与残差分析」，再进行鲁棒性优化设计。")
-    sections = [section(title, headers, rows, note)] if rows else []
+    sections = [section(title, headers, rows, note, missing)] if rows else []
     return sections + errors, len(rows), len(errors)
 
 

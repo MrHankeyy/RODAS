@@ -4,6 +4,7 @@ from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QGr
                             QTableWidget, QHeaderView, QProgressBar, QFileDialog)
 from backend.services.data_service import data_overview
 from backend.core.workbench_analysis import descriptive
+from backend.core.workbench_analysis import descriptive_missing_reasons
 from frontend.pages.result_overview import SummaryTable, label
 from frontend.pages.result_summary import named
 from frontend.pages.table_widgets import fill_records
@@ -60,7 +61,8 @@ class DataInspection(QWidget):
             message = "检查已通过，响应数据完整。" if data["ready"] else "请补齐或修正下方列出的响应数据。"
         self.notice.setText(message)
         if self.kind == "statistics":
-            fill_records(self.table, descriptive(self.project))
+            rows = descriptive(self.project)
+            fill_records(self.table, rows, missing_reasons=descriptive_missing_reasons(rows))
             return
         while self.readiness_layout.count():
             old = self.readiness_layout.takeAt(0).widget()

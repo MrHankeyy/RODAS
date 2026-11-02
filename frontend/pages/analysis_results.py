@@ -163,7 +163,13 @@ class AnalysisResults(QWidget):
             elif "均方根误差" in caption:
                 group.setToolTip(tooltip("rmse"))
             box = QVBoxLayout(group)
-            box.addWidget(label(display(value), "heading"))
+            metric = label(display(value), "heading")
+            if display(value) == '—':
+                metric.setToolTip(result.get('message') or
+                    ('验证响应全部相同，总平方和为零，无法计算决定系数。'
+                     if '决定系数' in caption and result.get('rmse') is not None else
+                     '当前验证结果未提供该项指标。'))
+            box.addWidget(metric)
             metrics.addWidget(group, 1)
         container = QWidget()
         container.setLayout(metrics)

@@ -16,6 +16,7 @@ from frontend.math_widgets import MathTextEdit
 from frontend.workspace import dialog_path
 from frontend.pages.table_widgets import fill_records
 from frontend.numeric_inputs import numeric_input, commit_numeric_inputs
+from frontend.pages.fit_statistics import FitStatistics
 
 
 class WorkbenchDiagnostics(QWidget):
@@ -31,7 +32,9 @@ class WorkbenchDiagnostics(QWidget):
         self.notice=QLabel('请先执行“建模与模型诊断”或鲁棒性优化设计。');self.notice.setWordWrap(True)
         layout.addWidget(self.notice)
         self.tabs=QTabWidget();layout.addWidget(self.tabs)
-        for key,title in [('summary','拟合统计'),('coefficients','系数与区间'),('observations','逐点诊断')]:
+        self.summary = FitStatistics()
+        self.tabs.addTab(self.summary, '拟合统计')
+        for key,title in [('coefficients','系数与区间'),('observations','逐点诊断')]:
             table=QTableWidget();table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
             table.setAlternatingRowColors(True)
             table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
@@ -57,6 +60,7 @@ class WorkbenchDiagnostics(QWidget):
 
     def clear(self):
         self.context=None;self.snapshot={};self.response.clear()
+        self.summary.clear()
         for table in self.tables.values():table.setRowCount(0)
         self.point_table.setRowCount(0);self.point_note.clear();self.notes.clear()
         self.figure.clear();self.canvas.draw()
@@ -91,8 +95,10 @@ class WorkbenchDiagnostics(QWidget):
     def render(self,*args):
         item=self.snapshot.get('responses',{}).get(self.response.currentText())
         if not item:return
-        for key in ('summary','coefficients','observations'):
-            self.fill(self.tables[key],item[key], statistic_columns=('统计量',) if key == 'summary' else ())
+        missing = item.get('missing_reasons', {})
+        self.summary.set_statistics(item['summary'], missing.get('summary', {}))
+        for key in ('coefficients','observations'):
+            self.fill(self.tables[key],item[key], missing_reasons=missing.get(key))
         self.notes.setPlainText('\n\n'.join(item['notes']))
         self.figure.clear()
         rows=item['observations']
@@ -154,7 +160,15 @@ class WorkbenchDiagnostics(QWidget):
         table = self.tabs.currentWidget()
         if table is self.point_tab:
             table = self.point_table
-        if not isinstance(table, QTableWidget) or not table.rowCount():
+        if table is self.summary:
+            headers, rows = ['统计量', '值'], self.summary.csv_rows()
+        elif isinstance(table, QTableWidget):
+            headers = [table.horizontalHeaderItem(i).text() for i in range(table.columnCount())]
+            rows = [[table.item(r, c).text() if table.item(r, c) else ''
+                     for c in range(table.columnCount())] for r in range(table.rowCount())]
+        else:
+            rows = []
+        if not rows:
             Notice.information(
                 self, "暂无表格", "请切换到有结果的统计表后导出。")
             return
@@ -162,14 +176,6 @@ class WorkbenchDiagnostics(QWidget):
             self, "导出当前统计表", dialog_path(self), "CSV (*.csv)")
         if not path:
             return
-        headers = [
-            table.horizontalHeaderItem(index).text()
-            for index in range(table.columnCount())]
-        rows = [
-            [table.item(row, column).text()
-             if table.item(row, column) else ""
-             for column in range(table.columnCount())]
-            for row in range(table.rowCount())]
         try:
             file_io.write_csv_table(path, headers, rows)
         except OSError as exc:

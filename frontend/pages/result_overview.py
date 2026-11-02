@@ -20,7 +20,7 @@ def label(text="", role=None):
 
 class SummaryTable(QTableWidget):
     """Read-only summary table that grows with its rows inside the page scroll area."""
-    def __init__(self, headers, rows, parent=None):
+    def __init__(self, headers, rows, parent=None, *, missing_reasons=None, formatter=display):
         super().__init__(len(rows), len(headers), parent)
         self.setHorizontalHeaderLabels(headers)
         apply_header_tooltips(self)
@@ -33,8 +33,10 @@ class SummaryTable(QTableWidget):
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         for i, row in enumerate(rows):
             for j, value in enumerate(row):
-                item = decorate_item(QTableWidgetItem(display(value)), value)
+                item = decorate_item(QTableWidgetItem(formatter(value)), value)
                 self.setItem(i, j, apply_item_tooltip(item))
+                if formatter(value) == '—':
+                    item.setToolTip((missing_reasons or {}).get((i, j), '当前结果未提供该统计量的数值。'))
         self.resizeRowsToContents()
         self.setFixedHeight(self.horizontalHeader().height() + sum(self.rowHeight(i) for i in range(len(rows))) + 4)
 
@@ -100,7 +102,7 @@ class ResultOverview(QScrollArea):
         for section in data["sections"]:
             layout = self._section(section["title"])
             if section["rows"]:
-                table = SummaryTable(section["headers"], section["rows"])
+                table = SummaryTable(section["headers"], section["rows"], missing_reasons=section['missing_reasons'])
                 layout.addWidget(table)
                 self.result_tables.append(table)
             if section["message"]:

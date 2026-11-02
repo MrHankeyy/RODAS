@@ -27,11 +27,35 @@ def descriptive(project):
     return rows
 
 
+def descriptive_missing_reasons(rows):
+    """Explain missing descriptive values without altering their computation."""
+    result = []
+    columns = set().union(*(row.keys() for row in rows)) if rows else set()
+    for row in rows:
+        reasons = {}
+        count = row['有效数']
+        for key in columns:
+            if row.get(key) is not None:
+                continue
+            if not count:
+                reasons[key] = '该响应没有有效的有限数值，无法计算描述统计。'
+            elif key == '样本标准差':
+                reasons[key] = '有效样本少于2个，无法计算样本标准差。'
+            elif key in ('偏度', '超额峰度'):
+                minimum = 3 if key == '偏度' else 4
+                reasons[key] = (f'有效样本少于{minimum}个，无法计算{key}。' if count < minimum else
+                                f'有效响应全部相同，{key}的标准化分母为零。')
+        result.append(reasons)
+    return result
+
+
 def diagnostics(context, name):
     model = context['models'][name]
     surrogate = 'predict_fn' in model
     coefficients = []
     notes = []
+    missing = {'summary': {}, 'coefficients': [], 'observations': []}
+    reasons = missing['summary']
     if surrogate:
         val = model.get('validation', {})
         actual = np.asarray(val.get('actual', []),float)
@@ -49,7 +73,8 @@ def diagnostics(context, name):
         predicted = np.asarray([model_predict(model,row) for row in x])
         source = '训练集拟合（不是外部验证）'
     if len(actual) != len(predicted) or not len(actual) or not np.all(np.isfinite(actual+predicted)):
-        return {'summary':[], 'coefficients':[], 'observations':[], 'notes':['没有匹配的有限观测与预测。'], 'source':source}
+        return {'summary':[], 'coefficients':[], 'observations':[], 'notes':['没有匹配的有限观测与预测。'], 'source':source,
+                'missing_reasons': missing}
     residual = actual-predicted
     n = len(actual)
     sse = float(residual@residual)
@@ -58,6 +83,10 @@ def diagnostics(context, name):
                 'RMSE':math.sqrt(sse/n),'MAE':float(np.abs(residual).mean()),
                 '最大绝对误差':float(np.abs(residual).max()),'残差均值':float(residual.mean()),
                 '残差样本标准差':float(residual.std(ddof=1)) if n>1 else None}
+    if sst <= 0:
+        reasons['R²'] = '当前实测响应全部相同，总平方和为零，无法计算决定系数。'
+    if n < 2:
+        reasons['残差样本标准差'] = '有效残差少于2个，无法计算样本标准差。'
     leverage = student = cooks = None
     if not surrogate:
         z = (x-model['center'])/model['half']
@@ -72,6 +101,11 @@ def diagnostics(context, name):
         usable = df>0 and sse>np.finfo(float).eps**2*max(float(actual@actual),1)*100
         overall_f=((sst-sse)/(p-1))/(sse/df) if usable and p>1 else None
         measures.update({'回归 F':overall_f,'回归 p':float(stats.f.sf(overall_f,p-1,df)) if overall_f is not None else None})
+        regression_reason = ('残差自由度不足，无法估计回归检验的误差方差。' if df <= 0 else
+                             '模型只有常数项，没有可检验的回归项。' if p <= 1 else
+                             '残差平方和数值上接近零，当前规则不输出回归检验。')
+        if overall_f is None:
+            reasons.update({'回归 F': regression_reason, '回归 p': regression_reason})
         groups={}
         for row,value in zip(x,actual):groups.setdefault(tuple(row),[]).append(float(value))
         pure_df=sum(len(v)-1 for v in groups.values())
@@ -80,6 +114,11 @@ def diagnostics(context, name):
         lof_f=(max(sse-pure_ss,0)/lof_df)/(pure_ss/pure_df) if lof_df>0 and pure_df>0 and pure_ss>1e-24 else None
         measures.update({'纯误差自由度':pure_df,'纯误差平方和':pure_ss,'失拟自由度':lof_df,
                          '失拟 F':lof_f,'失拟 p':float(stats.f.sf(lof_f,lof_df,pure_df)) if lof_f is not None else None})
+        if lof_f is None:
+            reason = ('没有相同输入下的重复观测，无法估计纯误差并进行失拟检验。' if pure_df <= 0 else
+                      '失拟自由度不足，无法独立估计失拟误差。' if lof_df <= 0 else
+                      '重复观测的纯误差为零或数值上接近零，无法作为失拟检验的分母。')
+            reasons.update({'失拟 F': reason, '失拟 p': reason})
         if usable:
             mse=sse/df
             se=np.sqrt(np.maximum(np.diag(inv)*mse,0))
@@ -97,10 +136,22 @@ def diagnostics(context, name):
                 '未校正 p':float(2*stats.t.sf(abs(t),df)) if t is not None else None,
                 '95%下限':float(coef)-tcrit*serr if serr is not None else None,
                 '95%上限':float(coef)+tcrit*serr if serr is not None else None})
+            cause = ('残差自由度不足，无法估计系数的不确定性。' if df <= 0 else
+                     '残差平方和数值上接近零，当前规则不输出系数推断。')
+            coefficient_reasons = {key: cause for key in ('标准误', '95%下限', '95%上限') if serr is None}
+            if t is None:
+                coefficient_reasons.update({key: cause if serr is None else '系数标准误为零，无法计算系数检验。'
+                                            for key in ('t', '未校正 p')})
+            missing['coefficients'].append(coefficient_reasons)
         if np.all(1-leverage>1e-8):
             press=float(np.sum((residual/(1-leverage))**2))
             measures.update({'LOO PRESS':press,'LOO RMSE':math.sqrt(press/n),'预测 R² (LOO)':1-press/sst if sst>0 else None})
+            if sst <= 0:
+                reasons['预测 R² (LOO)'] = reasons['R²']
         else:
+            for key in ('LOO PRESS', 'LOO RMSE', '预测 R² (LOO)'):
+                measures[key] = None
+                reasons[key] = '部分杠杆值接近1，留出对应样本后模型不可识别，无法计算留一预测。'
             notes.append('部分杠杆值接近 1，留一后模型不可识别，PRESS/预测 R² 不可估计。')
         notes.append('系数区间为 OLS 条件推断，假设独立同方差正态误差；p 值未校正多重比较。编码 z=(实际值−中心)/半跨度。')
         notes.append('编码映射：'+str(dict(zip(context['names'],zip(model['center'].tolist(),model['half'].tolist())))))
@@ -112,11 +163,23 @@ def diagnostics(context, name):
                         'Cook距离':float(cooks[i]) if cooks is not None and np.isfinite(cooks[i]) else None,
                         '高杠杆提示':bool(leverage[i]>2*p/n)})
         observations.append(row)
+        observation_reasons = {}
+        if leverage is not None:
+            cause = ('残差自由度不足，无法计算影响诊断。' if df <= 0 else
+                     '当前点杠杆值接近1，无法计算有效的学生化残差或影响距离。' if usable else
+                     '残差平方和数值上接近零，当前规则不输出影响诊断。')
+            observation_reasons = {key: cause for key, value in row.items() if value is None}
+        missing['observations'].append(observation_reasons)
     if 3<=n<=5000 and np.ptp(residual)>1e-12:
         measures['残差 Shapiro p']=float(stats.shapiro(residual).pvalue)
         notes.append('夏皮罗检验仅作残差分布诊断，不显著不等于证明正态；试验矩阵行序不一定是实际试验时间。')
+    else:
+        measures['残差 Shapiro p'] = None
+        reasons['残差 Shapiro p'] = ('有效残差少于3个，无法进行夏皮罗正态性检验。' if n < 3 else
+                                     '有效残差超过5000个，超出当前正态性检验的样本范围。' if n > 5000 else
+                                     '残差变化幅度过小，当前规则不执行残差正态性检验。')
     return {'summary':[{'统计量':k,'值':v} for k,v in measures.items()], 'coefficients':coefficients,
-            'observations':observations,'notes':notes,'source':source}
+            'observations':observations,'notes':notes,'source':source,'missing_reasons':missing}
 
 
 def point_analysis(context, point, kd, kc):

@@ -119,10 +119,13 @@ class WorkbenchAnalysisTests(unittest.TestCase):
             page.run_statistics();warning.assert_not_called()
         panel=page.diagnostics_panel
         raw_summary = panel.snapshot['responses']['Y']['summary']
-        summary = panel.tables['summary']
-        self.assertEqual(summary.rowCount(), len(raw_summary))
-        for row, record in enumerate(raw_summary):
-            item = summary.item(row, 0)
+        summary = panel.summary
+        self.assertEqual(len(summary.values) + 1, len(raw_summary))
+        self.assertEqual(summary.source_value.text(), '训练集')
+        for record in raw_summary:
+            if record['统计量'] == '数据来源':
+                continue
+            item = summary.labels[record['统计量']]
             self.assertEqual(item.text(), statistic_name(record['统计量']))
             self.assertEqual(item.toolTip(), statistic_tooltip(record['统计量']))
             self.assertIn('\n', item.toolTip())

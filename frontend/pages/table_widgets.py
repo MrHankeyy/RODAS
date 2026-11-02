@@ -92,7 +92,7 @@ class ExcelLikeTableWidget(QTableWidget):
                 item.setText("")
 
 
-def fill_records(table, rows, *, statistic_columns=()):
+def fill_records(table, rows, *, statistic_columns=(), missing_reasons=None):
     """Fill a read-only result table with mathematical display support."""
     from frontend.math_widgets import install_delegate, decorate_item
     from frontend.terminology import apply_header_tooltips, statistic_name, statistic_tooltip
@@ -111,5 +111,8 @@ def fill_records(table, rows, *, statistic_columns=()):
             item = QTableWidgetItem(text)
             if key in statistic_columns:
                 item.setToolTip(statistic_tooltip(text))
+            if value is None:
+                item.setToolTip(missing_reasons[i].get(key, '当前结果未提供该项数值。')
+                                if missing_reasons else '当前结果未提供该项数值。')
             table.setItem(i, j, decorate_item(item, value if key not in statistic_columns else text))
     table.resizeRowsToContents()
