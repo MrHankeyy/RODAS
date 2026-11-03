@@ -12,7 +12,7 @@ except Exception:
     _np = None
     HAS_NUMPY = False
 from . import factors as de
-from .design_evaluation import DEFAULT_K_DESIGN, DEFAULT_K_CONSTRAINT, _sigma_of_factor, design_inputs, evaluate_design
+from .design_evaluation import _sigma_of_factor, design_inputs
 from .factors import _isfinite
 from .response_models import _fit_model, model_grad_x, model_hess_diag_x, model_predict
 
@@ -289,64 +289,6 @@ def tolerance_contribution(context, k_design, point=None):
         detail[resp_name] = [{"name": name, "variance": c, "share": (c / total * 100 if total > 0 else 0)} for name, c in rows]
     return "\n".join(lines), detail
 
-
-def _metric_at(context, xd, k_design, k_constraint=DEFAULT_K_CONSTRAINT):
-    r = evaluate_design(context, xd, k_design, weight_r=0.5, use_constraints=True,
-                        k_constraint=k_constraint)
-    return r["mean_perf"], r["std_norm"]
-
-
-def parameter_design(context, robust_result, k_design, k_constraint=DEFAULT_K_CONSTRAINT):
-    if not context or not context["models"]:
-        return {"text": "无模型可做参数设计。"}
-    d_inputs = design_inputs(context)
-    dnames = [f.name for f in d_inputs]
-    if not dnames:
-        return {"text": "没有设计因子。"}
-    lo = {f.name: de.factor_limits(f)[0] for f in d_inputs}
-    hi = {f.name: de.factor_limits(f)[1] for f in d_inputs}
-    # 推荐点（来自鲁棒优化）
-    recommended = dict(robust_result.get("best", {}).get("x", {}))
-    if not recommended:
-        recommended = {n: (lo[n] + hi[n]) / 2.0 for n in dnames}
-    # 稳定点：随机搜索最小化归一化 σ
-    rng = _np.random.default_rng(7)
-    initial = evaluate_design(context, recommended, k_design, .5, True, k_constraint)
-    best_x = dict(recommended) if initial["infeas"] <= 1e-12 else None
-    best_std = initial["std_norm"] if best_x is not None else float("inf")
-    for _ in range(400):
-        trial = {n: rng.uniform(lo[n], hi[n]) for n in dnames}
-        evaluation = evaluate_design(context, trial, k_design, .5, True, k_constraint)
-        std = evaluation["std_norm"]
-        if evaluation["infeas"] <= 1e-12 and std < best_std:
-            best_std, best_x = std, dict(trial)
-    # 因子扫描图数据
-    plots = []
-    for f in d_inputs:
-        xs, mean_curve, std_curve, feasibility = [], [], [], []
-        n_pts = 9
-        for t in range(n_pts):
-            val = lo[f.name] + (hi[f.name] - lo[f.name]) * t / (n_pts - 1)
-            xd = dict(recommended)
-            xd[f.name] = val
-            evaluated = evaluate_design(context, xd, k_design, .5, True, k_constraint)
-            m, s = evaluated["mean_perf"], evaluated["std_norm"]
-            feasibility.append(evaluated["infeas"] <= 1e-12)
-            xs.append(round(val, 5))
-            mean_curve.append(round(m, 4))
-            std_curve.append(round(s, 4))
-        plots.append({"factor": f.name, "x": xs, "mean": mean_curve, "std": std_curve, "feasible": feasibility})
-    lines = ["【参数设计与取值器】"]
-    lines.append(f"  优化返回参考点（约束违反={initial['infeas']:.5g}）：{ {k: round(v, 5) for k, v in recommended.items()} }")
-    lines.append(f"  有限抽样内的可行稳定候选：{best_x or '未找到；不输出违反约束的稳定点'}")
-    _m, _s = _metric_at(context, recommended, k_design, k_constraint)
-    _m2, _s2 = _metric_at(context, best_x, k_design, k_constraint) if best_x is not None else (float("nan"), float("nan"))
-    lines.append(f"  推荐点：平均望性 {_m:.4f}，归一化标准差 {_s:.4f}")
-    if best_x is not None:
-        lines.append(f"  稳定候选：平均望性 {_m2:.4f}，归一化标准差 {_s2:.4f}")
-    lines.append("  提示：因子图见“参数设计”页，横轴为取值，纵轴为平均望性与归一化标准差。")
-    return {"text": "\n".join(lines), "recommended": recommended,
-            "stable": best_x, "factor_plots": plots}
 
 
 def model_extraction(context):

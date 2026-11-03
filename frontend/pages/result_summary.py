@@ -106,5 +106,11 @@ def overview(project):
         status, next_step = "等待分析", f"下一步：使用页面上方「{action}」。"
     if not sections:
         sections = [section("分析结果", message="尚未执行分析。" if ready else "响应数据就绪后显示当前方案的分析结果。")]
-    return dict(information=dataset["information"], readiness=readiness, status=status,
+    information = dataset['information']
+    if project.task_type not in ('taguchi', 'factorial') and not any(key in method for key in ('筛选', '田口')):
+        model = project.surrogate_config.get('model') or ('RSM' if any(key in method for key in ('响应面', '响应曲面')) else method.rsplit('·', 1)[-1].strip())
+        model_name = {'RSM': '二次响应面模型', 'Kriging': '克里金模型',
+                      'SVR': '支持向量回归模型', 'ANN': '神经网络模型'}.get(model, '未选择')
+        information = [('当前模型', model_name), ('试验次数', f'{len(project.doe_matrix)} 次')]
+    return dict(information=information, readiness=readiness, status=status,
                 next_step=next_step, sections=sections)

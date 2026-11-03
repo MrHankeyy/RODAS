@@ -76,6 +76,11 @@ class ResultOverview(QScrollArea):
             info_layout.addLayout(field, 1)
             self.info_values.append((caption, value))
         self.scheme_zone, scheme_layout = content_zone()
+        self.settings_header = QHBoxLayout()
+        self.settings_heading = label('模型构建设置', 'sectionHeading')
+        self.settings_header.addWidget(self.settings_heading)
+        self.settings_header.addStretch()
+        scheme_layout.addLayout(self.settings_header)
         scheme_layout.addWidget(self.info)
         self.column.addWidget(self.scheme_zone)
         self.result_body = QWidget()
@@ -97,9 +102,15 @@ class ResultOverview(QScrollArea):
 
     def set_project(self, project):
         data = overview(project)
-        for (caption, value), (name, text) in zip(self.info_values, data["information"]):
-            caption.setText(name)
-            value.setText(text)
+        for index, (caption, value) in enumerate(self.info_values):
+            available = index < len(data['information'])
+            caption.setVisible(available)
+            value.setVisible(available)
+            self.info.layout().setStretch(index, 1 if available else 0)
+            if available:
+                name, text = data['information'][index]
+                caption.setText(name)
+                value.setText(text)
         self.status_label.setText(data["status"])
         self.heading.setToolTip(data["next_step"])
         self.data_button.setVisible(data["status"] in ("尚未生成方案", "等待响应数据"))
@@ -109,6 +120,10 @@ class ResultOverview(QScrollArea):
             old.deleteLater()
         self.result_tables = []
         modeled = bool(project.design_method) and not any(key in project.design_method for key in ('筛选', '田口'))
+        classic = project.task_type in ('taguchi', 'factorial') or any(key in project.design_method for key in ('筛选', '田口'))
+        self.settings_heading.setText('方案分析设置' if classic else '模型构建设置')
+        self.settings_heading.setToolTip(data['next_step'])
+        self.info.setTitle('方案信息' if classic else '')
         self.model_overview.setVisible(modeled)
         for section in data["sections"]:
             if modeled and '分析失败' not in section['title']:

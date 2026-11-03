@@ -109,6 +109,8 @@ class ModelOverview(QWidget):
         head = QHBoxLayout()
         self.heading = label('建模结果总览', 'sectionHeading')
         head.addWidget(self.heading)
+        layout.addLayout(head)
+        head = QHBoxLayout()
         head.addWidget(label('响应'))
         self.response = QComboBox()
         head.addWidget(self.response, 1)

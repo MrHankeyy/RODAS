@@ -296,10 +296,7 @@ def build_report(data,kind='model',record_id=None,include_raw=False):
     for name,candidate in (res.get('taguchi') or {}).get('best_levels_by_response',{}).items():
         blocks.append(table(f'{name} · 待确认水平',[{'因子':k,'水平':v} for k,v in candidate.items()]))
     if (res.get('taguchi') or {}).get('recommendation'):blocks.append(text(res['taguchi']['recommendation']))
-    if wb.get('parameter_design',{}).get('text'):blocks.append(text(wb['parameter_design']['text']))
     for name,rows in wb.get('tolerance',{}).items():blocks.append(table(f'{name} · 局部方差贡献分析',[{'来源':r['name'],'方差':r.get('variance'),'份额%':r['share']} for r in rows]))
-    if wb.get('local_search'):
-        local=wb['local_search'];blocks += [text(local.get('text','')),table('局部探索接受路径',[{'设置':r['x'],'平均望性':r['mean'],'归一化标准差':r['std'],'约束违反':r['violation'],'加权损失':r['score']} for r in local.get('path',[])])]
     if wb.get('model_formulas'):
         for name, formulas in wb['model_formulas'].items():
             blocks.append(text(name + ' · 拟合方程（编码变量）'))
@@ -308,8 +305,8 @@ def build_report(data,kind='model',record_id=None,include_raw=False):
             blocks.extend({'type': 'formula', 'parts': [value]} for value in formulas['coding'])
     elif wb.get('model_text'):
         blocks.append(text(wb['model_text']))
-    if not blocks:blocks=[text('尚无参数取值结果。筛选设计只提供因子筛选结论，不输出连续最优点。')]
-    section('settings','参数取值、稳定性与容差',blocks)
+    if not blocks:blocks=[text('尚无优化方案结果。筛选设计只提供因子筛选结论，不输出连续最优点。')]
+    section('settings','优化方案与波动核验',blocks)
     if optimization or wb:risks.append('μ±kσ 是独立输入、对角二阶近似下的稳健带，不是预测区间，不保证概率覆盖。')
     section('risks','风险、未通过项与确认计划',[text(r) for r in dict.fromkeys(risks)]+[
         text('人工结论 / 复核意见：'+(metadata.get('conclusion') or '未填写，未自动判定工程验收通过。')),

@@ -11,7 +11,6 @@ import logging
 from frontend.notifications import Notice
 from frontend.numeric_inputs import commit_numeric_inputs
 from frontend.pages.qt_tasks import OptimizationWorker
-from frontend.pages.table_widgets import fill_records
 from backend.services import analysis_service, model_service
 
 
@@ -69,19 +68,11 @@ class OptimizationController:
             page._input_signature = signature
             page._oe_context = None
             page._robust_res = {}
-            page._param_res = {}
             page.model_overview.clear()
             page.screening_panel.set_result({})
             page.taguchi_panel.set_result({})
-            page.tol_table.setRowCount(0)
-            page.tool_table.setRowCount(0)
-            for name in ("robust_results", "param_text", "tol_text", "tool_text", "signif_panel", "cv_panel", "model_panel"):
+            for name in ("robust_results", "signif_panel", "cv_panel", "model_panel"):
                 getattr(page, name).clear()
-            for name in ("pareto", "factor"):
-                fig, canvas = getattr(page, name + "_fig", None), getattr(page, name + "_canvas", None)
-                if fig is not None:
-                    fig.clear()
-                    canvas.draw()
             page.status_label.setText("输入已更新，请重新执行当前方案分析。")
             page._refresh_view()
 
@@ -136,7 +127,6 @@ class OptimizationController:
                 raise ValueError(robust["error"])
             page._oe_context["sigma_limits"] = robust.get("sigma_limits", {})
             page._robust_res = robust
-            page._plot_pareto(robust)
             page._update_analysis(page._oe_context, robust)
             page.status_label.setText("计算完成" if robust["feasible_count"] else "计算完成，未找到可行候选")
             page.optimization_finished.emit()
@@ -156,7 +146,6 @@ class OptimizationController:
             raise ValueError(robust["error"])
         context["sigma_limits"] = robust.get("sigma_limits", {})
         page._robust_res = robust
-        page._plot_pareto(robust)
     
         page._update_analysis(context, robust)
     
@@ -164,7 +153,7 @@ class OptimizationController:
         Notice.information(
             page, "鲁棒性优化设计分析完成",
             "已执行鲁棒性优化设计与统计分析。可切换标签页查看帕累托前沿、折中解、推荐取值、"
-            "局部方差贡献分析与模型方程，或使用优化工具集做更深入的取值探索。")
+            "方案对比、波动核验与模型方程。")
         page.optimization_finished.emit()
 
     def _prepare_context(self):
@@ -193,7 +182,6 @@ class OptimizationController:
             context = page._prepare_context()
             page._robust_res = {}
             page.robust_results.clear()
-            page._plot_pareto({})
             page._update_analysis(context, {})
             page.tabs.setCurrentWidget(page.tab_overview)
             page.status_label.setText("建模与统计分析完成，未执行鲁棒性优化设计。")
@@ -213,27 +201,13 @@ class OptimizationController:
         bundle = analysis_service.analyze(
             page.project_data, context, robust, kd, kc)
         bundle['snapshot']['settings'] = page._analysis_settings()
-        verification = (analysis_service.evaluate_point(context, robust["best"]["x"], kd, kc)
-                        if robust.get("best") else {})
-        page.robust_results.set_result(context, robust, verification)
+        page.robust_results.set_result(context, robust)
     
         page._refresh_view()
         for panel in (page.signif_panel, page.cv_panel, page.model_panel):
             panel.set_result(context, bundle["snapshot"])
     
-        page._param_res = bundle["parameter_design"]
-        page.param_text.setText(page._param_res.get("text", ""))
-        page._plot_factor(page._param_res.get("factor_plots", []))
-        page.tol_text.setText(bundle["tolerance_text"])
-    
         page.model_overview.set_result(context, bundle["snapshot"])
-        fill_records(
-            page.tol_table,
-            [{"响应": name, "因子": row["name"],
-              "局部方差": row["variance"], "份额 %": row["share"]}
-             for name, rows in bundle["tolerance"].items()
-             for row in rows])
-    
         service = page.project_service
         service.publish_results(
             expected_signature=getattr(page, "_run_signature", None),
@@ -282,72 +256,9 @@ class OptimizationController:
         robust = snapshot.get('optimization', {})
         context['sigma_limits'] = robust.get('sigma_limits', {})
         page._robust_res = robust
-        kd = snapshot.get('k_design', DEFAULT_K_DESIGN)
-        kc = snapshot.get('k_constraint', DEFAULT_K_CONSTRAINT)
-        verification = (analysis_service.evaluate_point(context, robust['best']['x'], kd, kc)
-                        if robust.get('best') else {})
-        page.robust_results.set_result(context, robust, verification)
+        page.robust_results.set_result(context, robust, snapshot.get('optimization_view_index'))
         if snapshot:
             for panel in (page.signif_panel, page.cv_panel, page.model_panel):
                 panel.set_result(context, snapshot)
             page.model_overview.set_result(context, snapshot)
-        page._param_res = snapshot.get('parameter_design', {})
-        page.param_text.setText(page._param_res.get('text', ''))
-        page._plot_factor(page._param_res.get('factor_plots', []))
-        page.tol_text.setText('已恢复保存的容差分析结果。' if snapshot.get('tolerance') else '')
-        fill_records(page.tol_table, [
-            {'响应': name, '因子': row['name'], '局部方差': row['variance'], '份额 %': row['share']}
-            for name, rows in snapshot.get('tolerance', {}).items() for row in rows])
-        local = snapshot.get('local_search', {})
-        page.tool_text.setText(local.get('text', ''))
-        fill_records(page.tool_table, local.get('path', []))
         page.status_label.setText('已恢复任务中的模型与结果，可直接预测或继续分析。')
-
-    def _run_tool(self):
-        page = self.page
-        page._check_inputs()
-        if not page._oe_context:
-            Notice.warning(
-                page, "无模型", "请先点击【执行鲁棒性优化设计】。")
-            return
-        tool = page.tool_combo.currentData()
-        k_design = DEFAULT_K_DESIGN
-        start = (page._param_res or {}).get("recommended")
-        if page.tool_start.currentText() == "区间中心":
-            start = None
-        if not start:
-            page.tool_start.setCurrentText("区间中心")
-            design_inputs = oe.design_inputs(page._oe_context)
-            start = {
-                factor.name: sum(engine.factor_limits(factor)) / 2.0
-                for factor in design_inputs
-            }
-    
-        service = page.project_service
-        try:
-            method = tool
-            result = analysis_service.run_local_search(
-                page._oe_context, start, k_design,
-                DEFAULT_K_CONSTRAINT, page.tool_weight.value(),
-                method, page.tool_steps.value(), page.tool_step.value())
-            page.tool_text.setPlainText(result["text"])
-            fill_records(
-                page.tool_table,
-                [{"轮次": row["iteration"], **row["x"],
-                  "望性": row["mean"], "归一标准差": row["std"],
-                  "约束违反": row["violation"], "加权损失": row["score"],
-                  "可行": row["feasible"]}
-                 for row in result["trials"]])
-            page.model_overview.snapshot["local_search"] = result
-            service.update_workbench(
-                local_search=reports.serializable(result))
-            service.record_operation(
-                "局部探索",
-                "完成" if result["best"]["feasible"] else "未通过",
-                {"workbench": reports.serializable(
-                    page.model_overview.snapshot)},
-                result["text"])
-        except Exception as exc:
-            page.tool_table.setRowCount(0)
-            page.tool_text.setPlainText(f"探索失败：{exc}")
-            service.record_operation("局部探索", "失败", message=str(exc))

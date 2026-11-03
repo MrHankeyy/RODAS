@@ -162,7 +162,7 @@ class RobustSettingsTests(unittest.TestCase):
         self.assertEqual(restored._robust_res['pc'], .73)
         self.assertEqual(restored._robust_res['eta_m'], 32)
         self.assertEqual(restored._robust_res['effective_pm'], .125)
-        self.assertIn('settings', restored.robust_results.tables)
+        self.assertNotIn('settings', restored.robust_results.comparison.tables)
 
     def test_settings_fit_available_width_and_hover_definitions_are_specific(self):
         _, page = self.page()

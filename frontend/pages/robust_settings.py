@@ -33,7 +33,7 @@ def build_settings(owner, layout):
         row.addStretch()
         return widget
 
-    owner.strategy_group, strategy = group("鲁棒优化设置")
+    owner.strategy_group, strategy = group("优化策略")
     row = QHBoxLayout()
     row.addWidget(apply(QLabel(), "robust_strategy"))
     owner.robust_mode_combo = QComboBox()

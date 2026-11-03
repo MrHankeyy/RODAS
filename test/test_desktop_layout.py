@@ -34,7 +34,7 @@ class DesktopLayoutTests(unittest.TestCase):
 
     def test_result_navigation_tracks_visible_method_pages(self):
         page = self.window.page_OPT
-        for method, wanted, unwanted in [('筛选设计', 8, 9), ('田口设计', 9, 8), ('响应曲面设计', 1, 8)]:
+        for method, wanted, unwanted in [('筛选设计', 7, 8), ('田口设计', 8, 7), ('响应曲面设计', 1, 7)]:
             page.project_data.design_method = method
             page._update_method_actions()
             workspace = page.results_workspace

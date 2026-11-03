@@ -30,18 +30,15 @@ from backend.engines import design_analysis as da
 from frontend.pages.design_results import DesignResultsPanel
 from frontend.pages.qt_tasks import OptimizationWorker
 from frontend.pages.optimization_controller import OptimizationController
-from frontend.pages import optimization_panels, optimization_plots
+from frontend.pages import optimization_panels
 from backend.reporting import report_engine as reports
 from backend.domain.models import ProjectData
 from backend.services import analysis_service, model_service
 from backend.services.project_service import ProjectService
 from backend.reporting.math_format import PLOT_STYLE, rich_text
-from frontend.math_widgets import MathTextEdit
 
 import matplotlib
 matplotlib.use('Qt5Agg')
-from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.figure import Figure
 matplotlib.rcParams.update(PLOT_STYLE)
 
 
@@ -85,11 +82,15 @@ class OptimizationPage(QWidget):
             self.run_all_btn.setText("田口设计：计算信噪比")
         else:
             self.run_all_btn.setText("执行鲁棒性优化设计")
-        for index in (1, 2, 3, 4, 5, 6, 7):
+        for index in (1, 2, 3, 4, 5, 6):
             self.tabs.setTabVisible(index, not is_special)
-        self.tabs.setTabVisible(8, is_screening)
-        self.tabs.setTabVisible(9, is_taguchi)
+        self.tabs.setTabVisible(7, is_screening)
+        self.tabs.setTabVisible(8, is_taguchi)
         self.stats_btn.setVisible(not is_special)
+        if hasattr(self, 'robust_settings_header'):
+            actions = self.primary_actions if is_special else self.robust_settings_header
+            if actions.indexOf(self.run_all_btn) < 0:
+                actions.addWidget(self.run_all_btn)
         if hasattr(self, "results_workspace"):
             self.results_workspace.refresh()
         self.run_all_btn.setToolTip(
@@ -168,6 +169,7 @@ class OptimizationPage(QWidget):
             "约束裕量系数固定为1。区间不确定性等价为区间上的均匀分布，标准差=区间宽度/√12，"
             "对应换算系数√3；设计因子采用偏差区间，环境因子采用实际区间。"
             "概率输入直接采用所定义的方差，响应传播继续使用局部二阶矩近似。\n当前输入标准差：" + "；".join(sigmas))
+        self.robust_settings_heading.setToolTip(self.strategy_group.toolTip())
 
     def _update_mutation_probability(self, *_args):
         automatic = self.mutation_mode_combo.currentData() == "auto"
@@ -185,31 +187,15 @@ class OptimizationPage(QWidget):
                     eta_c=self.eta_c_spin.value(), eta_m=self.eta_m_spin.value(),
                     sigma_limits=self._sigma_limits())
 
-    def _new_text(self):
-        text = MathTextEdit()
-        text.setReadOnly(True)
-        text.setStyleSheet("font-family:'Microsoft YaHei';font-size:13px;")
-        return text
-
     def _build_signif_tab(self):
         return optimization_panels.build_signif_tab(self)
 
     def _build_cv_tab(self):
         return optimization_panels.build_cv_tab(self)
 
-    def _build_param_tab(self):
-        return optimization_panels.build_param_tab(self)
-
-    def _build_tol_tab(self):
-        return optimization_panels.build_tol_tab(self)
-
     def _build_model_tab(self):
         return optimization_panels.build_model_tab(self)
 
-    def _build_tools_tab(self):
-        return optimization_panels.build_tools_tab(self)
-
-    # ------------------------------------------------------------- 公共工具
     def _responses(self):
         return [r for r in self.project_data.responses if r.name]
 
@@ -347,15 +333,5 @@ class OptimizationPage(QWidget):
     def _update_analysis(self, context, robust):
         return self.controller._update_analysis(context, robust)
 
-    def _plot_pareto(self, robust):
-        optimization_plots.pareto(
-            self.pareto_fig, self.pareto_canvas, robust)
-
-    def _plot_factor(self, plots):
-        optimization_plots.factor_effects(
-            self.factor_fig, self.factor_canvas, plots)
-
-    def _run_tool(self):
-        return self.controller._run_tool()
 
 from frontend.notifications import Notice

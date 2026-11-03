@@ -44,23 +44,13 @@ def analyze(project, context, robust, k_design=DEFAULT_K_DESIGN, k_constraint=DE
     validation = optimizer.validation_results(context)
     validation_text = optimizer.cross_validation(context, validation)
     residual_text, residual_data = optimizer.residual_analysis(context)
-    parameter_result = (
-        optimizer.parameter_design(
-            context, robust, k_design, k_constraint)
-        if robust else {
-            "text": (
-                "尚未执行鲁棒性优化设计，无推荐点；"
-                "请先执行鲁棒性优化设计以获得推荐点。"),
-            "factor_plots": [],
-        })
-    tolerance_text, tolerance = optimizer.tolerance_contribution(
-        context, k_design, (robust.get("best") or {}).get("x"))
+    _, tolerance = (optimizer.tolerance_contribution(context, k_design, robust['best']['x'])
+                    if robust.get('best') else ('', {}))
     model_text = optimizer.model_extraction(context)
     snapshot = build_snapshot(context, k_design, k_constraint)
     snapshot.update(
         optimization=robust,
         tolerance=tolerance,
-        parameter_design=parameter_result,
         anova_text=optimizer.anova_and_lof(context, project),
         validation_text=validation_text + "\n\n" + residual_text,
         model_text=model_text,
@@ -70,8 +60,6 @@ def analyze(project, context, robust, k_design=DEFAULT_K_DESIGN, k_constraint=DE
         "anova_text": snapshot["anova_text"],
         "validation_text": snapshot["validation_text"],
         "residual_data": residual_data,
-        "parameter_design": parameter_result,
-        "tolerance_text": tolerance_text,
         "tolerance": tolerance,
         "model_text": model_text,
         "snapshot": snapshot,
@@ -83,8 +71,21 @@ def evaluate_point(context, values, k_design=DEFAULT_K_DESIGN, k_constraint=DEFA
         context, values, k_design, k_constraint)
 
 
-def run_local_search(context, start, k_design, k_constraint, weight,
-                     method, steps, step_size):
-    return optimizer.local_search(
-        context, start, k_design, k_constraint, weight, method, steps,
-        step_size)
+def optimization_schemes(context, result):
+    """Inspect actual optimized designs without fitting or generating new candidates."""
+    best = result.get('best')
+    if not best:
+        return [], -1
+    candidates = result.get('front', []) if result['mode'] == 'multi' else []
+    candidates = candidates or [best]
+    scoped = dict(context, sigma_limits=result.get('sigma_limits', {}))
+    records = [dict(id=f'P{i+1:03}', x=dict(item['x']),
+                    verification=evaluate_point(scoped, item['x'], result['k_design'], result['k_constraint']))
+               for i, item in enumerate(candidates)]
+    default = next(i for i, record in enumerate(records) if record['x'] == best['x'])
+    return records, default
+
+
+def scheme_variance(context, result, point):
+    """Local variance decomposition at the viewed design, using the run's settings."""
+    return optimizer.tolerance_contribution(context, result['k_design'], point)[1]

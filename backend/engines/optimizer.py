@@ -27,11 +27,6 @@ from backend.core.optimization import (
     _knee_point,
     robust_optimize,
     _robust_result_text,
-    _design_bounds,
-    local_search,
-    steepest_ascent,
-    evop_cycle,
-    aofat_search,
 )
 from backend.core.response_models import (
     _design_terms,
@@ -56,7 +51,5 @@ from backend.core.statistics import (
     _matrix_xy,
     residual_analysis,
     tolerance_contribution,
-    _metric_at,
-    parameter_design,
     model_extraction,
 )

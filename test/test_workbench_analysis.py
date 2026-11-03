@@ -84,20 +84,6 @@ class WorkbenchAnalysisTests(unittest.TestCase):
         self.assertFalse(r['coefficients']);self.assertNotIn('杠杆值',r['observations'][0])
         self.assertIn('留出',r['source'])
 
-    def test_local_search_feasibility_and_monotone_acceptance(self):
-        p,c=make_context(False,limit=.5)
-        for method in ('最陡下降搜索','自适应单因子搜索','单轮单因子搜索'):
-            r=oe.local_search(c,{'A':0,'B':0},6,2,.8,method,16,.2)
-            self.assertTrue(all(v['feasible'] for v in r['path']))
-            self.assertTrue(all(a['score']>=b['score'] for a,b in zip(r['path'],r['path'][1:])))
-            self.assertTrue(all(-1<=v<=1 for row in r['trials'] for v in row['x'].values()))
-
-    def test_stability_search_does_not_return_infeasible_point(self):
-        p,c=make_context(False,limit=-100)
-        r=oe.parameter_design(c,{},6,2)
-        self.assertIsNone(r['stable'])
-        self.assertFalse(oe.local_search(c,{'A':0,'B':0},6,2)['best']['feasible'])
-
     def test_tolerance_reconciles_with_optimizer_at_same_point(self):
         p,c=make_context();point={'A':.4,'B':-.2}
         text,detail=oe.tolerance_contribution(c,6,point)

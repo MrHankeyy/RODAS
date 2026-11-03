@@ -141,10 +141,9 @@ class NumericInputTests(unittest.TestCase):
         self.assertEqual(page.crossover_spin.value(), .625)
         page.close()
 
-    def test_removed_manual_verification_is_not_a_tool_start(self):
+    def test_removed_tools_have_no_controls(self):
         page = OptimizationPage(ProjectData())
-        self.assertEqual([page.tool_start.itemText(i) for i in range(page.tool_start.count())],
-                         ['优化返回点', '区间中心'])
+        self.assertFalse(hasattr(page, 'tool_start'))
         self.assertFalse(hasattr(page, 'diagnostics_panel'))
         page.close()
 
