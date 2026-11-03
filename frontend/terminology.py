@@ -57,7 +57,9 @@ TERMS = {
     "variability_weight": ("波动权重", "Variability Weight", ""),
     "constraint_margin_multiplier": ("约束裕量系数", "Constraint Margin Multiplier", ""),
     "interval_std_factor": ("区间标准差换算系数", "Interval-to-Standard-Deviation Conversion Factor", ""),
-    "response_limit": ("响应阈值", "Response Limit", ""),
+    "response_limit": ("响应鲁棒性阈值", "Response Robustness Limit", ""),
+    "design_variable": ("设计变量", "Design Variable", ""),
+    "uncertain_parameter": ("不确定性参数", "Uncertain Parameter", ""),
     "main_effect": ("主效应", "Main Effect", ""),
     "squared_main_effect_share": ("主效应平方占比", "Squared Main-Effect Share", ""),
     "holdout_r2": ("测试集决定系数", "Test-Set Coefficient of Determination", "R²"),
@@ -216,12 +218,13 @@ def set_tab(tabs, index, key):
 
 
 HEADER_TERMS = {
+    "设计变量": "design_variable",
     "主效应": "main_effect",
     "主效应平方占比（%）": "squared_main_effect_share",
     "测试集决定系数": "holdout_r2",
     "调整决定系数": "adjusted_r2",
     "归一化平均绝对误差（%）": "nmae",
-    "响应阈值": "response_limit",
+    "响应鲁棒性阈值": "response_limit",
     "信噪比（dB）": "snr",
 }
 

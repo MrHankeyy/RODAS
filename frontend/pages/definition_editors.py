@@ -3,13 +3,13 @@ import math
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import (
     QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout,
-    QStackedWidget, QLineEdit, QComboBox, QCheckBox, QAbstractItemView,
+    QStackedWidget, QLineEdit, QComboBox, QCheckBox, QButtonGroup, QAbstractItemView,
 )
-from backend.domain.models import FactorItem, ResponseItem
+from backend.domain.models import FactorItem, ResponseItem, factor_title
 from backend.core.factors import factor_limits
 from frontend.numeric_inputs import numeric_text_input
 from frontend.pages.table_widgets import BalancedColumnsTable
-from frontend.terminology import apply_header_tooltips
+from frontend.terminology import apply_header_tooltips, tooltip
 
 
 LEVEL_HEADERS = {"taguchi": ("低水平值", "高水平值"), "factorial": ("低水平", "高水平")}
@@ -195,7 +195,7 @@ class FactorEditor(QWidget):
     def update_units(self):
         unit = self.unit.text().strip()
         design = self.source == "设计"
-        prefix = "不确定性偏差" if design else "环境实际取值"
+        prefix = "不确定性偏差" if design else "不确定性参数实际取值"
         if design or self.classical:
             labels = self.range_labels if self.classical else ("名义设计下限", "名义设计上限")
             self.lower.setToolTip(labels[0] + ("（" + unit + "）" if unit else ""))
@@ -237,7 +237,7 @@ class FactorEditor(QWidget):
                               nominal_upper=self.upper.text().strip() if design else "",
                               param1="0" if design else self.lower.text().strip(),
                               param2="0" if design else self.upper.text().strip())
-        parameter = "偏差" if design else "环境取值"
+        parameter = "偏差" if design else "不确定性参数取值"
         probability = self.parameters.currentIndex() != 0
         first, second = (self.mean, self.stddev) if probability else (self.delta_lower, self.delta_upper)
         uniform_bounds = self.parameters.currentIndex() == 2
@@ -281,9 +281,11 @@ class FactorTable(DefinitionTable):
             headers = ["名称"] + (["名义下限", "名义上限"] if design else []) + [
                 "不确定类型", "分布类型", "不确定性参数", "单位", "操作"]
             widths = (70, 80, 80, 90, 110, 250, 60, 64) if design else (100, 90, 110, 250, 60, 64)
-        title = ("控制因子" if design else "噪声因子") if task_type == "taguchi" else "试验因子" if task_type == "factorial" else source + "因子"
+        title = factor_title(source, task_type)
         super().__init__(title, lambda item: FactorEditor(source, item, task_type),
                          headers, widths)
+        if not classical:
+            self.setToolTip(tooltip('design_variable' if design else 'uncertain_parameter'))
         if design and not classical:
             self.relation = QLabel("实际取值 = 名义设计值 + 不确定性偏差 Δ")
             self.relation.setProperty("role", "muted")
@@ -303,10 +305,13 @@ class ResponseEditor(QWidget):
             return
         if task_type != "taguchi":
             self.objective, self.constraint = QCheckBox(), QCheckBox()
-            self.objective.setToolTip("作为优化目标")
-            self.constraint.setToolTip("作为约束响应")
-            self.objective.setChecked("目标" in item.kind)
-            self.constraint.setChecked("约束" in item.kind)
+            self.role_group = QButtonGroup(self)
+            self.role_group.addButton(self.objective)
+            self.role_group.addButton(self.constraint)
+            self.objective.setToolTip('目标响应（Objective Response）\n作为优化目标，与约束响应互斥。')
+            self.constraint.setToolTip('约束响应（Constraint Response）\n用于约束核验，与目标响应互斥。')
+            self.objective.setChecked(item.kind == '目标')
+            self.constraint.setChecked(item.kind == '约束')
         self.feature = QComboBox()
         self.feature.addItems(["望大", "望小", "望目"])
         self.feature.setCurrentText(item.feature)
@@ -316,6 +321,8 @@ class ResponseEditor(QWidget):
             self.limits = self.target
         else:
             self.lower, self.upper = numeric_text_input(item.lower), numeric_text_input(item.upper)
+            self.lower.setToolTip(tooltip('response_limit')+'\n下限')
+            self.upper.setToolTip(tooltip('response_limit')+'\n上限')
             self.limit = numeric_text_input(item.robust_limit)
             self.limit_label = QLabel()
             self.limits = stacked(field_row((self.limit_label, self.limit)),
@@ -332,7 +339,7 @@ class ResponseEditor(QWidget):
             return
         self.limits.setCurrentIndex(1 if feature == "望目" else 0)
         self.limit_label.setText("下限" if feature == "望大" else "上限")
-        self.limit.setToolTip("稳定要求" + self.limit_label.text())
+        self.limit.setToolTip(tooltip('response_limit')+'\n'+self.limit_label.text())
 
     def collect(self):
         name = self.name.text().strip()
@@ -350,10 +357,10 @@ class ResponseEditor(QWidget):
             raise ValueError(f"{name}：请勾选目标或约束。")
         if feature == "望目":
             if number(self.lower, name + "下限") >= number(self.upper, name + "上限"):
-                raise ValueError(f"{name}：响应阈值下限须小于上限。")
+                raise ValueError(f"{name}：响应鲁棒性阈值下限须小于上限。")
         elif self.limit.text().strip() or self.constraint.isChecked():
-            number(self.limit, name + "响应阈值")
-        kind = "+".join(text for text, control in (("目标", self.objective), ("约束", self.constraint)) if control.isChecked())
+            number(self.limit, name + "响应鲁棒性阈值")
+        kind = '目标' if self.objective.isChecked() else '约束'
         return ResponseItem(name=name, unit=self.unit.text().strip(), kind=kind, feature=feature,
                             lower=self.lower.text().strip() if feature == "望目" else "",
                             upper=self.upper.text().strip() if feature == "望目" else "",
@@ -367,6 +374,6 @@ class ResponseTable(DefinitionTable):
         elif task_type == "taguchi":
             headers, widths = ["名称", "目标特征", "目标值", "单位", "操作"], (110, 100, 140, 60, 64)
         else:
-            headers = ["名称", "目标响应", "约束响应", "目标特征", "响应阈值", "单位", "操作"]
+            headers = ["名称", "目标响应", "约束响应", "目标特征", "响应鲁棒性阈值", "单位", "操作"]
             widths = (110, 80, 80, 100, 250, 60, 64)
         super().__init__("响应", lambda item: ResponseEditor(item, task_type), headers, widths)

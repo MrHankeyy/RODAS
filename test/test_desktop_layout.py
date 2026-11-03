@@ -73,7 +73,7 @@ class DesktopLayoutTests(unittest.TestCase):
         page.add_environment_factor_row()
         page.environment_factors.editors[0].name.setText('温度')
         page.model_tabs.setCurrentIndex(2)
-        self.assertEqual(page.model_tabs.tabText(2), '环境因子')
+        self.assertEqual(page.model_tabs.tabText(2), '不确定性参数')
         page.model_tabs.setCurrentIndex(1)
         self.assertEqual(page.environment_factors.editors[0].name.text(), '温度')
         self.assertEqual(page.environment_factors.table.cellWidget(0, 0).text(), '温度')

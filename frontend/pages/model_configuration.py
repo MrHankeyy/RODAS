@@ -140,8 +140,11 @@ class ModelConfiguration(QWidget):
     def _on_design_changed(self, *_args):
         design = self.doe_method_combo.currentData()
         structured = design in ("CCD", "BBD")
-        limits = ["低水平", "高水平"] if structured else ["抽样下限", "抽样上限"]
+        limits = ["设计下限", "设计上限"] if structured else ["抽样下限", "抽样上限"]
         self.bounds_table.setHorizontalHeaderLabels(["模型输入（单位）", *limits])
+        for column, text in enumerate(limits, 1):
+            self.bounds_table.horizontalHeaderItem(column).setToolTip(
+                text+'\n'+('对应编码−1/+1；中心复合设计α>1时，轴点可超出此范围。' if structured else '用于生成模型训练样本的实际输入范围。'))
         self.structured.setVisible(structured)
         self.sample_label.setVisible(not structured)
         self.sample_count_spin.setVisible(not structured)

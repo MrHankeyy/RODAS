@@ -88,7 +88,7 @@ class RobustResults(QWidget):
         self.groups['comparison'].setToolTip('推荐设计（Recommended Design）\n总览始终展示求解器默认返回方案，详情页切换不改变总览。')
         inputs = {f.name:f for f in self.context['inputs']}
         factors = [[n, v, inputs[n].unit] for n,v in record['x'].items()]
-        self.tables['factors'] = SummaryTable(['因子', '推荐取值' if feasible else '候选取值', '单位'], factors)
+        self.tables['factors'] = SummaryTable(['设计变量', '推荐取值' if feasible else '候选取值', '单位'], factors)
         units = {r.name:r.unit for r in self.context['_responses']}
         responses = [[r['响应'], r['鲁棒均值'], r['传播标准差'], units[r['响应']]] for r in check['responses']]
         self.tables['responses'] = SummaryTable(['响应', '近似均值 μ', '标准差 σ', '单位'], responses)
@@ -100,13 +100,13 @@ class RobustResults(QWidget):
             if inputs:
                 top = max(inputs, key=lambda r:r['variance'])
                 sources.append([name, top['name'], top['share']])
-        table = SummaryTable(['响应', '主要输入因子', '方差份额'], sources)
+        table = SummaryTable(['响应', '主要输入', '方差份额'], sources)
         for i, row in enumerate(sources):
             table.item(i, 2).setForeground(QColor(Qt.GlobalColor.transparent))
             table.setCellWidget(i, 2, share_indicator(row[2]))
         self.tables['contributions'] = table
         self.bodies['verification'].addWidget(table)
-        self.groups['verification'].setToolTip('主要输入方差贡献（Leading Input Variance Contribution）\n展示推荐方案中贡献最大的输入因子，份额以含模型残差的总方差为分母。完整分解见详情。')
+        self.groups['verification'].setToolTip('主要输入方差贡献（Leading Input Variance Contribution）\n展示推荐方案中贡献最大的模型输入，份额以含模型残差的总方差为分母。完整分解见详情。')
 
     def _open_detail(self, key):
         self.select_scheme(self.default_index)

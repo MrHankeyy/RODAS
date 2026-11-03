@@ -87,7 +87,7 @@ def build_settings(owner, layout):
     owner.seed_spin = numeric_input(int, 0, 2147483647, 7)
     owner.crossover_spin = numeric_input(float, 0, 1, .5, decimals=3)
     owner.mutation_mode_combo = QComboBox()
-    owner.mutation_mode_combo.addItem("自动（1/设计因子数）", "auto")
+    owner.mutation_mode_combo.addItem("自动（1/设计变量数）", "auto")
     owner.mutation_mode_combo.addItem("手动设置", "manual")
     owner.mutation_spin = numeric_input(float, 0, 1, .5, decimals=6)
     owner.eta_c_spin = numeric_input(float, .01, 1000, 15)
@@ -97,7 +97,7 @@ def build_settings(owner, layout):
         ("代数", owner.gen_spin, "Number of Generations", "遗传算法执行的迭代代数。"),
         ("随机种子", owner.seed_spin, "Random Seed", "相同输入与参数使用相同种子可复现计算。"),
         ("逐变量交叉概率", owner.crossover_spin, "Per-Variable Crossover Probability", "每对父代中，各设计变量参与模拟二进制交叉的概率。"),
-        ("变异概率设置", owner.mutation_mode_combo, "Mutation Probability Setting", "自动时，每个变量的变异概率为 1÷参与优化的设计因子数；也可手动指定。"),
+        ("变异概率设置", owner.mutation_mode_combo, "Mutation Probability Setting", "自动时，每个变量的变异概率为 1÷参与优化的设计变量数；也可手动指定。"),
         ("逐变量变异概率", owner.mutation_spin, "Per-Variable Mutation Probability", "每个设计变量发生多项式变异的概率；自动时显示当前计算值。"),
         ("交叉分布指数", owner.eta_c_spin, "Crossover Distribution Index", "控制交叉产生的后代分散程度，数值越大通常越靠近父代。"),
         ("变异分布指数", owner.eta_m_spin, "Mutation Distribution Index", "控制变异幅度，数值越大通常越偏向小幅变异。"),

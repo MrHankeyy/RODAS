@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 from dataclasses import asdict
 from backend.infrastructure import file_io
 from backend.services.project_service import ProjectService
+from backend.domain.models import factor_title
 from backend.reporting.math_format import PLOT_STYLE, formula_html, rich_text
 
 
@@ -31,7 +32,7 @@ def inputs(project):
         'design_params':project.design_params,'matrix':project.doe_matrix,'surrogate_config':project.surrogate_config})
 
 
-def _factor_rows(factors):
+def _factor_rows(factors, task_type='robust'):
     rows = []
     for factor in factors:
         p1, p2 = factor.get('param1'), factor.get('param2')
@@ -42,7 +43,8 @@ def _factor_rows(factors):
                 p1, p2 = float(p1) - half, float(p1) + half
             else:
                 p2 = sigma
-        rows.append({'因子':factor.get('name'),'来源':factor.get('source'),
+        rows.append({'模型输入' if task_type=='robust' else '因子':factor.get('name'),
+                     '来源':factor_title(factor.get('source'),task_type),
                      '不确定性':factor.get('uncertainty'),'分布':factor.get('distribution'),
                      '名义下限':factor.get('nominal_lower'),'名义上限':factor.get('nominal_upper'),
                      '不确定参数1':p1,'不确定参数2':p2,'单位':factor.get('unit')})
@@ -191,6 +193,8 @@ def build_report(data,kind='model',record_id=None,include_raw=False):
     sections=[]
     def section(key,title,blocks):sections.append({'id':key,'title':title,'blocks':blocks})
     matrix=source.get('matrix') or [];responses=source.get('responses') or [];factors=source.get('factors') or []
+    method=source.get('method') or ''
+    task_family='taguchi' if '田口' in method else 'factorial' if '筛选' in method else 'robust'
     complete=[]
     for response in responses:
         name=response.get('name','')
@@ -226,10 +230,10 @@ def build_report(data,kind='model',record_id=None,include_raw=False):
         text('当前有分析结果，工程确认状态：待确认。' if analysis_present else '当前证据不足，报告为待完善状态。')])
     section('purpose','目的与验证条件',[text(metadata.get('purpose') or '目的尚未填写。'),
         table('响应定义',[{'指标':r.get('name'),'角色':r.get('kind'),'目标特征':r.get('feature'),'下界':r.get('lower'),
-        '上界':r.get('upper'),'单侧阈值':r.get('robust_limit'),**({'目标值':r['target']} if r.get('target') else {}),'单位':r.get('unit')} for r in responses])])
+        '上界':r.get('upper'),'响应鲁棒性阈值':r.get('robust_limit'),**({'目标值':r['target']} if r.get('target') else {}),'单位':r.get('unit')} for r in responses])])
     section('materials','材料、对象与输入',[text(metadata.get('materials') or '样机、材料、设备和试验环境尚未填写。'),
-        table('因子定义',_factor_rows(factors)),
-        text('设计因子的名义范围用于搜索，不确定参数描述加性偏差；环境因子不设名义范围，参数描述实际取值。区间及均匀分布的两项参数为上下界，正态分布为均值/标准差，均使用所列单位。')])
+        table('模型输入定义' if task_family=='robust' else '因子定义',_factor_rows(factors,task_family)),
+        text('设计变量的名义范围用于搜索，不确定性描述其加性偏差；不确定性参数不设名义范围，分布参数描述其实际取值。区间及均匀分布的两项参数为上下界，正态分布为均值/标准差，均使用所列单位。' if task_family=='robust' else '因子水平用于安排试验，水平统计按实际观测计算。')])
     params=source.get('design_params') or {}
     blocks=[text('设计方法：'+(source.get('method') or '未设置')),
         table('试验设计配置',[{'配置项':_CONFIG_KEYS.get(k,k),'值':v} for k,v in (params.get('meta') or params).items() if k!='groups']),
@@ -240,7 +244,7 @@ def build_report(data,kind='model',record_id=None,include_raw=False):
         '可行候选数':optimization.get('feasible_count'),'评价数':optimization.get('evaluated_count'),
         '种群数':optimization.get('population_size'),'代数':optimization.get('generations'),'随机种子':optimization.get('seed'),
         '逐变量交叉概率':optimization.get('pc'), '逐变量变异概率':optimization.get('effective_pm'),
-        '变异概率设置':'自动（1/设计因子数）' if optimization.get('pm') is None else '手动设置',
+        '变异概率设置':'自动（1/设计变量数）' if optimization.get('pm') is None else '手动设置',
         '交叉分布指数':optimization.get('eta_c'), '变异分布指数':optimization.get('eta_m')}]))
     if kind=='trial':
         blocks.append(text('操作说明：'+record.get('message','')))

@@ -8,14 +8,22 @@ TASK_TYPES = {
 }
 
 
+def factor_title(source, task_type='robust'):
+    if task_type == 'taguchi':
+        return '控制因子' if source == '设计' else '噪声因子'
+    if task_type == 'factorial':
+        return '试验因子'
+    return '设计变量' if source == '设计' else '不确定性参数'
+
+
 @dataclass
 class ResponseItem:
     name: str = ""
     kind: str = "目标"          # 目标 / 约束 / 目标+约束
     feature: str = "望小"       # 望大 / 望小 / 望目
-    lower: str = ""             # 望目时: 响应阈值下界
-    upper: str = ""             # 望目时: 响应阈值上界
-    robust_limit: str = ""      # 响应阈值: 望大=要求最小值, 望小=要求最大值
+    lower: str = ""             # 望目时: 响应鲁棒性阈值下界
+    upper: str = ""             # 望目时: 响应鲁棒性阈值上界
+    robust_limit: str = ""      # 响应鲁棒性阈值: 望大=要求最小值, 望小=要求最大值
     unit: str = ""
     target: str = ""           # 田口望目响应的目标值，与规格限分开
 

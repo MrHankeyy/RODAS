@@ -300,7 +300,7 @@ def build_models(project):
     # 只使用矩阵中实际存在的输入列
     keys = set(matrix[0].keys())
     if is_rsm and any(n not in keys for n in names):
-        return None, ["试验矩阵缺少设计因子列，不能删去因子后继续拟合。"]
+        return None, ["试验矩阵缺少模型输入列，不能删去输入后继续拟合。"]
     names = [n for n in names if n in keys]
     inputs = [f for f in inputs if f.name in names]
     if not names:

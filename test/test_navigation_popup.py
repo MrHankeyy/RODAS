@@ -34,8 +34,8 @@ class NavigationPopupTests(unittest.TestCase):
         for index in (2, 0, 1, 2):
             page.results_workspace.buttons[index].click()
             self.assertEqual(page.model_tabs.currentIndex(), index)
-        self.assertEqual(page.results_workspace.buttons[1].text(), "设计因子")
-        self.assertEqual(page.results_workspace.buttons[2].text(), "环境因子")
+        self.assertEqual(page.results_workspace.buttons[1].text(), "设计变量")
+        self.assertEqual(page.results_workspace.buttons[2].text(), "不确定性参数")
         page.sync_to_project_data()
         self.assertEqual([f.name for f in p.factors], ["厚度", "温度"])
         self.assertEqual(p.responses[0].name, "应力")

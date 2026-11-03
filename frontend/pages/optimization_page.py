@@ -168,7 +168,7 @@ class OptimizationPage(QWidget):
         self.strategy_group.setToolTip(
             "鲁棒优化设置（Robust Optimization Settings）\n"
             "约束裕量系数固定为1。区间不确定性等价为区间上的均匀分布，标准差=区间宽度/√12，"
-            "对应换算系数√3；设计因子采用偏差区间，环境因子采用实际区间。"
+            "对应换算系数√3；设计变量采用偏差区间，不确定性参数采用实际区间。"
             "概率输入直接采用所定义的方差，响应传播继续使用局部二阶矩近似。\n当前输入标准差：" + "；".join(sigmas))
         self.robust_settings_heading.setToolTip(self.strategy_group.toolTip())
 

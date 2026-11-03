@@ -64,8 +64,8 @@ def taguchi_plan(project, method, inner, outer, levels, seed, replicates,
     _require_design_factors(control)
     if noise and outer == "无":
         raise ValueError(
-            "当前存在环境（噪声）因子，田口外表不能为“无”；"
-            "请选择外表正交表，或先在【业务建模】中移除环境因子。")
+            "当前存在噪声因子，田口外表不能为“无”；"
+            "请选择外表正交表，或先在【业务建模】中移除噪声因子。")
     rows, meta = doe.build_taguchi(
         control, noise, inner, outer, levels, seed=seed,
         replicates=replicates, randomize=randomize)
@@ -241,4 +241,4 @@ def materialize_matrix(project, rows, groups=None):
 def _require_design_factors(factors):
     if not factors:
         raise ValueError(
-            "未发现设计因子，无法生成方案。请先在【业务建模】添加设计因子。")
+            "未发现可设置的试验输入，无法生成方案。请先在【业务建模】添加相应变量或因子。")

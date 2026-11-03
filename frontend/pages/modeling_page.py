@@ -22,7 +22,8 @@ class ModelingPage(QWidget):
             self.sections += (self.environment_factors,)
         self.model_tabs = ResultTabs()
         for section in self.sections:
-            self.model_tabs.addTab(section, section.title)
+            index = self.model_tabs.addTab(section, section.title)
+            self.model_tabs.setTabToolTip(index, section.toolTip())
         self.results_workspace = ResultsWorkspace(self.model_tabs, [("业务建模", list(range(len(self.sections))))])
         root = QVBoxLayout(self)
         root.setContentsMargins(12, 12, 12, 12)

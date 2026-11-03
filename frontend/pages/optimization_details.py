@@ -195,7 +195,7 @@ class SchemeComparison(SchemeDetail):
             button.clicked.connect(lambda checked=False, target=i: self.selection_requested.emit(target))
             table.setCellWidget(i, table.columnCount()-1, button)
         table.column_balancer = ContentColumnBalancer(table)
-        self.table('factors', '当前方案 · 设计因子与输入扰动', ['因子', '设计取值', '输入标准差 σ', '单位'],
+        self.table('factors', '当前方案 · 设计变量与输入扰动', ['设计变量', '设计取值', '输入标准差 σ', '单位'],
                    [[n, v, result['input_sigmas'][n], inputs[n].unit] for n,v in current['x'].items()])
         self.table('responses', '当前方案 · 响应结果', ['响应', '角色', '近似均值 μ', '标准差 σ', '单位'],
                    [[r['响应'],r['角色'],r['鲁棒均值'],r['传播标准差'],next(v.unit for v in context['_responses'] if v.name == r['响应'])] for r in current['verification']['responses']],

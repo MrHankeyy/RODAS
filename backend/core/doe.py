@@ -254,7 +254,7 @@ def build_response_surface(factors, rsm_type: str, alpha_mode: str,
         "replicates": replicates,
         "total_runs": len(rows),
         "active_factors": [f[0] for f in factors],
-        "bounds_note": "中心复合设计的 α>1 轴点超出所填低/高水平；这些水平对应编码 ±1，不是硬边界。" if rsm_type == "CCD" and alpha > 1 else "所有设计点位于所填低/高水平内。",
+        "bounds_note": "中心复合设计的 α>1 轴点超出所填设计上下限；这些水平对应编码 ±1，不是硬边界。" if rsm_type == "CCD" and alpha > 1 else "所有设计点位于所填设计上下限内。",
     }
     return rows, meta
 

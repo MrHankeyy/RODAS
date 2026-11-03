@@ -110,7 +110,7 @@ class DefinitionEditorTests(unittest.TestCase):
         self.assertEqual(section.table.cellWidget(0, 0).text(), 'new')
 
     def test_response_thresholds_change_without_comma_encoding_in_ui(self):
-        editor = ResponseEditor(ResponseItem(name='Y', kind='目标+约束', feature='望目', lower='2', upper='5'))
+        editor = ResponseEditor(ResponseItem(name='Y', kind='约束', feature='望目', lower='2', upper='5'))
         self.addCleanup(editor.close)
         self.assertEqual(editor.limits.currentIndex(), 1)
         editor.feature.setCurrentText('望小')
@@ -372,7 +372,7 @@ class DefinitionEditorTests(unittest.TestCase):
         self.assertEqual(factor_center(item), 30)
         self.assertAlmostEqual(_sigma_of_factor(item, 6), 20/12)
         self.assertAlmostEqual(_sigma_of_factor(item, 3), 20/6)
-        self.assertIn('环境实际取值下界', editor.delta_lower.toolTip())
+        self.assertIn('不确定性参数实际取值下界', editor.delta_lower.toolTip())
         self.assertNotIn('偏差', editor.delta_lower.toolTip())
 
     def test_stddev_input_roundtrip_and_sampling_use_variance_once(self):
@@ -467,6 +467,8 @@ class DefinitionEditorTests(unittest.TestCase):
         self.assertEqual(page.save_status_label.text(), '已保存')
         editor.constraint.click()
         self.assertEqual(page.save_status_label.text(), '')
+        self.assertFalse(editor.objective.isChecked())
+        self.assertTrue(editor.constraint.isChecked())
         editor.feature.setCurrentText('望目')
         editor.lower.setText('2')
         editor.upper.setText('5')
@@ -477,14 +479,26 @@ class DefinitionEditorTests(unittest.TestCase):
         page.model_tabs.setCurrentIndex(2)
         self.assertEqual(project.responses[0].feature, '望小')
         page.save_btn.click()
-        self.assertEqual(project.responses[0].kind, '目标+约束')
+        self.assertEqual(project.responses[0].kind, '约束')
         self.assertEqual((project.responses[0].lower, project.responses[0].upper), ('2', '5'))
         editor.objective.click()
+        self.assertFalse(editor.constraint.isChecked())
+        page.save_btn.click()
+        self.assertEqual(project.responses[0].kind, '目标')
         editor.constraint.click()
+        self.assertFalse(editor.objective.isChecked())
+        editor.upper.setText('1')
         with patch('frontend.pages.modeling_page.Notice.warning') as notice:
             page.save_btn.click()
             notice.assert_called_once()
-        self.assertEqual(project.responses[0].kind, '目标+约束')
+        self.assertEqual(project.responses[0].kind, '目标')
+        editor.upper.setText('5')
+        page.save_btn.click()
+        page.load_project_data()
+        restored = page.responses.editors[0]
+        self.assertEqual(project.responses[0].kind, '约束')
+        self.assertTrue(restored.constraint.isChecked())
+        self.assertFalse(restored.objective.isChecked())
 
     def test_shared_deletion_and_reload_work_for_response_and_environment_tables(self):
         page, _ = self.page()

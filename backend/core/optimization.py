@@ -105,7 +105,7 @@ def nsga2(evaluate, lo, hi, pop=60, gen=100, seed=1, eta_c=15.0, eta_m=20.0, pro
     if pop < 2 or gen < 1:
         raise ValueError("种群至少为 2，迭代代数至少为 1。")
     if len(lo) == 0 or len(lo) != len(hi):
-        raise ValueError("设计因子边界不能为空，且上下界数量必须一致。")
+        raise ValueError("设计变量边界不能为空，且上下界数量必须一致。")
     mutation_probability = 1.0 / len(lo) if pm is None else pm
     for label, value in (("逐变量交叉概率", pc), ("逐变量变异概率", mutation_probability)):
         if value is None or not math.isfinite(value) or not 0 <= value <= 1:
@@ -210,7 +210,7 @@ def robust_optimize(context, mode="multi", pop=60, gen=100, weight=0.5,
         context["sigma_limits"] = limits
     dinputs = design_inputs(context)
     if not dinputs:
-        return {"error": "没有可优化的设计因子，请先在【业务建模】添加设计因子。"}
+        return {"error": "没有可优化的设计变量，请先在【业务建模】添加设计变量。"}
     dnames = [f.name for f in dinputs]
     lo = [de.factor_limits(f)[0] for f in dinputs]
     hi = [de.factor_limits(f)[1] for f in dinputs]

@@ -48,6 +48,7 @@ class ReportTests(unittest.TestCase):
             FactorItem(name='U',source='环境',uncertainty='概率',distribution='均匀分布',param1='30',param2=str(100/3),unit='℃')])
         source=re.inputs(p)['factors'];before=copy.deepcopy(source)
         rows=re._factor_rows(source)
+        self.assertEqual([r['来源'] for r in rows], ['不确定性参数','不确定性参数'])
         self.assertEqual(rows[0]['不确定参数2'],2)
         self.assertAlmostEqual(rows[1]['不确定参数1'],20)
         self.assertAlmostEqual(rows[1]['不确定参数2'],40)
