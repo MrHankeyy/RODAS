@@ -21,7 +21,7 @@ p.report_metadata={'project_name':'演示数据：稳定性设计报告（非用
     'conclusion':'本文件仅为软件功能演示，不能作为产品验收结论。',
     'confirmation':'实际工程使用时，应对候选点补充独立确认试验并复核输入扰动假设。'}
 ProjectService.for_project(p).record_operation('业务模型保存');ProjectService.for_project(p).record_operation('试验响应保存',message='固定种子合成响应，用于软件验证')
-page=OptimizationPage(p);page.pop_spin.setValue(20);page.gen_spin.setValue(30);page.k_constraint_spin.setValue(2)
+page=OptimizationPage(p);page.pop_spin.setValue(20);page.gen_spin.setValue(30)
 with patch.object(QMessageBox,'information'),patch.object(QMessageBox,'warning') as warning:
     page._execute_workbench();assert not warning.called
 evaluation=wa.point_analysis(page._oe_context,{'A':1,'B':1},6,2)

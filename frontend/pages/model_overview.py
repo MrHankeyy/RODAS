@@ -156,7 +156,7 @@ class ModelOverview(QWidget):
             button.setEnabled(available)
         if not available:
             self.summary.clear()
-            self.heading.setToolTip('模型或输入更新后，执行“建模与模型诊断”刷新统计。')
+            self.heading.setToolTip('模型或输入更新后，执行“代理模型构建”刷新统计。')
             return
         model = self.context['models'][response]
         proxy = 'predict_fn' in model

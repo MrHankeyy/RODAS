@@ -173,7 +173,7 @@ class DataManagementTests(unittest.TestCase):
         opt = window.page_OPT
         self.assertFalse(hasattr(opt.overview, "readiness_table"))
         self.assertFalse(hasattr(opt, 'diagnostics_panel'))
-        self.assertEqual(opt.stats_btn.text(), "建模与模型诊断")
+        self.assertEqual(opt.stats_btn.text(), "代理模型构建")
         opt.overview.data_button.click()
         self.assertEqual(window.stacked_widget.currentIndex(), 2)
         window.close()

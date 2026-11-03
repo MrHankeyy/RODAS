@@ -125,7 +125,7 @@ class AnalysisResults(QWidget):
         name = self.response.currentData()
         if not self.context or name not in self.context["models"]:
             self.model_label.setText("尚未分析")
-            self.column.addWidget(label("尚无分析结果。请先填入响应数据，再点击「建模与模型诊断」。", "badge"))
+            self.column.addWidget(label("尚无分析结果。请先填入响应数据，再点击「代理模型构建」。", "badge"))
         else:
             model = self.context["models"][name]
             proxy = "predict_fn" in model

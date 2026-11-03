@@ -12,7 +12,7 @@ except Exception:
     _np = None
     HAS_NUMPY = False
 from . import factors as de
-from .design_evaluation import _response_ref, _response_scale, _sigma_of_factor, design_inputs, evaluate_design, project_responses, self_is_constraint
+from .design_evaluation import DEFAULT_K_DESIGN, DEFAULT_K_CONSTRAINT, _response_ref, _response_scale, _sigma_of_factor, design_inputs, evaluate_design, project_responses, self_is_constraint
 
 
 def _dominates(a, b):
@@ -190,7 +190,7 @@ def _knee_point(front):
 
 
 def robust_optimize(context, mode="multi", pop=60, gen=100, weight=0.5,
-                    k_design=6.0, k_constraint=6.0, seed=1, sigma_limits=None, progress=None,
+                    k_design=DEFAULT_K_DESIGN, k_constraint=DEFAULT_K_CONSTRAINT, seed=1, sigma_limits=None, progress=None,
                     pc=0.5, pm=None, eta_c=15.0, eta_m=20.0):
     """执行鲁棒优化，返回结果 dict。"""
     if mode not in ("multi", "weighted", "constraint"):
@@ -326,8 +326,6 @@ def _robust_result_text(res):
              "目标响应：" + "、".join(res.get("objective_names", [])),
              "约束响应：" + ("、".join(res.get("constraint_names", [])) or "无"),
              "标准差按响应数据极差归一化；均值和方差采用局部二阶近似。"]
-    if res["k_design"] < 3:
-        lines.append("提示：区间因子的输入扰动较大，局部二阶近似可能失真，建议用扰动抽样复核。")
     if res["mode"] == "weighted":
         lines.append(f"望性损失权重 λ={res['weight']}，波动权重={round(1 - res['weight'], 2)}")
     lines.append(f"评估解数量：{res['evaluated_count']}")
@@ -358,7 +356,7 @@ def _design_bounds(context):
     return d_inputs, lo, hi
 
 
-def local_search(context, start, k_design, k_constraint=6.0, weight=.5,
+def local_search(context, start, k_design, k_constraint=DEFAULT_K_CONSTRAINT, weight=.5,
                  method="自适应单因子搜索", steps=12, step_frac=.1):
     """Bounded surrogate proposals, feasibility first; never labels an infeasible point feasible."""
     if not context or not context["models"]:
@@ -414,15 +412,15 @@ def local_search(context, start, k_design, k_constraint=6.0, weight=.5,
     return {"text":"\n".join(lines),"path":path,"trials":trials,"best":current}
 
 
-def steepest_ascent(context,start,k_design,steps=6,step_frac=.08,k_constraint=6.,weight=.5):
+def steepest_ascent(context,start,k_design,steps=6,step_frac=.08,k_constraint=DEFAULT_K_CONSTRAINT,weight=.5):
     r=local_search(context,start,k_design,k_constraint,weight,"最陡下降搜索",steps,step_frac)
     return r["text"],r["path"]
 
 
-def evop_cycle(context,center,k_design,k_constraint=6.,weight=.5):
+def evop_cycle(context,center,k_design,k_constraint=DEFAULT_K_CONSTRAINT,weight=.5):
     return local_search(context,center,k_design,k_constraint,weight,"单轮单因子搜索",1,.05)["text"]
 
 
-def aofat_search(context,center,k_design,rounds=4,k_constraint=6.,weight=.5):
+def aofat_search(context,center,k_design,rounds=4,k_constraint=DEFAULT_K_CONSTRAINT,weight=.5):
     r=local_search(context,center,k_design,k_constraint,weight,"自适应单因子搜索",rounds,.15)
     return r["text"],r["path"]

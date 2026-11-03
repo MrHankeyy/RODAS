@@ -34,7 +34,7 @@ def build(owner):
         owner.run_all_btn.setToolTip(tooltip("robust_optimization"))
         owner.run_all_btn.setMinimumWidth(225)
         owner.run_all_btn.clicked.connect(owner._run_primary_action)
-        owner.stats_btn = QPushButton("建模与模型诊断", owner)
+        owner.stats_btn = QPushButton("代理模型构建", owner)
         owner.stats_btn.clicked.connect(owner.run_statistics)
         top.addWidget(owner.stats_btn)
         top.addWidget(owner.run_all_btn)
@@ -78,7 +78,7 @@ def build(owner):
         owner.setLayout(main_layout)
         owner._oe_context = None
         owner._update_method_actions()
-        for control in (owner.k_design_spin, owner.k_constraint_spin, owner.weight_spin, owner.pop_spin, owner.gen_spin,
+        for control in (owner.weight_spin, owner.pop_spin, owner.gen_spin,
                         owner.seed_spin, owner.crossover_spin, owner.mutation_spin, owner.eta_c_spin, owner.eta_m_spin):
             control.valueChanged.connect(owner._settings_changed)
         owner.robust_mode_combo.currentTextChanged.connect(owner._settings_changed)

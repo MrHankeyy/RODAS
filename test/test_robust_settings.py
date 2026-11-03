@@ -1,5 +1,6 @@
 """Robust strategy controls must affect computation and survive task storage."""
 import tempfile
+import math
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -7,7 +8,8 @@ import numpy as np
 from PyQt6.QtWidgets import QLabel
 from backend.core.optimization import nsga2, _sbx_crossover, _polynomial_mutation
 from backend.engines import optimizer as oe
-from backend.domain.models import ResponseItem
+from backend.domain.models import ResponseItem, FactorItem
+from backend.core.design_evaluation import DEFAULT_K_DESIGN, DEFAULT_K_CONSTRAINT
 from backend.services import task_storage
 from frontend.pages.optimization_page import OptimizationPage
 from frontend.pages.qt_tasks import OptimizationWorker
@@ -15,6 +17,31 @@ from test_workbench_analysis import APP, make_context
 
 
 class RobustSettingsTests(unittest.TestCase):
+    def test_uniform_interval_conversion_and_fixed_application_defaults(self):
+        _, page = self.page()
+        self.assertEqual(page.stats_btn.text(), '代理模型构建')
+        self.assertEqual(DEFAULT_K_CONSTRAINT, 1)
+        self.assertAlmostEqual(DEFAULT_K_DESIGN, math.sqrt(3))
+        factors = [
+            FactorItem(name='x', source='设计', nominal_lower='40', nominal_upper='60', param1='-.5', param2='.5'),
+            FactorItem(name='e', source='环境', param1='2', param2='8'),
+            FactorItem(name='p', uncertainty='概率', param1='0', param2='.04'),
+        ]
+        for factor, expected in zip(factors, (1/math.sqrt(12), 6/math.sqrt(12), .2)):
+            self.assertAlmostEqual(oe._sigma_of_factor(factor, DEFAULT_K_DESIGN), expected)
+        settings = page._optimizer_settings()
+        self.assertEqual(settings['k_constraint'], 1)
+        self.assertAlmostEqual(settings['k_design'], math.sqrt(3))
+        _, context = make_context(limit=100)
+        result = oe.robust_optimize(context, pop=8, gen=2)
+        self.assertEqual(result['k_constraint'], 1)
+        self.assertAlmostEqual(result['input_sigmas']['A'], 2/math.sqrt(12))
+        from backend.services.analysis_service import evaluate_point
+        point = evaluate_point(context, result['best']['x'])
+        self.assertEqual(point['k_constraint'], 1)
+        for row in point['responses']:
+            self.assertAlmostEqual(row['均值+kσ']-row['鲁棒均值'], row['传播标准差'])
+
     def page(self):
         project, _ = make_context()
         page = OptimizationPage(project)
@@ -41,7 +68,10 @@ class RobustSettingsTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, '正数'):
             page._sigma_limits()
         self.assertFalse(hasattr(page, 'uncertainty_label'))
-        self.assertIn('当前输入标准差', page.k_design_spin.toolTip())
+        self.assertFalse(hasattr(page, 'k_design_spin'))
+        self.assertFalse(hasattr(page, 'k_constraint_spin'))
+        self.assertFalse(hasattr(page, 'uncertainty_group'))
+        self.assertIn('当前输入标准差', page.strategy_group.toolTip())
 
     def test_automatic_mutation_tracks_design_count_and_manual_setting_invalidates(self):
         project, page = self.page()

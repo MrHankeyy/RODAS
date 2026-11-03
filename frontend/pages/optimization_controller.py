@@ -3,6 +3,7 @@ from PyQt6.QtWidgets import QMessageBox
 
 from backend.engines import design_analysis as da
 from backend.engines import doe as engine
+from backend.core.design_evaluation import DEFAULT_K_DESIGN, DEFAULT_K_CONSTRAINT
 from backend.engines import optimizer as oe
 from backend.reporting import report_engine as reports
 import logging
@@ -207,8 +208,8 @@ class OptimizationController:
 
     def _update_analysis(self, context, robust):
         page = self.page
-        kd = page.k_design_spin.value()
-        kc = page.k_constraint_spin.value()
+        kd = DEFAULT_K_DESIGN
+        kc = DEFAULT_K_CONSTRAINT
         bundle = analysis_service.analyze(
             page.project_data, context, robust, kd, kc)
         bundle['snapshot']['settings'] = page._analysis_settings()
@@ -251,8 +252,7 @@ class OptimizationController:
         snapshot = project.workbench_result
         settings = snapshot.get('settings', {})
         for key, control in (('population', page.pop_spin), ('generations', page.gen_spin),
-                             ('weight', page.weight_spin), ('k_design', page.k_design_spin),
-                             ('k_constraint', page.k_constraint_spin), ('seed', page.seed_spin),
+                             ('weight', page.weight_spin), ('seed', page.seed_spin),
                              ('pc', page.crossover_spin), ('eta_c', page.eta_c_spin),
                              ('eta_m', page.eta_m_spin)):
             if key in settings:
@@ -282,8 +282,8 @@ class OptimizationController:
         robust = snapshot.get('optimization', {})
         context['sigma_limits'] = robust.get('sigma_limits', {})
         page._robust_res = robust
-        kd = snapshot.get('k_design', 6)
-        kc = snapshot.get('k_constraint', 6)
+        kd = snapshot.get('k_design', DEFAULT_K_DESIGN)
+        kc = snapshot.get('k_constraint', DEFAULT_K_CONSTRAINT)
         verification = (analysis_service.evaluate_point(context, robust['best']['x'], kd, kc)
                         if robust.get('best') else {})
         page.robust_results.set_result(context, robust, verification)
@@ -311,7 +311,7 @@ class OptimizationController:
                 page, "无模型", "请先点击【执行鲁棒性优化设计】。")
             return
         tool = page.tool_combo.currentData()
-        k_design = page.k_design_spin.value()
+        k_design = DEFAULT_K_DESIGN
         start = (page._param_res or {}).get("recommended")
         if page.tool_start.currentText() == "区间中心":
             start = None
@@ -328,7 +328,7 @@ class OptimizationController:
             method = tool
             result = analysis_service.run_local_search(
                 page._oe_context, start, k_design,
-                page.k_constraint_spin.value(), page.tool_weight.value(),
+                DEFAULT_K_CONSTRAINT, page.tool_weight.value(),
                 method, page.tool_steps.value(), page.tool_step.value())
             page.tool_text.setPlainText(result["text"])
             fill_records(

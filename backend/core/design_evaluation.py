@@ -16,6 +16,11 @@ from .factors import _isfinite
 from .response_models import model_grad_x, model_hess_diag_x, model_predict
 
 
+# width/(2k) equals the standard deviation of a uniform interval at k=√3.
+DEFAULT_K_DESIGN = math.sqrt(3.0)
+DEFAULT_K_CONSTRAINT = 1.0
+
+
 def _sigma_of_factor(f, k_design):
     """因子不确定性标准差。"""
     lo, hi = de.factor_limits(f)
@@ -121,7 +126,7 @@ def _response_scale(model):
 
 
 def evaluate_design(context, x_design, k_design, weight_r, use_constraints=False,
-                    k_constraint=6.0, resp_stds=None):
+                    k_constraint=DEFAULT_K_CONSTRAINT, resp_stds=None):
     """设计点评估。返回 dict{obj, mean_perf, std_norm, infeas, details}。"""
     models = context["models"]
     resp_objs, resp_cons, details = [], [], []

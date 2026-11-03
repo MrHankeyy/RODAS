@@ -11,9 +11,9 @@ from test_ui_constraints import APP, quadratic
 
 class RobustResultsTests(unittest.TestCase):
     def panel(self, context, mode="constraint", limit=.1):
-        result = oe.robust_optimize(context, mode=mode, sigma_limits={"Y": limit}, pop=20, gen=5)
+        result = oe.robust_optimize(context, mode=mode, sigma_limits={"Y": limit}, pop=20, gen=5, k_design=6)
         evaluation = analysis_service.evaluate_point(
-            dict(context, sigma_limits=result["sigma_limits"]), result["best"]["x"], 6, 6)
+            dict(context, sigma_limits=result["sigma_limits"]), result["best"]["x"], result['k_design'], result['k_constraint'])
         widget = RobustResults(FigureCanvasQTAgg(Figure()))
         self.addCleanup(widget.deleteLater)
         widget.set_result(context, result, evaluation)

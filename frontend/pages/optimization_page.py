@@ -24,6 +24,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import pyqtSignal
 
 from backend.engines import doe as engine
+from backend.core.design_evaluation import DEFAULT_K_DESIGN, DEFAULT_K_CONSTRAINT
 from backend.engines import optimizer as oe
 from backend.engines import design_analysis as da
 from frontend.pages.design_results import DesignResultsPanel
@@ -71,7 +72,7 @@ class OptimizationPage(QWidget):
 
     def _update_method_actions(self):
         """按方案类型切换主动作，避免把筛选/田口误导成鲁棒优化。"""
-        if hasattr(self, "k_design_spin"):
+        if hasattr(self, "strategy_group"):
             self._update_uncertainty_tooltip()
             self._update_mutation_probability()
         method = self._method()
@@ -144,7 +145,6 @@ class OptimizationPage(QWidget):
                 self.sigma_limits_table.horizontalHeader().height() + 38 * min(max(len(responses), 1), 5) + 4)
         self.weight_fields.setVisible(mode == "weighted")
         self.weight_spin.setEnabled(mode == "weighted")
-        self.k_constraint_spin.setEnabled(True)
 
     def _sigma_limits(self):
         if self.robust_mode_combo.currentData() != "constraint":
@@ -161,12 +161,13 @@ class OptimizationPage(QWidget):
         return limits
 
     def _update_uncertainty_tooltip(self, *_args):
-        sigmas = [f"{f.name}: σ={oe._sigma_of_factor(f, self.k_design_spin.value()):.6g}"
+        sigmas = [f"{f.name}: σ={oe._sigma_of_factor(f, DEFAULT_K_DESIGN):.6g}"
                   for f in self.project_data.factors if f.name]
-        self.k_design_spin.setToolTip(
-            "区间标准差换算系数（Interval-to-Standard-Deviation Conversion Factor）\n"
-            "矩近似中，设计因子用偏差宽度/(2k)、环境因子用实际区间宽度/(2k)换算标准差；"
-            "不由名义设计范围推导。概率输入直接采用所填方差。\n当前输入标准差：" + "；".join(sigmas))
+        self.strategy_group.setToolTip(
+            "鲁棒优化设置（Robust Optimization Settings）\n"
+            "约束裕量系数固定为1。区间不确定性等价为区间上的均匀分布，标准差=区间宽度/√12，"
+            "对应换算系数√3；设计因子采用偏差区间，环境因子采用实际区间。"
+            "概率输入直接采用所定义的方差，响应传播继续使用局部二阶矩近似。\n当前输入标准差：" + "；".join(sigmas))
 
     def _update_mutation_probability(self, *_args):
         automatic = self.mutation_mode_combo.currentData() == "auto"
@@ -178,7 +179,7 @@ class OptimizationPage(QWidget):
     def _optimizer_settings(self):
         return dict(mode=self.robust_mode_combo.currentData(), pop=self.pop_spin.value(),
                     gen=self.gen_spin.value(), weight=self.weight_spin.value(),
-                    k_design=self.k_design_spin.value(), k_constraint=self.k_constraint_spin.value(),
+                    k_design=DEFAULT_K_DESIGN, k_constraint=DEFAULT_K_CONSTRAINT,
                     seed=self.seed_spin.value(), pc=self.crossover_spin.value(),
                     pm=None if self.mutation_mode_combo.currentData() == "auto" else self.mutation_spin.value(),
                     eta_c=self.eta_c_spin.value(), eta_m=self.eta_m_spin.value(),
@@ -314,8 +315,8 @@ class OptimizationPage(QWidget):
 
     # ============================================================ 工作台
     def _analysis_settings(self):
-        return {"mode": self.robust_mode_combo.currentData(), "k_design": self.k_design_spin.value(),
-                "k_constraint": self.k_constraint_spin.value(), "weight": self.weight_spin.value(),
+        return {"mode": self.robust_mode_combo.currentData(), "k_design": DEFAULT_K_DESIGN,
+                "k_constraint": DEFAULT_K_CONSTRAINT, "weight": self.weight_spin.value(),
                 "sigma_limits": {name: editor.text() for name, editor in self.sigma_limit_inputs.items()},
                 "population": self.pop_spin.value(), "generations": self.gen_spin.value(),
                 "seed": self.seed_spin.value(), "pc": self.crossover_spin.value(),

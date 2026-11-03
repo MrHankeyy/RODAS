@@ -3,13 +3,14 @@ from dataclasses import asdict
 from datetime import datetime, timezone
 import hashlib
 
+from backend.core.design_evaluation import DEFAULT_K_DESIGN, DEFAULT_K_CONSTRAINT
 from backend.engines import optimizer as optimizer
 from backend.engines import workbench as statistics
 from backend.services.project_service import ProjectService
 from backend.reporting.math_format import polynomial
 
 
-def build_snapshot(context, k_design=6, k_constraint=6):
+def build_snapshot(context, k_design=DEFAULT_K_DESIGN, k_constraint=DEFAULT_K_CONSTRAINT):
     project = context["_project"]
     formulas = {}
     for name, model in context["models"].items():
@@ -39,7 +40,7 @@ def build_snapshot(context, k_design=6, k_constraint=6):
     }
 
 
-def analyze(project, context, robust, k_design=6, k_constraint=6):
+def analyze(project, context, robust, k_design=DEFAULT_K_DESIGN, k_constraint=DEFAULT_K_CONSTRAINT):
     validation = optimizer.validation_results(context)
     validation_text = optimizer.cross_validation(context, validation)
     residual_text, residual_data = optimizer.residual_analysis(context)
@@ -77,7 +78,7 @@ def analyze(project, context, robust, k_design=6, k_constraint=6):
     }
 
 
-def evaluate_point(context, values, k_design=6, k_constraint=6):
+def evaluate_point(context, values, k_design=DEFAULT_K_DESIGN, k_constraint=DEFAULT_K_CONSTRAINT):
     return statistics.point_analysis(
         context, values, k_design, k_constraint)
 

@@ -28,8 +28,9 @@ def quadratic():
 class ConstraintTests(unittest.TestCase):
     def test_analytic_boundary_and_mean_only_objective(self):
         _, c = quadratic()
-        r = oe.robust_optimize(c, mode='constraint', sigma_limits={'Y':.1}, pop=24, gen=45, seed=8)
         sigma = 1/12
+        # Explicit k=6 retains this analytic test's chosen disturbance scale.
+        r = oe.robust_optimize(c, mode='constraint', sigma_limits={'Y':.1}, pop=24, gen=45, seed=8, k_design=6)
         expected = np.sqrt((.1**2 - 2*sigma**4)/(4*sigma**2))
         self.assertAlmostEqual(r['best']['x']['X'], expected, delta=.005)
         self.assertEqual(len(r['best']['obj']), 1)
@@ -111,7 +112,7 @@ class ConstraintTests(unittest.TestCase):
             self.assertIn('constraints', page.robust_results.tables)
             self.assertTrue(any('代' in m[2] for m in messages))
             self.assertTrue(page.isEnabled())
-            page.k_design_spin.setValue(7)
+            page.crossover_spin.setValue(.7)
             self.assertFalse(page.robust_results.tables)
             self.assertTrue(page.robust_results.plot.isHidden())
         finally:

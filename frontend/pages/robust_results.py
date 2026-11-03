@@ -146,5 +146,3 @@ class RobustResults(QWidget):
         environments = [[n, s, inputs[n].unit] for n, s in result.get("input_sigmas", {}).items() if n not in best["x"]]
         if environments:
             self._table("environment", settings, ["环境因子", "输入标准差 σ", "单位"], environments)
-        if result["k_design"] < 3:
-            settings.addWidget(label("输入扰动较大，局部二阶近似可能失真，建议用扰动抽样复核。", "muted"))

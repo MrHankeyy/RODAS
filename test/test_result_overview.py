@@ -48,7 +48,7 @@ class ResultOverviewTests(unittest.TestCase):
         self.assertEqual(overview(ProjectData())["status"], "尚未生成方案")
         for method, action in [("两水平筛选设计", "计算因子主效应"),
                                ("田口稳健设计", "计算田口信噪比"),
-                               ("响应曲面设计", "建模与模型诊断")]:
+                               ("响应曲面设计", "代理模型构建")]:
             with self.subTest(method=method):
                 data = overview(self.project(method))
                 self.assertEqual(data["status"], "等待分析")

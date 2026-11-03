@@ -134,11 +134,11 @@ class NumericInputTests(unittest.TestCase):
     def test_optimization_commits_before_checking_inputs(self):
         page = OptimizationPage(ProjectData())
         type_number(page.pop_spin, "120")
-        type_number(page.k_design_spin, "4.25")
+        type_number(page.crossover_spin, "0.625")
         self.assertEqual(page.pop_spin.value(), 80)
         page._check_inputs()
         self.assertEqual(page.pop_spin.value(), 120)
-        self.assertEqual(page.k_design_spin.value(), 4.25)
+        self.assertEqual(page.crossover_spin.value(), .625)
         page.close()
 
     def test_removed_manual_verification_is_not_a_tool_start(self):

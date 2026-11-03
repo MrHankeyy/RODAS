@@ -102,7 +102,7 @@ def overview(project):
     elif successes:
         status, next_step = "分析已完成", "当前数据与分析结果已就绪。"
     else:
-        action = "计算因子主效应" if "筛选" in method else "计算田口信噪比" if "田口" in method else "建模与模型诊断"
+        action = "计算因子主效应" if "筛选" in method else "计算田口信噪比" if "田口" in method else "代理模型构建"
         status, next_step = "等待分析", f"下一步：使用页面上方「{action}」。"
     if not sections:
         sections = [section("分析结果", message="尚未执行分析。" if ready else "响应数据就绪后显示当前方案的分析结果。")]

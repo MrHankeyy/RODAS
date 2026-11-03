@@ -76,17 +76,6 @@ def build_settings(owner, layout):
     owner.sigma_limits_group.layout().addWidget(owner.sigma_limits_table)
     strategy.addWidget(owner.sigma_limits_group)
 
-    owner.uncertainty_group, uncertainty = group("约束与不确定性")
-    owner.k_constraint_spin = numeric_input(float, 1, 10, 6)
-    uncertainty_row = QHBoxLayout()
-    uncertainty_row.setSpacing(24)
-    uncertainty_row.addWidget(field("约束裕量系数 k", owner.k_constraint_spin,
-        "Constraint Margin Multiplier", "所有策略均执行业务建模中定义的响应约束。例如望小约束：均值+k×标准差≤上限。"))
-    owner.k_design_spin = numeric_input(float, 1, 10, 6)
-    uncertainty_row.addWidget(field("区间标准差换算系数 k", owner.k_design_spin,
-        "Interval-to-Standard-Deviation Conversion Factor", "设计因子用偏差宽度/(2k)，环境因子用实际区间宽度/(2k)换算标准差；概率输入直接采用所填方差。"))
-    uncertainty.addLayout(uncertainty_row)
-    owner.k_design_spin.valueChanged.connect(owner._update_uncertainty_tooltip)
     owner._update_uncertainty_tooltip()
 
     owner.genetic_group, genetic = group("遗传算法设置")

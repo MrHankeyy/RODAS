@@ -12,7 +12,7 @@ except Exception:
     _np = None
     HAS_NUMPY = False
 from . import factors as de
-from .design_evaluation import _sigma_of_factor, design_inputs, evaluate_design
+from .design_evaluation import DEFAULT_K_DESIGN, DEFAULT_K_CONSTRAINT, _sigma_of_factor, design_inputs, evaluate_design
 from .factors import _isfinite
 from .response_models import _fit_model, model_grad_x, model_hess_diag_x, model_predict
 
@@ -290,13 +290,13 @@ def tolerance_contribution(context, k_design, point=None):
     return "\n".join(lines), detail
 
 
-def _metric_at(context, xd, k_design, k_constraint=6.0):
+def _metric_at(context, xd, k_design, k_constraint=DEFAULT_K_CONSTRAINT):
     r = evaluate_design(context, xd, k_design, weight_r=0.5, use_constraints=True,
                         k_constraint=k_constraint)
     return r["mean_perf"], r["std_norm"]
 
 
-def parameter_design(context, robust_result, k_design, k_constraint=6.0):
+def parameter_design(context, robust_result, k_design, k_constraint=DEFAULT_K_CONSTRAINT):
     if not context or not context["models"]:
         return {"text": "无模型可做参数设计。"}
     d_inputs = design_inputs(context)
