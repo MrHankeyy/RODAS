@@ -7,6 +7,7 @@ from PyQt6.QtWidgets import (
 )
 
 from frontend.pages.design_results import DesignResultsPanel
+from frontend.pages.taguchi_results import TaguchiResultsPanel
 from frontend.pages.result_overview import ResultOverview, label
 from frontend.pages.analysis_results import AnalysisResults
 from frontend.pages.robust_results import RobustResults
@@ -56,7 +57,7 @@ def build(owner):
         owner.tabs.addTab(owner.robust_results.comparison, "方案对比")
         owner.tabs.addTab(owner.robust_results.verification, "波动核验")
         owner.screening_panel = DesignResultsPanel("screening")
-        owner.taguchi_panel = DesignResultsPanel("taguchi")
+        owner.taguchi_panel = TaguchiResultsPanel(owner.project_data)
         index = owner.tabs.addTab(owner.screening_panel, name("main_effect_analysis"))
         owner.tabs.setTabToolTip(index, tooltip("main_effect_analysis"))
         index = owner.tabs.addTab(owner.taguchi_panel, name("taguchi_analysis"))
@@ -70,6 +71,7 @@ def build(owner):
         owner.setLayout(main_layout)
         owner._oe_context = None
         owner._update_method_actions()
+        owner.tabs.currentChanged.connect(owner._update_method_actions)
         for control in (owner.weight_spin, owner.pop_spin, owner.gen_spin,
                         owner.seed_spin, owner.crossover_spin, owner.mutation_spin, owner.eta_c_spin, owner.eta_m_spin):
             control.valueChanged.connect(owner._settings_changed)

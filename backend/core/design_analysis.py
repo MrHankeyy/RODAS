@@ -131,12 +131,7 @@ def snr(values, feature, target=None):
     return -10*math.log10(loss) if loss > 0 else float("inf")
 
 
-def taguchi(project):
-    meta = project.design_params.get("meta") or project.taguchi_result
-    matrix = project.doe_matrix
-    factors = active_controls(project)
-    if not matrix or not factors or not meta.get("factor_levels"):
-        raise ValueError("缺少田口试验矩阵或水平定义")
+def _taguchi_ids(matrix, meta):
     n_inner, n_outer = meta["inner_runs"], meta["outer_runs"]
     repeats = meta.get("replicates", 1)
     groups = meta.get("groups", [])
@@ -157,6 +152,18 @@ def taguchi(project):
     expected = Counter({(i, j): repeats for i in range(n_inner) for j in range(n_outer)})
     if Counter(ids) != expected:
         raise ValueError("内表×外表×重复的组数不完整，存在遗漏或重复行")
+    return ids
+
+
+def taguchi(project):
+    meta = project.design_params.get("meta") or project.taguchi_result
+    matrix = project.doe_matrix
+    factors = active_controls(project)
+    if not matrix or not factors or not meta.get("factor_levels"):
+        raise ValueError("缺少田口试验矩阵或水平定义")
+    n_inner, n_outer = meta["inner_runs"], meta["outer_runs"]
+    repeats = meta.get("replicates", 1)
+    ids = _taguchi_ids(matrix, meta)
     settings = {}
     noise_settings = {}
     _, _, _, planned_inner = de.taguchi_arrays(meta["inner_label"], len(factors))
@@ -255,3 +262,20 @@ def taguchi(project):
     if result["errors"]:
         result["analysis_status"] = "部分响应分析失败，请查看具体原因"
     return result
+
+
+def taguchi_observations(project, response, inner):
+    """Read actual observations for one inner run; never synthesize confirmation data."""
+    meta = project.design_params.get('meta') or project.taguchi_result
+    noise = list(meta.get('noise_levels', {}))
+    selected = [(row, outer+1) for row, (group, outer) in
+                zip(project.doe_matrix, _taguchi_ids(project.doe_matrix, meta)) if group+1 == inner]
+    raw = [[row.get('Run_ID'), outer, row.get('重复组号'),
+            *[finite(row[n]) for n in noise], finite(row[response])] for row, outer in selected]
+    environments = []
+    for outer in sorted({outer for _, outer in selected}):
+        rows = [row for row, group in selected if group == outer]
+        values = [finite(row[response]) for row in rows]
+        environments.append([outer, *[finite(rows[0][n]) for n in noise], len(values),
+                             statistics.mean(values), statistics.stdev(values) if len(values)>1 else None])
+    return noise, environments, raw

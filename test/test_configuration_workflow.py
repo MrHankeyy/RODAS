@@ -103,7 +103,7 @@ class ConfigurationWorkflowTests(unittest.TestCase):
         QTest.qWait(220)
         self.assertEqual(page.preview_label.text(), '预计试验次数：38 次')
         self.assertEqual(asdict(p), before)
-        for category, content in ((0, page.screening_widget), (1, page.taguchi_widget), (2, editor)) * 2:
+        for category, content in ((0, page.screening_widget), (1, page.t_scale_zone), (2, editor)) * 2:
             page.dynamic_params_widget.setCurrentIndex(category)
             page._refresh_preview()
             self.assertIs(page.preview_group.parentWidget(), content)

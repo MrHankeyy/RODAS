@@ -88,7 +88,8 @@ class OptimizationPage(QWidget):
         self.tabs.setTabVisible(8, is_taguchi)
         self.stats_btn.setVisible(not is_special)
         if hasattr(self, 'robust_settings_header'):
-            actions = self.primary_actions if is_special else self.robust_settings_header
+            actions = (self.taguchi_panel.settings_header if is_taguchi and self.tabs.currentWidget() is self.taguchi_panel
+                       else self.primary_actions if is_special else self.robust_settings_header)
             if actions.indexOf(self.run_all_btn) < 0:
                 actions.addWidget(self.run_all_btn)
         if hasattr(self, "results_workspace"):

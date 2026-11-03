@@ -96,10 +96,14 @@ class ConfigurationPage(QWidget):
         self.preview_label = QLabel()
         self.preview_label.setWordWrap(True)
         preview_layout.addWidget(self.preview_label)
+        self.taguchi_preview = configuration_panels.TaguchiPreview(self.project_data)
+        preview_layout.addWidget(self.taguchi_preview)
+        self.taguchi_preview.hide()
         self.config_status = QLabel("尚未生成试验方案")
         self.config_status.setWordWrap(True)
         self.config_status.setProperty("role", "badge")
         row = QHBoxLayout()
+        self.actions = row
         row.addWidget(self.config_status, 1)
         self.refresh_btn = QPushButton("刷新问题定义")
         self.refresh_btn.clicked.connect(self.update_info_display)
@@ -202,11 +206,24 @@ class ConfigurationPage(QWidget):
     def _on_selection_changed(self, *_args):
         self.model_stack.setCurrentIndex(self.model_combo.currentIndex())
         category = self.dynamic_params_widget.currentIndex()
-        content = self.model_stack.currentWidget() if category == 2 else (self.screening_widget, self.taguchi_widget)[category]
+        content = self.model_stack.currentWidget() if category == 2 else (self.screening_widget, self.t_scale_zone)[category]
         if self.preview_group.parentWidget() is not content:
             layout = content.layout()
-            index = layout.count() if category == 2 else layout.count() - 1
+            index = layout.count() if category in (1, 2) else layout.count() - 1
             layout.insertWidget(index, self.preview_group)
+        actions = self.t_settings_header if category == 1 else self.actions
+        for button in (self.refresh_btn, self.gen_btn):
+            if actions.indexOf(button) < 0:
+                actions.addWidget(button)
+        status_layout = self.t_scale_header if category == 1 else self.actions
+        if status_layout.indexOf(self.config_status) < 0:
+            status_layout.insertWidget(1 if category == 1 else 0, self.config_status, 1)
+        self.config_status.setProperty('role', 'muted' if category == 1 else 'badge')
+        self.config_status.style().unpolish(self.config_status)
+        self.config_status.style().polish(self.config_status)
+        self.preview_group.setTitle('内表 × 外表 × 重复' if category == 1 else '试验规模')
+        self.taguchi_preview.setVisible(category == 1)
+        self.gen_btn.setEnabled(True)
         self._configuration_changed()
 
     def _fit_dynamic_params(self):
@@ -296,12 +313,24 @@ class ConfigurationPage(QWidget):
             editor.collect_config(commit=not preview), preview=preview)
 
     def _refresh_preview(self):
+        is_taguchi = self.dynamic_params_widget.currentIndex() == 1
+        mode = self.t_snr_combo.currentText()
+        self.t_response_label.setText('；'.join(f"{r.name}：{r.feature if '按各响应' in mode else mode.split('（')[0]}型信噪比"
+                                                for r in self.project_data.responses if r.name))
         try:
             plan = self._build_plan(preview=True)
             meta = plan.params.get("meta", {})
             self.preview_label.setText(f"预计试验次数：{meta.get('total_runs', len(plan.rows))} 次")
+            self.preview_label.setVisible(not is_taguchi)
+            if is_taguchi:
+                self.taguchi_preview.set_plan(plan)
+                self.gen_btn.setEnabled(True)
         except (ValueError, TypeError) as exc:
             self.preview_label.setText(f"当前配置不可生成：{exc}")
+            self.preview_label.show()
+            if is_taguchi:
+                self.taguchi_preview.set_plan(None)
+                self.gen_btn.setEnabled(False)
 
     def _generate_by_method(self, method=None):
         if method is not None:

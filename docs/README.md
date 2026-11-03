@@ -22,7 +22,7 @@
 - [试验设计参考指南](references/design-of-experiments-guide-zh.pdf)
 - [Demo 1：悬臂梁响应曲面优化](D:/Study/Poject_Software/software/demos/demo_1/README.md)
 - [Demo 2：悬臂梁两水平筛选设计](D:/Study/Poject_Software/software/demos/demo_2/README.md)
-- [Demo 3：悬臂梁田口稳健性分析](D:/Study/Poject_Software/software/demos/demo_3/README.md)
+- [Demo 3：含正态随机波动与重复试验的悬臂梁田口设计](D:/Study/Poject_Software/software/demos/demo_3/README.md)
 
 ## 放置约定
 
