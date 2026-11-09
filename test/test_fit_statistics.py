@@ -136,7 +136,7 @@ class FitStatisticsTests(unittest.TestCase):
         view = FitStatistics()
         self.addCleanup(view.close)
         view.set_statistics(result['summary'], result['missing_reasons']['summary'])
-        self.assertIn('留出验证集', result['source'])
+        self.assertIn('测试集', result['source'])
         self.assertIn('全部相同', view.values['R²'].toolTip())
         self.assertIn('少于2个', view.values['残差样本标准差'].toolTip())
         self.assertNotIn('参数数', view.values)

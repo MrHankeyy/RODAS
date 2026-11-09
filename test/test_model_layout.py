@@ -31,7 +31,7 @@ class ModelLayoutTests(unittest.TestCase):
                          ['统计检验', '验证与残差', '模型与系数'])
         self.assertEqual([group.title() for group in page.model_overview.summary.cards],
                          ['统计检验', '验证与残差', '模型与系数'])
-        self.assertEqual(page.tabs.count(), 9)
+        self.assertEqual(page.tabs.count(), 10)
         overview = page.model_overview
         overview.response.setCurrentIndex(overview.response.findData('M'))
         with patch.object(oe, 'build_models', side_effect=AssertionError('navigation refitted')):

@@ -8,6 +8,24 @@ from backend.services import task_storage
 from frontend.notifications import Notice
 
 
+def ask_save_choice(parent, title, text):
+    """保存提示的三个按钮固定用中文，不依赖 Qt 语言包是否安装。"""
+    box = QMessageBox(parent)
+    box.setWindowTitle(title)
+    box.setIcon(QMessageBox.Icon.Question)
+    box.setText(text)
+    save = box.addButton('保存', QMessageBox.ButtonRole.AcceptRole)
+    discard = box.addButton('不保存', QMessageBox.ButtonRole.DestructiveRole)
+    cancel = box.addButton('取消', QMessageBox.ButtonRole.RejectRole)
+    box.setDefaultButton(cancel)
+    box.setEscapeButton(cancel)
+    box.exec()
+    clicked = box.clickedButton()
+    if clicked is save:
+        return 'save'
+    return 'discard' if clicked is discard else 'cancel'
+
+
 class TaskActions:
     def __init__(self, window):
         self.window = window
@@ -38,7 +56,7 @@ class TaskActions:
             button.clicked.connect(slot)
         cover = self.window.welcome_page.action_buttons['新建任务']
         cover.setToolTip('悬停或点击，选择任务主线')
-        cover.setAccessibleDescription('选择基于代理模型的鲁棒性优化设计、田口设计或因子筛选')
+        cover.setAccessibleDescription('选择基于代理模型的鲁棒优化设计、田口设计或因子筛选')
         self.window.welcome_page.new_task_card.task_requested.connect(self.new)
 
     def busy(self):
@@ -81,13 +99,11 @@ class TaskActions:
             dirty = True
         if not force and not dirty:
             return True
-        choice = QMessageBox.question(self.window, '保存任务',
-            '是否保存当前任务？\n仅保存已提交数据；尚未提交的输入不会写入任务文件。',
-            QMessageBox.StandardButton.Save | QMessageBox.StandardButton.Discard | QMessageBox.StandardButton.Cancel,
-            QMessageBox.StandardButton.Cancel)
-        if choice == QMessageBox.StandardButton.Save:
+        choice = ask_save_choice(self.window, '保存任务',
+            '是否保存当前任务？\n仅保存已提交数据；尚未提交的输入不会写入任务文件。')
+        if choice == 'save':
             return self.save()
-        return choice == QMessageBox.StandardButton.Discard
+        return choice == 'discard'
 
     def open(self, *_args):
         if self.busy():

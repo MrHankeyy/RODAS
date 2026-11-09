@@ -1,7 +1,7 @@
 """The single write boundary for project inputs and published results."""
 from copy import deepcopy
 from dataclasses import asdict
-from backend.domain.models import factor_definition
+from backend.domain.models import RUN_ID, factor_definition
 import json
 
 RESULT_FIELDS = ('screening_result', 'taguchi_result', 'rsm_result',
@@ -9,6 +9,27 @@ RESULT_FIELDS = ('screening_result', 'taguchi_result', 'rsm_result',
 INPUT_FIELDS = ('task_type', 'responses', 'factors', 'design_method', 'design_params',
                 'doe_matrix', 'surrogate_config')
 _operation_sink = None
+
+
+def _run_id_key(row):
+    for key in row:
+        text = key.strip()
+        if text == RUN_ID or text.replace(' ', '_').replace('-', '_').lower() == 'run_id':
+            return key
+    return None
+
+
+def with_run_ids(rows):
+    """首行即表头；缺试验序号列或单元格为空时按行序编号，不强制文件携带该列。"""
+    if not rows:
+        return rows
+    numbered = []
+    for index, row in enumerate(rows, 1):
+        source = _run_id_key(row)
+        others = {key: value for key, value in row.items() if key != source}
+        value = '' if source is None else str(row.get(source, '')).strip()
+        numbered.append({RUN_ID: value or str(index), **others})
+    return numbered
 
 
 def set_operation_sink(callback):
@@ -81,7 +102,7 @@ class ProjectService:
         self._check_source(expected_signature)
         response_names = {r.name for r in self._project.responses if r.name}
         if len(rows) != len(self._project.doe_matrix):
-            raise ValueError('试验行数已改变，请重新载入试验矩阵。')
+            raise ValueError('试验行数已改变，请重新载入试验数据表。')
         pending = deepcopy(self._project.doe_matrix)
         for index, row in enumerate(rows):
             for name in response_names:
@@ -93,9 +114,7 @@ class ProjectService:
         return self._commit_inputs(doe_matrix=pending)
 
     def replace_dataset(self, rows):
-        if rows and 'Run_ID' not in rows[0]:
-            raise ValueError('CSV 缺少必须的 Run_ID 列！')
-        return self._commit_inputs(doe_matrix=rows)
+        return self._commit_inputs(doe_matrix=with_run_ids(rows))
 
     def update_report_metadata(self, metadata):
         self._project.report_metadata = deepcopy(metadata)

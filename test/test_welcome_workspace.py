@@ -119,10 +119,10 @@ class WelcomeWorkspaceTests(unittest.TestCase):
     def test_existing_file_actions_use_latest_directory(self):
         w = self.window
         self.workspace.set_directory(self.root)
-        w.project_data.doe_matrix = [{'Run_ID': 1, 'X': 2}]
+        w.project_data.doe_matrix = [{'试验序号': 1, 'X': 2}]
         with patch.object(QFileDialog, 'getSaveFileName', return_value=('', '')) as dialog:
             w.page_DM.export_to_csv()
-        self.assertEqual(dialog.call_args.args[2], str(self.root))
+        self.assertEqual(dialog.call_args.args[2], str(self.root / '试验数据表.csv'))
         with patch.object(QFileDialog, 'getOpenFileName', return_value=('', '')) as dialog:
             w.page_DM.import_from_csv()
         self.assertEqual(dialog.call_args.args[2], str(self.root))

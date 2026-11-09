@@ -165,7 +165,7 @@ class OptimizationDetailsTests(unittest.TestCase):
         project, _, _ = self.result()
         page = OptimizationPage(project)
         self.addCleanup(page.close)
-        self.assertEqual(page.tabs.count(), 9)
+        self.assertEqual(page.tabs.count(), 10)
         for name in ('参数取值', '优化工具集', '局部方差贡献分析'):
             self.assertNotIn(name, [page.tabs.tabText(i) for i in range(page.tabs.count())])
         self.assertEqual([page.tabs.tabText(i) for i in (5,6)], ['方案对比','波动核验'])

@@ -11,6 +11,7 @@ from frontend.pages.taguchi_results import TaguchiResultsPanel
 from frontend.pages.result_overview import ResultOverview, label
 from frontend.pages.analysis_results import AnalysisResults
 from frontend.pages.robust_results import RobustResults
+from frontend.pages.optimization_history import OptimizationHistory
 from frontend.numeric_inputs import numeric_input
 from frontend.terminology import add_combo_item, apply, name, tooltip
 
@@ -23,12 +24,12 @@ def build(owner):
         # 顶部：状态 + 主执行按钮
         top = QHBoxLayout()
         owner.primary_actions = top
-        owner.status_label = QLabel("尚未运行鲁棒性优化设计")
+        owner.status_label = QLabel("尚未运行鲁棒优化设计")
         owner.status_label.setProperty("role", "muted")
         owner.status_label.setWordWrap(True)
         top.addWidget(owner.status_label, 1)
 
-        owner.run_all_btn = QPushButton("执行鲁棒性优化设计")
+        owner.run_all_btn = QPushButton("执行鲁棒优化设计")
         owner.run_all_btn.setToolTip(tooltip("robust_optimization"))
         owner.run_all_btn.setMinimumWidth(225)
         owner.run_all_btn.clicked.connect(owner._run_primary_action)
@@ -62,6 +63,9 @@ def build(owner):
         owner.tabs.setTabToolTip(index, tooltip("main_effect_analysis"))
         index = owner.tabs.addTab(owner.taguchi_panel, name("taguchi_analysis"))
         owner.tabs.setTabToolTip(index, tooltip("taguchi_analysis"))
+        owner.tab_history = QWidget(); owner._build_history_tab()
+        index = owner.tabs.addTab(owner.history_panel, name("optimization_history"))
+        owner.tabs.setTabToolTip(index, tooltip("optimization_history"))
         from frontend.theme import ResultsWorkspace, primary
         owner.results_workspace = ResultsWorkspace(owner.tabs)
         main_layout.addWidget(owner.results_workspace, 1)
@@ -73,8 +77,11 @@ def build(owner):
         owner._update_method_actions()
         owner.tabs.currentChanged.connect(owner._update_method_actions)
         for control in (owner.weight_spin, owner.pop_spin, owner.gen_spin,
-                        owner.seed_spin, owner.crossover_spin, owner.mutation_spin, owner.eta_c_spin, owner.eta_m_spin):
+                        owner.seed_spin, owner.crossover_spin, owner.mutation_spin,
+                        owner.eta_c_spin, owner.eta_m_spin,
+                        owner.stall_gen_spin, owner.tolerance_spin):
             control.valueChanged.connect(owner._settings_changed)
+        owner.auto_stop_check.toggled.connect(owner._settings_changed)
         owner.robust_mode_combo.currentTextChanged.connect(owner._settings_changed)
         owner.mutation_mode_combo.currentIndexChanged.connect(owner._settings_changed)
 
@@ -138,3 +145,10 @@ def build_model_tab(owner):
         layout = QVBoxLayout(owner.tab_model)
         owner.model_panel = AnalysisResults("model")
         layout.addWidget(owner.model_panel)
+
+
+def build_history_tab(owner):
+        layout = QVBoxLayout(owner.tab_history)
+        layout.setContentsMargins(0, 0, 0, 0)
+        owner.history_panel = OptimizationHistory()
+        layout.addWidget(owner.history_panel)

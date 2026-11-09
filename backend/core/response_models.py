@@ -297,14 +297,14 @@ def build_models(project):
     names = [f.name for f in inputs]
     if not names:
         return None, ["没有可建模的输入因子。"]
-    # 只使用矩阵中实际存在的输入列
+    # 只使用试验数据表中实际存在的输入列
     keys = set(matrix[0].keys())
     if is_rsm and any(n not in keys for n in names):
-        return None, ["试验矩阵缺少模型输入列，不能删去输入后继续拟合。"]
+        return None, ["试验数据表缺少模型输入列，不能删去输入后继续拟合。"]
     names = [n for n in names if n in keys]
     inputs = [f for f in inputs if f.name in names]
     if not names:
-        return None, ["试验矩阵中未找到输入因子列。"]
+        return None, ["试验数据表中未找到输入因子列。"]
 
     context = {"inputs": inputs, "names": names, "models": {},
                "errors": [], "_responses": project.responses,

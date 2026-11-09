@@ -53,6 +53,20 @@ def number(control, label):
     raise ValueError(f"{label}：请填写有限数字。")
 
 
+def ratio_number(control, label):
+    """参数值：普通数字按原单位，带 % 的按比例返回 (数值, 原文)。"""
+    text = control.text().strip()
+    if text.endswith("%"):
+        try:
+            value = float(text[:-1]) / 100.0
+        except ValueError:
+            raise ValueError(f"{label}：百分数格式不正确，应形如 5% 或 -5%。")
+        if not math.isfinite(value):
+            raise ValueError(f"{label}：请填写有限数字。")
+        return value, text
+    return number(control, label), text
+
+
 class DefinitionTable(QWidget):
     changed = pyqtSignal()
 
@@ -156,8 +170,12 @@ class FactorEditor(QWidget):
         defined = separate or not design
         self.delta_lower = numeric_text_input(p1 if defined and item.uncertainty == "区间" else "")
         self.delta_upper = numeric_text_input(p2 if defined and item.uncertainty == "区间" else "")
+        self.delta_lower.setPlaceholderText("如 -1 或 -5%")
+        self.delta_upper.setPlaceholderText("如 1 或 5%")
         self.mean = numeric_text_input(p1 if defined and item.uncertainty == "概率" else "0")
+        self.mean.setPlaceholderText("如 2 或 -2")
         self.stddev = numeric_text_input()
+        self.stddev.setPlaceholderText("如 0.5 或 5%")
         if item.uncertainty == "概率" and item.param2:
             self.stddev.setText(format(math.sqrt(float(item.param2)), '.15g'))
         self.stddev_original = (self.stddev.text(), item.param2)
@@ -182,7 +200,8 @@ class FactorEditor(QWidget):
         no_distribution.setEnabled(False)
         self.distribution_cell = stacked(no_distribution, self.distribution)
         self.parameters = stacked(field_row(("下界", self.delta_lower), ("上界", self.delta_upper)),
-                                  field_row(("均值", self.mean), ("标准差", self.stddev)),
+                                  field_row(("均值偏移" if design else "均值", self.mean),
+                                            ("标准差", self.stddev)),
                                   field_row(("下界", self.uniform_lower), ("上界", self.uniform_upper)))
         self.cells = (self.name,) + ((self.lower, self.upper) if design else ()) + (
             self.type_combo, self.distribution_cell, self.parameters, self.unit)
@@ -194,19 +213,26 @@ class FactorEditor(QWidget):
 
     def update_units(self):
         unit = self.unit.text().strip()
+        unit_text = "（" + unit + "）" if unit else ""
         design = self.source == "设计"
         prefix = "不确定性偏差" if design else "不确定性参数实际取值"
         if design or self.classical:
             labels = self.range_labels if self.classical else ("名义设计下限", "名义设计上限")
-            self.lower.setToolTip(labels[0] + ("（" + unit + "）" if unit else ""))
-            self.upper.setToolTip(labels[1] + ("（" + unit + "）" if unit else ""))
+            self.lower.setToolTip(labels[0] + unit_text)
+            self.upper.setToolTip(labels[1] + unit_text)
         if self.classical:
             return
+        ratio_hint = "\n可填百分数（如 -5%），边界按当前设计值的该比例取值。"
         for control, label in ((self.delta_lower, prefix + "下界"), (self.delta_upper, prefix + "上界"),
-                               (self.mean, prefix + "均值"), (self.uniform_lower, "均匀分布" + prefix + "下界"),
+                               (self.uniform_lower, "均匀分布" + prefix + "下界"),
                                (self.uniform_upper, "均匀分布" + prefix + "上界")):
-            control.setToolTip(label + ("（" + unit + "）" if unit else ""))
-        self.stddev.setToolTip(prefix + "标准差" + ("（" + unit + "）" if unit else ""))
+            hint = ratio_hint if design and control in (self.delta_lower, self.delta_upper) else ""
+            control.setToolTip(label + unit_text + hint)
+        self.mean.setToolTip(
+            (prefix + "均值偏移" + unit_text + "\n正数表示在当前设计值上正偏移，负数表示负偏移。") if design
+            else (prefix + "均值" + unit_text))
+        self.stddev.setToolTip(
+            prefix + "标准差" + unit_text + "\n可填百分数（如 5%），按当前均值的该比例计算标准差。")
 
     def update_inline_parameters(self):
         probability = self.type_combo.currentIndex() == 1
@@ -239,29 +265,42 @@ class FactorEditor(QWidget):
                               param2="0" if design else self.upper.text().strip())
         parameter = "偏差" if design else "不确定性参数取值"
         probability = self.parameters.currentIndex() != 0
-        first, second = (self.mean, self.stddev) if probability else (self.delta_lower, self.delta_upper)
         uniform_bounds = self.parameters.currentIndex() == 2
         if uniform_bounds:
-            first, second = self.uniform_lower, self.uniform_upper
-        p1, p2 = number(first, name + parameter + "参数"), number(second, name + parameter + "参数")
-        if probability and not uniform_bounds and p2 < 0:
-            raise ValueError(f"{name}：{parameter}标准差不能为负数。")
-        if (not probability or uniform_bounds) and p1 > p2:
-            raise ValueError(f"{name}：{parameter}下界不能大于上界。")
-        param1, param2 = first.text().strip(), second.text().strip()
-        if probability and not uniform_bounds:
-            variance = p2 * p2
-            if not math.isfinite(variance):
-                raise ValueError(f"{name}：标准差过大，无法计算有限方差。")
-            param2 = self.stddev_original[1] if param2 == self.stddev_original[0] else repr(variance)
-        if uniform_bounds:
+            p1 = number(self.uniform_lower, name + "均匀分布" + parameter + "下界")
+            p2 = number(self.uniform_upper, name + "均匀分布" + parameter + "上界")
+            if p1 > p2:
+                raise ValueError(f"{name}：{parameter}下界不能大于上界。")
             mean, sigma = p1 / 2 + p2 / 2, (p2 - p1) / math.sqrt(12)
             variance = sigma * sigma
             if not math.isfinite(variance):
                 raise ValueError(f"{name}：均匀分布{parameter}范围过大，无法换算有限方差。")
             # Task files and propagation retain their existing mean/variance convention.
-            param1, param2 = (self.uniform_original[2:] if (param1, param2) == self.uniform_original[:2]
+            current = (self.uniform_lower.text().strip(), self.uniform_upper.text().strip())
+            param1, param2 = (self.uniform_original[2:] if current == self.uniform_original[:2]
                               else (repr(mean), repr(variance)))
+        elif probability:
+            number(self.mean, name + parameter + "均值")
+            p2, text = ratio_number(self.stddev, name + parameter + "标准差")
+            if p2 < 0:
+                raise ValueError(f"{name}：{parameter}标准差不能为负数。")
+            param1 = self.mean.text().strip()
+            if text.endswith("%"):
+                # 百分数标准差按当前均值换算，保留原文以便复现。
+                param2 = text
+            else:
+                variance = p2 * p2
+                if not math.isfinite(variance):
+                    raise ValueError(f"{name}：标准差过大，无法计算有限方差。")
+                param2 = self.stddev_original[1] if text == self.stddev_original[0] else repr(variance)
+        else:
+            p1, first_text = ratio_number(self.delta_lower, name + parameter + "下界")
+            p2, second_text = ratio_number(self.delta_upper, name + parameter + "上界")
+            if p1 > p2:
+                raise ValueError(f"{name}：{parameter}下界不能大于上界。")
+            if not design and (first_text.endswith("%") or second_text.endswith("%")):
+                raise ValueError(f"{name}：不确定性参数没有名义取值，区间上下界请填写数值。")
+            param1, param2 = first_text, second_text
         return FactorItem(name=name, source=self.source, unit=self.unit.text().strip(),
                           nominal_lower=self.lower.text().strip() if design else "",
                           nominal_upper=self.upper.text().strip() if design else "",
@@ -279,7 +318,7 @@ class FactorTable(DefinitionTable):
             widths = (110, 140, 140, 60, 64)
         else:
             headers = ["名称"] + (["名义下限", "名义上限"] if design else []) + [
-                "不确定类型", "分布类型", "不确定性参数", "单位", "操作"]
+                "不确定性类型", "分布类型", "不确定性参数", "单位", "操作"]
             widths = (70, 80, 80, 90, 110, 250, 60, 64) if design else (100, 90, 110, 250, 60, 64)
         title = factor_title(source, task_type)
         super().__init__(title, lambda item: FactorEditor(source, item, task_type),

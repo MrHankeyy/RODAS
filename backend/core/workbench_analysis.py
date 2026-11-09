@@ -61,8 +61,8 @@ def diagnostics(context, name):
         actual = np.asarray(val.get('actual', []),float)
         predicted = np.asarray(val.get('predicted', []),float)
         ids = list(range(1,len(actual)+1))
-        source = '留出验证集（序号不是原试验矩阵行号）'
-        notes.append('代理模型仅展示已有留出验证结果，不对黑盒预测器报告 OLS 系数检验、杠杆值或 Cook 距离。')
+        source = '测试集（序号不是原试验数据表行号）'
+        notes.append('代理模型仅展示已有测试集验证结果，不对黑盒预测器报告 OLS 系数检验、杠杆值或 Cook 距离。')
     else:
         names = context['names']
         data = [(i+1,r) for i,r in enumerate(context['_project'].doe_matrix)
@@ -183,7 +183,7 @@ def diagnostics(context, name):
         missing['observations'].append(observation_reasons)
     if 3<=n<=5000 and np.ptp(residual)>1e-12:
         measures['残差 Shapiro p']=float(stats.shapiro(residual).pvalue)
-        notes.append('夏皮罗检验仅作残差分布诊断，不显著不等于证明正态；试验矩阵行序不一定是实际试验时间。')
+        notes.append('夏皮罗检验仅作残差分布诊断，不显著不等于证明正态；试验数据表行序不一定是实际试验时间。')
     else:
         measures['残差 Shapiro p'] = None
         reasons['残差 Shapiro p'] = ('有效残差少于3个，无法进行夏皮罗正态性检验。' if n < 3 else

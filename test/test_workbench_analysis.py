@@ -82,7 +82,7 @@ class WorkbenchAnalysisTests(unittest.TestCase):
         p,c=make_context();c['models']['Y']={'predict_fn':lambda x:0,'validation':{'actual':[1,2,3],'predicted':[1,2.5,3],'validation_inputs':[[0,0],[1,0],[2,0]]}}
         r=wa.diagnostics(c,'Y')
         self.assertFalse(r['coefficients']);self.assertNotIn('杠杆值',r['observations'][0])
-        self.assertIn('留出',r['source'])
+        self.assertIn('测试集',r['source'])
 
     def test_tolerance_reconciles_with_optimizer_at_same_point(self):
         p,c=make_context();point={'A':.4,'B':-.2}

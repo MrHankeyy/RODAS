@@ -6,9 +6,10 @@ from PyQt6.QtWidgets import (QWidget, QScrollArea, QVBoxLayout, QHBoxLayout, QGr
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
 from backend.core.design_analysis import taguchi_observations
+from backend.domain.models import RUN_ID
 from backend.infrastructure import file_io
 from frontend.notifications import Notice
-from frontend.workspace import dialog_path
+from frontend.workspace import dialog_path, table_save_path
 from frontend.theme import content_zone
 from frontend.pages.result_overview import label, SummaryTable
 from frontend.pages.result_summary import named
@@ -108,7 +109,7 @@ class TaguchiResultsPanel(QScrollArea):
         self.raw_toggle.toggled.connect(self._toggle_raw)
         self.details.addTab(self.level_page, '水平响应')
         self.details.addTab(self.runs_page, '试验组统计')
-        self.export_button = QPushButton('导出当前表 CSV')
+        self.export_button = QPushButton('导出当前表')
         self.details.setCornerWidget(self.export_button)
         self.export_button.clicked.connect(self.export_table)
         self.details.currentChanged.connect(self._fit_tabs)
@@ -248,7 +249,7 @@ class TaguchiResultsPanel(QScrollArea):
         inputs = {f.name:f for f in self.project.factors}
         unit = f'（{self.unit}）' if self.unit else ''
         self._fill(self.environment_table, ['外表组',*[named(inputs[n]) for n in noise],'观测数','均值'+unit,'组内标准差'+unit], environments)
-        self._fill(self.raw_table, ['Run_ID','外表组','重复组',*[named(inputs[n]) for n in noise],self.name+unit], raw)
+        self._fill(self.raw_table, [RUN_ID,'外表组','重复组',*[named(inputs[n]) for n in noise],self.name+unit], raw)
         self.group_heading.setText(f'内表组 {inner} · 环境与重复观测')
         self.raw_toggle.setText(f"{'收起' if self.raw_toggle.isChecked() else '展开'}该组的{len(raw)}次原始观测")
         for i, r in enumerate(self.item['runs']):
@@ -282,12 +283,14 @@ class TaguchiResultsPanel(QScrollArea):
 
     def export_table(self):
         table = self.table if self.details.currentIndex()==0 else self.runs_table
-        path, _ = QFileDialog.getSaveFileName(self,'导出田口统计',dialog_path(self,'田口统计.csv'),'CSV (*.csv)')
+        path, selected = QFileDialog.getSaveFileName(
+            self, '导出田口统计', dialog_path(self, '田口统计.csv'), file_io.TABLE_FILTER)
         if path:
+            path = table_save_path(path, selected)
             try:
                 headers, rows = table.export_data
                 if table is self.runs_table:
                     headers, rows = headers[:-1], [r[:-1] for r in rows]
-                file_io.write_csv_table(path,headers,rows)
+                file_io.write_table(path, headers, rows)
             except OSError as exc:
                 Notice.warning(self,'导出失败',str(exc))

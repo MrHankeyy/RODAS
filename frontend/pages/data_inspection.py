@@ -10,7 +10,7 @@ from frontend.pages.result_overview import SummaryTable, label
 from frontend.pages.result_summary import named
 from frontend.pages.table_widgets import fill_records
 from frontend.terminology import statistic_tooltip
-from frontend.workspace import dialog_path
+from frontend.workspace import dialog_path, table_save_path
 from frontend.notifications import Notice
 from frontend.theme import content_zone
 
@@ -191,11 +191,13 @@ class DataAnalysis(QWidget):
         if not rows:
             Notice.information(self, '暂无统计', '请先定义响应并载入数据。')
             return
-        path, _ = QFileDialog.getSaveFileName(self, '导出描述统计', dialog_path(self, '描述统计.csv'), 'CSV (*.csv)')
+        path, selected = QFileDialog.getSaveFileName(
+            self, '导出描述统计', dialog_path(self, '描述统计.csv'), file_io.TABLE_FILTER)
         if path:
+            path = table_save_path(path, selected)
             try:
                 headers = list(dict.fromkeys(key for row in rows for key in row))
-                file_io.write_csv_table(path, headers,
+                file_io.write_table(path, headers,
                     [[row.get(key) for key in headers] for row in rows])
             except OSError as exc:
                 Notice.warning(self, '导出失败', str(exc))

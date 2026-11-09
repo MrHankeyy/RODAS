@@ -2,7 +2,7 @@
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QWidget, QGroupBox, QGridLayout, QHBoxLayout, QVBoxLayout,
-    QLabel, QComboBox, QTableWidget, QHeaderView,
+    QLabel, QComboBox, QTableWidget, QHeaderView, QCheckBox,
 )
 from frontend.numeric_inputs import numeric_input
 from frontend.terminology import add_combo_item, apply, tooltip
@@ -109,5 +109,30 @@ def build_settings(owner, layout):
         grid.addWidget(field(*args), index // 2, index % 2)
     owner.mutation_mode_combo.setMaximumWidth(190)
     genetic.addLayout(grid)
+
+    stop_row = QWidget()
+    stop_layout = QHBoxLayout(stop_row)
+    stop_layout.setContentsMargins(0, 0, 0, 0)
+    owner.auto_stop_check = QCheckBox("自动停止")
+    owner.auto_stop_check.setToolTip(
+        "自动停止（Automatic Stop）\n"
+        "勾选后按收敛判据提前结束，不必跑满「代数」；不勾选则执行设定的固定代数。\n"
+        "判据：连续若干代最优目标值的改进都小于容差即停止；多目标用帕累托前沿超体积衡量。")
+    owner.auto_stop_check.setAccessibleDescription(owner.auto_stop_check.toolTip())
+    stop_layout.addWidget(owner.auto_stop_check)
+    stop_layout.addStretch()
+    genetic.addWidget(stop_row)
+    owner.stall_gen_spin = numeric_input(int, 5, 200, 20)
+    owner.tolerance_spin = numeric_input(float, 0.01, 10, 0.1, decimals=2)
+    stop_fields = QHBoxLayout()
+    stop_fields.setSpacing(24)
+    stop_fields.addWidget(field("停滞代数", owner.stall_gen_spin, "Stall Generations",
+                                "连续多少代没有实质改进就停止；数值越大越保守，必须小于总代数。"))
+    stop_fields.addWidget(field("相对容差（%）", owner.tolerance_spin, "Relative Tolerance",
+                                "改进量相对当前最优值的百分比小于该值即视为没有改进。"))
+    stop_fields.addStretch()
+    genetic.addLayout(stop_fields)
+    owner.auto_stop_check.toggled.connect(owner._on_auto_stop)
+    owner._on_auto_stop(False)
     owner.mutation_mode_combo.currentIndexChanged.connect(owner._update_mutation_probability)
     owner._update_mutation_probability()

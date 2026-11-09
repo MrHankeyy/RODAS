@@ -4,6 +4,8 @@ import math
 import statistics
 from collections import Counter, defaultdict
 
+from backend.domain.models import RUN_ID
+
 import numpy as np
 from . import doe as de
 
@@ -38,7 +40,7 @@ def screening(project):
     if np.linalg.matrix_rank(A) != len(factors) + 1:
         raise ValueError("主效应列存在混杂/重复，无法独立估计；请重新生成可识别的设计")
     if not np.allclose(Z[corner].sum(axis=0), 0) or not np.allclose(Z[corner].T @ Z[corner], corner.sum()*np.eye(len(factors))):
-        raise ValueError("筛选矩阵不再平衡正交，请检查是否遗漏、重复或更改试验行")
+        raise ValueError("筛选设计的试验点不再平衡正交，请检查是否遗漏、重复或更改试验行")
     # Detect main-effect / two-factor-interaction aliasing, including PB partial aliasing.
     aliases = []
     z = Z[corner]
@@ -140,8 +142,8 @@ def _taguchi_ids(matrix, meta):
         if any(not finite(row[key]).is_integer() for row in matrix for key in ("内表组号", "外表组号")):
             raise ValueError("内外表组号必须为整数")
         ids = [(int(finite(row["内表组号"]))-1, int(finite(row["外表组号"]))-1) for row in matrix]
-    elif len(groups) == len(matrix) and all("Run_ID" in row for row in matrix):
-        run_ids = [finite(row["Run_ID"]) for row in matrix]
+    elif len(groups) == len(matrix) and all(RUN_ID in row for row in matrix):
+        run_ids = [finite(row[RUN_ID]) for row in matrix]
         if any(not v.is_integer() for v in run_ids) or set(run_ids) != set(range(1, len(matrix)+1)):
             raise ValueError("试验编号不完整或重复，无法恢复田口分组")
         ids = [(groups[int(v)-1]["inner"], groups[int(v)-1]["outer"]) for v in run_ids]
@@ -160,7 +162,7 @@ def taguchi(project):
     matrix = project.doe_matrix
     factors = active_controls(project)
     if not matrix or not factors or not meta.get("factor_levels"):
-        raise ValueError("缺少田口试验矩阵或水平定义")
+        raise ValueError("缺少田口试验数据表或水平定义")
     n_inner, n_outer = meta["inner_runs"], meta["outer_runs"]
     repeats = meta.get("replicates", 1)
     ids = _taguchi_ids(matrix, meta)
@@ -270,7 +272,7 @@ def taguchi_observations(project, response, inner):
     noise = list(meta.get('noise_levels', {}))
     selected = [(row, outer+1) for row, (group, outer) in
                 zip(project.doe_matrix, _taguchi_ids(project.doe_matrix, meta)) if group+1 == inner]
-    raw = [[row.get('Run_ID'), outer, row.get('重复组号'),
+    raw = [[row.get(RUN_ID), outer, row.get('重复组号'),
             *[finite(row[n]) for n in noise], finite(row[response])] for row, outer in selected]
     environments = []
     for outer in sorted({outer for _, outer in selected}):

@@ -13,7 +13,7 @@ GROUPS = (
      '残差自由度', '纯误差自由度', '失拟自由度')),
     ('validation', '验证与残差', ('R²', 'RMSE', 'MAE', '最大绝对误差',
      '残差均值', '残差样本标准差', '交叉验证决定系数', '交叉验证均方根误差',
-     '有效验证样本数', 'LOO PRESS', 'LOO RMSE', '预测 R² (LOO)', '残差 Shapiro p')),
+     '测试样本数', 'LOO PRESS', 'LOO RMSE', '预测 R² (LOO)', '残差 Shapiro p')),
     ('model', '模型与系数', ('模型类型', '样本数', '训练样本数', '参数数', '设计矩阵条件数')),
 )
 
@@ -163,7 +163,7 @@ class ModelOverview(QWidget):
         model = self.context['models'][response]
         proxy = 'predict_fn' in model
         self.heading.setToolTip(diagnostic['source'] + ('。代理模型不报告普通最小二乘系数检验。' if proxy else
-            '。交叉验证指标来自分折验证；留一指标来自留一验证，两者均不同于训练集拟合。'))
+            '。交叉验证指标来自 K 折交叉验证；留一指标来自留一交叉验证，两者均不同于训练集拟合。'))
         records = list(diagnostic['summary'])
         reasons = dict(diagnostic.get('missing_reasons', {}).get('summary', {}))
         model_term = {'RSM': 'quadratic_response_surface', 'Kriging': 'kriging',
@@ -173,11 +173,11 @@ class ModelOverview(QWidget):
         if proxy:
             records.append({'统计量': '训练样本数', '值': validation.get('train_samples')})
         else:
-            for key, source in (('交叉验证决定系数', 'r2'), ('交叉验证均方根误差', 'rmse'), ('有效验证样本数', 'samples')):
+            for key, source in (('交叉验证决定系数', 'r2'), ('交叉验证均方根误差', 'rmse'), ('测试样本数', 'samples')):
                 records.append({'统计量': key, '值': validation.get(source)})
                 if validation.get(source) is None:
                     reasons[key] = validation.get('message') or ('验证响应全部相同，无法计算决定系数。'
-                        if source == 'r2' and validation.get('samples') else '当前分折验证结果不可估计。')
+                        if source == 'r2' and validation.get('samples') else '当前交叉验证结果不可估计。')
         self.summary.set_statistics(records, reasons)
         if model_term:
             self.summary.values['模型类型'].setToolTip(tooltip(model_term))
@@ -185,9 +185,12 @@ class ModelOverview(QWidget):
     def export_csv(self):
         if not self.summary.records:
             return
-        path, _ = QFileDialog.getSaveFileName(self, '导出当前统计', self._dialog_path(), 'CSV (*.csv)')
+        from frontend.workspace import table_save_path
+        path, selected = QFileDialog.getSaveFileName(
+            self, '导出当前统计', self._dialog_path('当前统计.csv'), file_io.TABLE_FILTER)
         if path:
-            self._export(lambda: file_io.write_csv_table(path, ['统计量', '值'], self.summary.csv_rows()))
+            path = table_save_path(path, selected)
+            self._export(lambda: file_io.write_table(path, ['统计量', '值'], self.summary.csv_rows()))
 
     def export_json(self):
         if not self.snapshot:
@@ -197,9 +200,9 @@ class ModelOverview(QWidget):
             from backend.core.workbench_analysis import clean_json
             self._export(lambda: file_io.write_json(path, clean_json(self.snapshot)))
 
-    def _dialog_path(self):
+    def _dialog_path(self, filename=''):
         from frontend.workspace import dialog_path
-        return dialog_path(self)
+        return dialog_path(self, filename)
 
     def _export(self, write):
         from frontend.notifications import Notice

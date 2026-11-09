@@ -50,7 +50,7 @@ def pareto(figure, canvas, robust):
         labels = robust.get('plot_labels', ('望性损失（1 − 平均望性）', r'归一化标准差 $\sigma$'))
         axes.set_xlabel(labels[0])
         axes.set_ylabel(labels[1])
-        axes.set_title("鲁棒性优化设计帕累托前沿")
+        axes.set_title("鲁棒优化设计帕累托前沿")
         axes.grid(alpha=0.3)
         axes.legend(fontsize=8)
     elif robust.get("mode") == "weighted" and robust.get("best"):

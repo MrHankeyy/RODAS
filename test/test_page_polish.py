@@ -81,7 +81,7 @@ class PagePolishTests(unittest.TestCase):
         APP.processEvents()
         self.assertTrue(page.model_overview.empty_state.isHidden())
         self.assertIn('训练集', page.model_overview.heading.toolTip())
-        self.assertTrue(any(label.text() == '鲁棒性优化设计' and label.property('role') == 'heading'
+        self.assertTrue(any(label.text() == '鲁棒优化设计' and label.property('role') == 'heading'
                             for label in page.tab_robust.findChildren(QLabel)))
         self.assertIn('训练集', page.cv_panel.heading.toolTip())
         self.assertFalse(any(label.text().startswith('图表来源：') for label in page.cv_panel.findChildren(QLabel)))

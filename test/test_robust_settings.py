@@ -95,8 +95,9 @@ class RobustSettingsTests(unittest.TestCase):
         self.assertEqual(_polynomial_mutation([.2], 20, 0, [0], [1], rng), [.2])
         def evaluate(x):
             return [sum(v*v for v in x)], {'r': {'infeas': 0}}
-        _, history = nsga2(evaluate, [0, 0], [1, 1], pop=8, gen=3, pc=0, pm=0)
-        self.assertEqual(len(history), 8)
+        _, evaluated, history = nsga2(evaluate, [0, 0], [1, 1], pop=8, gen=3, pc=0, pm=0)
+        self.assertEqual(len(evaluated), 8)
+        self.assertEqual([record['gen'] for record in history], [1, 2, 3])
         _, context = make_context()
         with patch('backend.core.optimization.nsga2', wraps=nsga2) as solver:
             result = oe.robust_optimize(context, pop=8, gen=2, seed=91,

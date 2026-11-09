@@ -11,7 +11,7 @@ class ProjectServiceTests(unittest.TestCase):
                 name="A", param1="0", param2="1")],
             responses=[ResponseItem(name="Y")],
             design_method="两水平筛选设计",
-            doe_matrix=[{"Run_ID": 1, "A": 0.0, "Y": ""}],
+            doe_matrix=[{"试验序号": 1, "A": 0.0, "Y": ""}],
             screening_result={"old": True},
             workbench_result={"old": True},
         )
@@ -39,7 +39,7 @@ class ProjectServiceTests(unittest.TestCase):
 
         with self.assertRaisesRegex(ValueError, "必须是数字"):
             service.update_responses([
-                {"Run_ID": "1", "A": "0", "Y": "invalid"}])
+                {"试验序号": "1", "A": "0", "Y": "invalid"}])
 
         self.assertEqual(project.doe_matrix, original_matrix)
         self.assertEqual(project.screening_result, original_result)

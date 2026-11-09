@@ -245,7 +245,7 @@ def train_surrogate(x_rows, response_values, test_ratio=0.2, seed=2026,
     elapsed = time.time() - t0
     pred = _np.array(result["predicted"])
     denom = float(_np.abs(yte).mean()) + 1e-9
-    mape_test = float(_np.mean(_np.abs(yte - pred) / denom) * 100)
+    nmae_test = float(_np.mean(_np.abs(yte - pred) / denom) * 100)
     ss_tot = float(_np.sum((yte - yte.mean()) ** 2)) + 1e-12
     r2_test = float(1 - _np.sum((yte - pred) ** 2) / ss_tot)
     return {
@@ -254,7 +254,7 @@ def train_surrogate(x_rows, response_values, test_ratio=0.2, seed=2026,
         "train_samples": int(len(train_idx)),
         "test_samples": int(len(test_idx)),
         "train_time_s": round(elapsed, 4),
-        "mape_test_%": round(mape_test, 4),
+        "nmae_test_%": round(nmae_test, 4),
         "r2_test": round(r2_test, 4),
         "actual": [float(v) for v in yte],
         "validation_inputs": Xte.tolist(),

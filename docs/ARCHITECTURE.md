@@ -6,7 +6,7 @@ v0.2 使用两个顶层生产代码包，目录名直接表达技术职责：
 - `backend/domain/`：因子、响应和 `ProjectData` 等领域数据结构。
 - `backend/services/`：业务流程。负责生成方案、准备模型、组织统计分析，以及统一修改 `ProjectData`。
 - `backend/engines/`：面向业务层和界面的稳定算法门面。
-- `backend/infrastructure/`：CSV、JSON、HTML 与 PDF 等文件读写适配。
+- `backend/infrastructure/`：CSV／Excel、JSON、HTML 与 PDF 等文件读写适配。
 - `backend/reporting/`：报告内容构建与渲染。
 - `frontend/`：PyQt6 窗口、页面、主题和通知适配；页面位于 `frontend/pages/`。
 - `main.py`：唯一的桌面程序启动入口。

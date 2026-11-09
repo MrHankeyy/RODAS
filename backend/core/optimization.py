@@ -100,7 +100,67 @@ def _polynomial_mutation(x, eta, pm, lo, hi, rng):
     return out
 
 
-def nsga2(evaluate, lo, hi, pop=60, gen=100, seed=1, eta_c=15.0, eta_m=20.0, progress=None, pc=0.5, pm=None):
+def _generation_record(generation, population, assess, evaluated_count):
+    """Summarise one generation: per-objective best/mean over feasible members."""
+    values = [assess(v) for v in population]
+    feasible = [obj for obj, info in values if info.get("r", {}).get("infeas", 0) <= 1e-8]
+    usable = feasible or [obj for obj, _info in values]
+    if not usable:
+        return {"gen": generation, "best": [], "mean": [], "feasible": 0,
+                "evaluated": evaluated_count}, []
+    columns = list(zip(*usable))
+    record = {
+        "gen": generation,
+        "best": [round(min(column), 6) for column in columns],
+        "mean": [round(sum(column) / len(column), 6) for column in columns],
+        "feasible": len(feasible),
+        "evaluated": evaluated_count,
+    }
+    return record, usable
+
+
+def _reference_point(usable):
+    """固定参考点：首代目标值域外扩一成，用于逐代超体积比较。"""
+    columns = list(zip(*usable))
+    return tuple(max(column) + max(0.1 * (max(column) - min(column)), 0.05)
+                 for column in columns[:2])
+
+
+def _hypervolume(front, reference):
+    """二维最小化超体积：前沿点相对参考点支配的面积。"""
+    points = sorted((float(f1), float(f2)) for f1, f2 in front
+                    if f1 < reference[0] and f2 < reference[1])
+    volume, previous = 0.0, reference[1]
+    for f1, f2 in points:
+        if f2 < previous:
+            volume += (reference[0] - f1) * (previous - f2)
+            previous = f2
+    return volume
+
+
+def _stall_rule(mode, window, tolerance):
+    """连续 window 代改进不足 tolerance 时返回 True；多目标看超体积。"""
+    def reached(history):
+        if len(history) <= window:
+            return False
+        start, recent = history[-window - 1], history[-window:]
+        if mode == "multi":
+            past = start.get("hv") or 0.0
+            if past <= 0:
+                return False
+            best = max((record.get("hv") or 0.0) for record in recent)
+            return (best - past) / past < tolerance
+        past_values = start.get("best") or []
+        if not past_values:
+            return False
+        past = past_values[0]
+        best = min(((record.get("best") or [past])[0]) for record in recent)
+        return (past - best) / max(abs(past), 1e-12) < tolerance
+    return reached
+
+
+def nsga2(evaluate, lo, hi, pop=60, gen=100, seed=1, eta_c=15.0, eta_m=20.0, progress=None, pc=0.5, pm=None,
+          should_stop=None, track_hypervolume=False):
     """Elitist NSGA-II with feasibility-first survival and tournament selection."""
     if pop < 2 or gen < 1:
         raise ValueError("种群至少为 2，迭代代数至少为 1。")
@@ -138,6 +198,8 @@ def nsga2(evaluate, lo, hi, pop=60, gen=100, seed=1, eta_c=15.0, eta_m=20.0, pro
         keys.update({i:(1, values[i][1].get("r", {}).get("infeas", 0), sum(values[i][0])) for i in invalid})
         return sorted(range(len(population)), key=keys.get), keys
     population = [[rng.uniform(lo[i], hi[i]) for i in range(n)] for _ in range(pop)]
+    history = []
+    reference = None
     for generation in range(gen):
         _, keys = order(population)
         def parent():
@@ -150,9 +212,18 @@ def nsga2(evaluate, lo, hi, pop=60, gen=100, seed=1, eta_c=15.0, eta_m=20.0, pro
         combined = population + children[:pop]
         indices, _ = order(combined)
         population = [combined[i] for i in indices[:pop]]
+        record, usable = _generation_record(generation + 1, population, assess, len(evaluated))
+        if track_hypervolume and usable and len(usable[0]) >= 2:
+            if reference is None:
+                reference = _reference_point(usable)
+            front = _fast_non_dominated_sort(usable)[0]
+            record["hv"] = round(_hypervolume([usable[i] for i in front], reference), 8)
+        history.append(record)
         if progress and (generation == 0 or (generation + 1) % max(1, gen//20) == 0 or generation + 1 == gen):
             progress(generation + 1, gen)
-    return population, [(key, tuple(value[0])) for key, value in evaluated.items()]
+        if should_stop is not None and should_stop(history):
+            break
+    return population, [(key, tuple(value[0])) for key, value in evaluated.items()], history
 
 
 def _pareto(sorted_pairs):
@@ -191,16 +262,22 @@ def _knee_point(front):
 
 def robust_optimize(context, mode="multi", pop=60, gen=100, weight=0.5,
                     k_design=DEFAULT_K_DESIGN, k_constraint=DEFAULT_K_CONSTRAINT, seed=1, sigma_limits=None, progress=None,
-                    pc=0.5, pm=None, eta_c=15.0, eta_m=20.0):
+                    pc=0.5, pm=None, eta_c=15.0, eta_m=20.0,
+                    auto_stop=False, stall_generations=20, tolerance=0.001):
     """执行鲁棒优化，返回结果 dict。"""
     if mode not in ("multi", "weighted", "constraint"):
         raise ValueError("未知鲁棒优化策略")
+    if auto_stop:
+        if stall_generations < 1 or stall_generations >= gen:
+            raise ValueError(f"停滞代数必须小于总代数（当前设定 {gen} 代），否则无法提前停止。")
+        if not _np.isfinite(tolerance) or tolerance <= 0:
+            raise ValueError("收敛容差必须是有限正数。")
     context = dict(context)
     context.pop("sigma_limits", None)
     if mode == "constraint":
         objective_names = {r.name for r in project_responses(context) if not self_is_constraint(r) or "目标" in r.kind}
         if not objective_names:
-            raise ValueError("波动约束优化需要至少一个目标响应。")
+            raise ValueError("波动约束法需要至少一个目标响应。")
         limits = sigma_limits or {}
         if set(limits) != objective_names:
             raise ValueError("请为每个目标响应设置独立标准差上限：" + "、".join(sorted(objective_names)))
@@ -246,8 +323,11 @@ def robust_optimize(context, mode="multi", pop=60, gen=100, weight=0.5,
             obj = list(r["obj"])
         return obj, {"x": xd, "r": r}
 
-    population, evaluated = nsga2(evaluate, lo, hi, pop=pop, gen=gen, seed=seed, progress=progress,
-                                   pc=pc, pm=pm, eta_c=eta_c, eta_m=eta_m)
+    population, evaluated, history = nsga2(
+        evaluate, lo, hi, pop=pop, gen=gen, seed=seed, progress=progress,
+        pc=pc, pm=pm, eta_c=eta_c, eta_m=eta_m,
+        should_stop=_stall_rule(mode, stall_generations, tolerance) if auto_stop else None,
+        track_hypervolume=bool(auto_stop and mode == "multi"))
     pairs = []
     for vec_tuple, _obj in evaluated:
         vec = list(vec_tuple)
@@ -309,6 +389,11 @@ def robust_optimize(context, mode="multi", pop=60, gen=100, weight=0.5,
                  "sigma_constraints": r_rec["details"],
                  "responses": resp_detail},
         "evaluated_count": len(pairs),
+        "history": history,
+        "history_objectives": _history_labels(mode),
+        "auto_stop": bool(auto_stop), "stall_generations": stall_generations,
+        "tolerance": tolerance, "generations_run": len(history),
+        "stop_reason": "stall" if len(history) < gen else "max_generations",
     }
     result["text"] = _robust_result_text(result)
     if mode == "constraint":
@@ -316,10 +401,17 @@ def robust_optimize(context, mode="multi", pop=60, gen=100, weight=0.5,
     return result
 
 
+def _history_labels(mode):
+    """目标名称按策略排列，供优化历程图表与报告使用。"""
+    return {"multi": ["望性损失", "归一化标准差"],
+            "weighted": ["加权目标和"],
+            "constraint": ["望性损失"]}[mode]
+
+
 def _robust_result_text(res):
-    mode_names = {"multi": "多目标优化（帕累托）",
-                  "weighted": "加权目标优化",
-                  "constraint": "波动约束优化"}
+    mode_names = {"multi": "帕累托前沿法",
+                  "weighted": "加权和法",
+                  "constraint": "波动约束法"}
     lines = [f"【{mode_names.get(res['mode'], res['mode'])}】",
              f"约束裕量系数 k={res['k_constraint']}，区间标准差换算系数 k={res['k_design']}",
              "输入标准差：" + "，".join(f"{n}={s:.6g}" for n, s in res.get("input_sigmas", {}).items()),
@@ -329,6 +421,21 @@ def _robust_result_text(res):
     if res["mode"] == "weighted":
         lines.append(f"望性损失权重 λ={res['weight']}，波动权重={round(1 - res['weight'], 2)}")
     lines.append(f"评估解数量：{res['evaluated_count']}")
+    if res.get("auto_stop"):
+        reason = "达到停滞判据" if res.get("stop_reason") == "stall" else "达到最大代数"
+        lines.append(f"停止方式：自动停止（{reason}），执行 {res.get('generations_run', res['generations'])}/"
+                     f"{res['generations']} 代；判据为连续 {res['stall_generations']} 代改进 "
+                     f"< {res['tolerance'] * 100:g}%")
+    else:
+        lines.append(f"停止方式：固定代数，执行 {res['generations']} 代")
+    if res.get("history"):
+        first, last = res["history"][0], res["history"][-1]
+        trend = "；".join(
+            f"{label} {start:.4g} → {end:.4g}"
+            for label, start, end in zip(res.get("history_objectives") or [],
+                                         first.get("best", []), last.get("best", [])))
+        if trend:
+            lines.append("收敛历程（每代最优值）：" + trend)
     lines.append(f"可行解数量：{res.get('feasible_count', 0)}；图中只显示可行解，不把约束罚项作为响应波动。")
     lines.append("")
     if res["mode"] == "multi" and res["front"]:

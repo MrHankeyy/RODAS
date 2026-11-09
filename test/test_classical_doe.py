@@ -100,7 +100,7 @@ class ClassicalDOE(unittest.TestCase):
         before=da.taguchi(p)['best_levels']
         p.doe_matrix.reverse()
         self.assertEqual(before,da.taguchi(p)['best_levels'])
-        for idx,row in enumerate(p.doe_matrix): row['Run_ID']=len(p.doe_matrix)-idx
+        for idx,row in enumerate(p.doe_matrix): row['试验序号']=len(p.doe_matrix)-idx
         for row in p.doe_matrix:
             del row['内表组号'];del row['外表组号']
         self.assertEqual(before,da.taguchi(p)['best_levels'])

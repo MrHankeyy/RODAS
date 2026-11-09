@@ -11,7 +11,7 @@ from PyQt6.QtWidgets import (
 from backend.domain.models import TASK_TYPES
 from frontend.terminology import tooltip
 
-CHINESE_NAME = '面向飞行器结构的鲁棒性优化设计平台'
+CHINESE_NAME = '面向飞行器结构的鲁棒优化设计平台'
 ENGLISH_NAME = 'Robust Optimal Design of Aerospace Structures'
 LOGO_PATH = Path(__file__).resolve().parents[2] / 'assets' / 'branding' / 'rodas-logo.png'
 
@@ -54,7 +54,7 @@ class ResponseSurface(QWidget):
         super().__init__()
         self.setMinimumSize(180, 200)
         self.setMaximumWidth(380)
-        self.setAccessibleName('响应曲面与设计点示意图')
+        self.setAccessibleName('响应面与设计点示意图')
 
     @staticmethod
     def _point(x, y):

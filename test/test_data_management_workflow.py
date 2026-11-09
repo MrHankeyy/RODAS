@@ -25,8 +25,8 @@ APP = QApplication.instance() or QApplication([])
 def project(method="响应曲面设计"):
     return ProjectData(design_method=method, factors=[FactorItem(name="X")],
                        responses=[ResponseItem(name="Y", unit="mm")],
-                       doe_matrix=[{"Run_ID": 1, "X": 0, "Y": 1},
-                                   {"Run_ID": 2, "X": 1, "Y": ""}])
+                       doe_matrix=[{"试验序号": 1, "X": 0, "Y": 1},
+                                   {"试验序号": 2, "X": 1, "Y": ""}])
 
 
 class DataManagementTests(unittest.TestCase):
@@ -148,7 +148,7 @@ class DataManagementTests(unittest.TestCase):
         page.show()
         APP.processEvents()
         page.hide()
-        p.doe_matrix = [{"Run_ID": 1, "X": 2, "Y": 7}]
+        p.doe_matrix = [{"试验序号": 1, "X": 2, "Y": 7}]
         page.show()
         self.assertEqual(page.table.rowCount(), 1)
         self.assertEqual(page.table.item(0, 2).text(), "7")
@@ -177,6 +177,19 @@ class DataManagementTests(unittest.TestCase):
         opt.overview.data_button.click()
         self.assertEqual(window.stacked_widget.currentIndex(), 2)
         window.close()
+
+
+    def test_trial_table_buttons_name_the_object_and_explain_csv(self):
+        page = DataManagementPage(project())
+        self.addCleanup(page.close)
+        self.assertEqual(page.load_btn.text(), '加载当前试验数据表')
+        self.assertEqual(page.export_btn.text(), '导出试验数据表')
+        self.assertEqual(page.import_btn.text(), '导入试验数据表')
+        for button in (page.export_btn, page.import_btn):
+            self.assertIn('CSV', button.toolTip())
+            self.assertIn('试验设计（DOE）', button.toolTip())
+            self.assertEqual(button.accessibleDescription(), button.toolTip())
+        self.assertEqual(page.export_btn.toolTip(), tooltip('export_trial_table'))
 
 
 if __name__ == "__main__":

@@ -58,7 +58,7 @@ class ResultOverviewTests(unittest.TestCase):
         view = ResultOverview()
         for model in ("Kriging", "SVR", "ANN"):
             project = self.project(f"代理模型建模 · {model}")
-            project.surrogate_result = {"responses": {"Y": {"r2_test": .97, "mape_test_%": 2.1,
+            project.surrogate_result = {"responses": {"Y": {"r2_test": .97, "nmae_test_%": 2.1,
                 "train_samples": 8, "test_samples": 2, "params": {"model": model}}}}
             view.set_project(project)
             self.assertEqual(view.status_label.text(), "分析已完成")

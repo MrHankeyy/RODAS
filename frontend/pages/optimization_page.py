@@ -3,7 +3,7 @@
 支持的结果视图：
 - 方案设计摘要与设计诊断；
 - 两水平筛选（± 对比主效应 / 方差贡献）；
-- 响应曲面（二次模型拟合、拟合优度、优选设置）；
+- 响应面（二次模型拟合、拟合优度、优选设置）；
 - 田口设计（均值响应表、信噪比表、稳健最优水平组合）；
 - 代理模型训练（Kriging / SVR / BPANN 的误差与耗时）。
 """
@@ -64,6 +64,7 @@ class OptimizationPage(QWidget):
             self._oe_context = None
             self._robust_res = {}
             self.robust_results.clear()
+            self.history_panel.clear()
             self.status_label.setText(
                 "优化参数已改变；已有优化结果属于先前设置，请重新执行。")
 
@@ -81,8 +82,8 @@ class OptimizationPage(QWidget):
         elif is_taguchi:
             self.run_all_btn.setText("田口设计：计算信噪比")
         else:
-            self.run_all_btn.setText("执行鲁棒性优化设计")
-        for index in (1, 2, 3, 4, 5, 6):
+            self.run_all_btn.setText("执行鲁棒优化设计")
+        for index in (1, 2, 3, 4, 5, 6, 9):
             self.tabs.setTabVisible(index, not is_special)
         self.tabs.setTabVisible(7, is_screening)
         self.tabs.setTabVisible(8, is_taguchi)
@@ -99,7 +100,7 @@ class OptimizationPage(QWidget):
             if is_screening else
             "田口设计根据内表×外表响应计算信噪比并推荐稳健水平"
             if is_taguchi else
-            "二次响应面模型和代理模型进入鲁棒性优化设计工作台")
+            "二次响应面模型和代理模型进入鲁棒优化设计工作台")
 
     def _run_primary_action(self):
         """顶部主按钮：筛选/田口走专用分析，其余方案走鲁棒优化。"""
@@ -179,6 +180,11 @@ class OptimizationPage(QWidget):
             count = len([f for f in self.project_data.factors if f.name and f.source == "设计"])
             self.mutation_spin.setValue(1.0 / max(count, 1))
 
+    def _on_auto_stop(self, enabled):
+        """收敛判据只在勾选时生效；未勾选则按固定代数跑满。"""
+        for control in (self.stall_gen_spin, self.tolerance_spin):
+            control.setEnabled(bool(enabled))
+
     def _optimizer_settings(self):
         return dict(mode=self.robust_mode_combo.currentData(), pop=self.pop_spin.value(),
                     gen=self.gen_spin.value(), weight=self.weight_spin.value(),
@@ -186,6 +192,9 @@ class OptimizationPage(QWidget):
                     seed=self.seed_spin.value(), pc=self.crossover_spin.value(),
                     pm=None if self.mutation_mode_combo.currentData() == "auto" else self.mutation_spin.value(),
                     eta_c=self.eta_c_spin.value(), eta_m=self.eta_m_spin.value(),
+                    auto_stop=self.auto_stop_check.isChecked(),
+                    stall_generations=self.stall_gen_spin.value(),
+                    tolerance=round(self.tolerance_spin.value() / 100.0, 6),
                     sigma_limits=self._sigma_limits())
 
     def _build_signif_tab(self):
@@ -196,6 +205,9 @@ class OptimizationPage(QWidget):
 
     def _build_model_tab(self):
         return optimization_panels.build_model_tab(self)
+
+    def _build_history_tab(self):
+        return optimization_panels.build_history_tab(self)
 
     def _responses(self):
         return [r for r in self.project_data.responses if r.name]
@@ -243,7 +255,7 @@ class OptimizationPage(QWidget):
             "因子筛选", "部分完成" if result.get("errors") else "完成",
             {"results": {"screening": result}})
 
-    # ------------------------------------------------------------- 响应曲面
+    # ------------------------------------------------------------- 响应面
     def _run_rsm(self):
         context = model_service.build_rsm_context(self.project_data)
         self._oe_context = context
@@ -281,6 +293,7 @@ class OptimizationPage(QWidget):
             self._oe_context = None
             self._robust_res = {}
             self.robust_results.clear()
+            self.history_panel.clear()
             service.clear_workbench()
         for name, response_result in result["responses"].items():
             score = response_result.get("r2_test")
@@ -308,7 +321,10 @@ class OptimizationPage(QWidget):
                 "population": self.pop_spin.value(), "generations": self.gen_spin.value(),
                 "seed": self.seed_spin.value(), "pc": self.crossover_spin.value(),
                 "mutation_mode": self.mutation_mode_combo.currentData(), "pm": self.mutation_spin.value(),
-                "eta_c": self.eta_c_spin.value(), "eta_m": self.eta_m_spin.value()}
+                "eta_c": self.eta_c_spin.value(), "eta_m": self.eta_m_spin.value(),
+                "auto_stop": self.auto_stop_check.isChecked(),
+                "stall_generations": self.stall_gen_spin.value(),
+                "tolerance": round(self.tolerance_spin.value() / 100.0, 6)}
 
     def run_workbench(self):
         return self.controller.run_workbench()

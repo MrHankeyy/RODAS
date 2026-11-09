@@ -2,10 +2,11 @@ from dataclasses import dataclass, field, asdict
 
 
 TASK_TYPES = {
-    'robust': '基于代理模型的鲁棒性优化设计',
+    'robust': '基于代理模型的鲁棒优化设计',
     'taguchi': '田口设计',
     'factorial': '因子筛选',
 }
+RUN_ID = '试验序号'
 
 
 def factor_title(source, task_type='robust'):
@@ -66,7 +67,7 @@ class ProjectData:
     screening_result: dict = field(default_factory=dict)
     taguchi_result: dict = field(default_factory=dict)
 
-    # 响应曲面 / 代理模型分析结果
+    # 响应面 / 代理模型分析结果
     rsm_result: dict = field(default_factory=dict)
     surrogate_config: dict = field(default_factory=dict)   # 方案配置中选择的代理模型参数
     surrogate_result: dict = field(default_factory=dict)   # 后端训练/评估结果

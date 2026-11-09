@@ -79,13 +79,13 @@ class TaskUITests(unittest.TestCase):
         self.assertEqual(task_storage.load_task(second).report_metadata['project_name'], '另一个版本')
 
     def test_close_cancel_and_cancelled_save_keep_window_open(self):
-        with patch.object(QMessageBox, 'question', return_value=QMessageBox.StandardButton.Cancel):
+        with patch('frontend.task_actions.ask_save_choice', return_value='cancel'):
             self.assertFalse(self.w.close())
-        with patch.object(QMessageBox, 'question', return_value=QMessageBox.StandardButton.Save), \
+        with patch('frontend.task_actions.ask_save_choice', return_value='save'), \
              patch.object(QFileDialog, 'getSaveFileName', return_value=('', '')):
             self.assertFalse(self.w.close())
         path = self.root / 'close.rodas'
-        with patch.object(QMessageBox, 'question', return_value=QMessageBox.StandardButton.Save), \
+        with patch('frontend.task_actions.ask_save_choice', return_value='save'), \
              patch.object(QFileDialog, 'getSaveFileName', return_value=(str(path), '')):
             self.assertTrue(self.w.close())
         self.assertTrue(path.exists())
@@ -124,7 +124,7 @@ class TaskUITests(unittest.TestCase):
         task_storage.save_task(ProjectData(), valid)
         original.report_metadata['project_name'] = 'unsaved committed data'
         with patch.object(QFileDialog, 'getOpenFileName', return_value=(str(valid), '')), \
-             patch.object(QMessageBox, 'question', return_value=QMessageBox.StandardButton.Cancel):
+             patch('frontend.task_actions.ask_save_choice', return_value='cancel'):
             self.assertFalse(self.w.task_actions.open())
         self.assertIs(self.w.project_data, original)
 
@@ -160,7 +160,7 @@ class TaskUITests(unittest.TestCase):
         path = self.save()
         self.w.project_data.report_metadata['project_name'] = 'updated'
         with patch.object(QFileDialog, 'getOpenFileName', return_value=(str(path), '')), \
-             patch.object(QMessageBox, 'question', return_value=QMessageBox.StandardButton.Save):
+             patch('frontend.task_actions.ask_save_choice', return_value='save'):
             self.assertTrue(self.w.task_actions.open())
         self.assertEqual(self.w.project_data.report_metadata['project_name'], 'updated')
 
@@ -174,6 +174,16 @@ class TaskUITests(unittest.TestCase):
             self.assertFalse(self.w.task_actions.open())
         self.assertIs(self.w.project_data, original)
         self.assertIs(self.w.page_MOD, page)
+
+
+    def test_save_prompt_buttons_are_chinese(self):
+        from frontend import task_actions
+        texts = []
+        with patch.object(QMessageBox, 'exec', lambda box: texts.extend(
+                button.text() for button in box.buttons()) or 0):
+            task_actions.ask_save_choice(self.w, '保存任务', '是否保存当前任务？')
+        self.assertEqual(sorted(texts), sorted(['保存', '不保存', '取消']))
+        self.assertTrue(all(text.isascii() is False for text in texts))
 
 
 if __name__ == '__main__':

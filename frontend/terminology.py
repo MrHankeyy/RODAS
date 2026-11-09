@@ -4,7 +4,7 @@ from PyQt6.QtCore import Qt
 
 # key: (Chinese display name, English full name, optional abbreviation)
 TERMS = {
-    "task_robust": ("基于代理模型的鲁棒性优化设计", "Surrogate-Based Robust Design Optimization", "SBRDO"),
+    "task_robust": ("基于代理模型的鲁棒优化设计", "Surrogate-Based Robust Design Optimization", "SBRDO"),
     "taguchi_design": ("田口设计", "Taguchi Design", ""),
     "factor_screening": ("因子筛选", "Factor Screening", ""),
     "screening_design": ("筛选试验设计", "Screening Design", ""),
@@ -21,14 +21,14 @@ TERMS = {
     "full_quadratic_model": ("完整二次模型", "Full Quadratic Model", ""),
     "gaussian_correlation": ("高斯相关函数", "Gaussian Correlation Function", ""),
     "exponential_correlation": ("指数相关函数", "Exponential Correlation Function", ""),
-    "matern_32_correlation": ("马特恩三分之二相关函数", "Matérn 3/2 Correlation Function", ""),
+    "matern_32_correlation": ("马特恩 3/2 相关函数", "Matérn 3/2 Correlation Function", ""),
     "ordinary_trend": ("常数趋势", "Ordinary Trend", ""),
     "linear_trend": ("一次趋势", "Linear Trend", ""),
     "quadratic_trend": ("二次趋势", "Quadratic Trend", ""),
     "rbf_kernel": ("径向基函数核", "Radial Basis Function Kernel", "RBF"),
     "polynomial_kernel": ("多项式核", "Polynomial Kernel", ""),
-    "sigmoid_kernel": ("双曲正切核", "Sigmoid Kernel", ""),
-    "logistic_sigmoid": ("逻辑S形函数", "Logistic Sigmoid Function", ""),
+    "sigmoid_kernel": ("S形核", "Sigmoid Kernel", ""),
+    "logistic_sigmoid": ("S形函数", "Logistic Sigmoid Function", ""),
     "hyperbolic_tangent": ("双曲正切函数", "Hyperbolic Tangent Function", "tanh"),
     "relu": ("修正线性单元", "Rectified Linear Unit", "ReLU"),
     "lhs": ("拉丁超立方采样", "Latin Hypercube Sampling", "LHS"),
@@ -38,12 +38,15 @@ TERMS = {
     "low_dimensional_combination": ("低维组合采样", "Low-Dimensional Combination Sampling", ""),
     "random_sampling": ("随机采样", "Random Sampling", ""),
     "robust_strategy": ("鲁棒优化策略", "Robust Optimization Strategy", ""),
-    "multiobjective_nsga2": ("多目标优化（帕累托）", "Pareto Multi-Objective Optimization", ""),
-    "weighted_single_objective": ("加权目标优化", "Weighted-Objective Optimization", ""),
-    "constrained_optimization": ("波动约束优化", "Variability-Constrained Optimization", ""),
-    "robust_optimization": ("鲁棒性优化设计", "Robust Design Optimization", "RDO"),
+    "multiobjective_nsga2": ("帕累托前沿法", "Pareto-Front Method", "NSGA-II"),
+    "weighted_single_objective": ("加权和法", "Weighted Sum Method", ""),
+    "constrained_optimization": ("波动约束法", "Variability-Constrained Method", "ε"),
+    "optimization_history": ("优化历程", "Optimization History", ""),
+    "robust_optimization": ("鲁棒优化设计", "Robust Design Optimization", "RDO"),
     "regression_significance_lof": ("统计检验", "Statistical Tests", ""),
-    "holdout_validation": ("留出法验证", "Holdout Validation", ""),
+    "holdout_validation": ("测试集验证", "Test-Set Validation", ""),
+    "export_trial_table": ("导出试验数据表", "Export Design Data Table", ""),
+    "import_trial_table": ("导入试验数据表", "Import Design Data Table", ""),
     "cross_validation_residuals": ("验证与残差", "Validation and Residuals", ""),
     "model_coefficients": ("模型与系数", "Model and Coefficients", ""),
     "local_variance_contribution": ("局部方差贡献分析", "Local Variance Contribution Analysis", ""),
@@ -77,9 +80,9 @@ TERMS = {
 STATISTICS = {
     "模型类型": ("Model Type", "", "当前已训练模型的类型"),
     "训练样本数": ("Training Sample Size", "", "参与当前模型训练的数据条数"),
-    "有效验证样本数": ("Validation Sample Size", "", "参与有效验证的数据条数"),
-    "交叉验证决定系数": ("Cross-Validated Coefficient of Determination", "CV R²", "基于分折留出预测计算的决定系数"),
-    "交叉验证均方根误差": ("Cross-Validated Root Mean Squared Error", "CV RMSE", "分折留出预测的误差大小，单位同响应"),
+    "测试样本数": ("Test-Set Sample Size", "", "参与测试集验证的数据条数"),
+    "交叉验证决定系数": ("Cross-Validated Coefficient of Determination", "CV R²", "基于K折预测计算的决定系数"),
+    "交叉验证均方根误差": ("Cross-Validated Root Mean Squared Error", "CV RMSE", "K折预测的误差大小，单位同响应"),
     "编码项": ("Coded Model Term", "", "系数对应的编码变量模型项"),
     "估计值": ("Coefficient Estimate", "", "当前模型项的系数估计"),
     "标准误": ("Standard Error", "SE", "系数估计的标准误差"),
@@ -138,8 +141,8 @@ STATISTICS = {
     "失拟检验统计量": ("Lack-of-Fit F-statistic", "F", "比较模型失拟与重复试验误差"),
     "失拟检验概率值": ("Lack-of-Fit p-value", "p", "越小越提示模型形式可能不合适"),
     "留一预测残差平方和": ("Leave-One-Out Prediction Residual Sum of Squares", "LOO PRESS", "逐点留出预测误差的平方和"),
-    "留一预测均方根误差": ("Leave-One-Out Root Mean Squared Error", "LOO RMSE", "留一验证的预测误差，单位同响应"),
-    "留一预测决定系数": ("Leave-One-Out Predicted Coefficient of Determination", "LOO R²", "衡量留一验证中的预测解释程度"),
+    "留一预测均方根误差": ("Leave-One-Out Root Mean Squared Error", "LOO RMSE", "留一交叉验证的预测误差，单位同响应"),
+    "留一预测决定系数": ("Leave-One-Out Predicted Coefficient of Determination", "LOO R²", "衡量留一交叉验证中的预测解释程度"),
     "残差正态性检验概率值": ("Shapiro–Wilk Test p-value", "p", "越小越提示残差偏离正态分布"),
 }
 
@@ -178,10 +181,16 @@ def tooltip(key):
         return statistical
     suffix = f"，{abbreviation}" if abbreviation else ""
     explanation = {
-        "robust_strategy": "选择如何在优化中处理响应的目标表现与波动性；三种策略均遵守业务建模中定义的响应约束。",
-        "multiobjective_nsga2": "将目标表现与波动性分别作为优化目标，得到多个折中方案。",
-        "constrained_optimization": "为波动性设置上限，在满足限制的条件下优化目标表现。",
-        "weighted_single_objective": "将归一化的目标损失与波动性按权重合成为一个优化目标。",
+        "robust_strategy": "三种策略都是多目标优化的处理方式，目标表现与响应波动分别作为目标，区别只在如何取舍。",
+        "multiobjective_nsga2": "以望性损失和归一化标准差为两个目标求帕累托前沿，再按折中解给出单一推荐设计点。",
+        "constrained_optimization": "为每个目标响应设定标准差上限（即 ε 约束法），在满足上限的前提下最小化望性损失。",
+        "weighted_single_objective": "把望性损失与归一化标准差按权重加成单一目标，权重越大越偏向目标表现。",
+        "optimization_history": "逐代记录每代最优目标值、可行解数与累计评估次数；图中虚线为优化停止的一代。",
+        "holdout_validation": "由留出法（Hold-out）划分出的独立测试集，未参与训练，仅用于评估预测精度。",
+        "export_trial_table": "把当前试验设计（DOE）数据表连同已录入的响应导出为表格文件，可选 CSV 或 Excel（.xlsx/.xls）。\n"
+                              "CSV 指逗号分隔值（Comma-Separated Values）纯文本表格，便于仿真脚本读取；Excel 便于人工查看。",
+        "import_trial_table": "从 CSV 或 Excel 文件读取试验设计（DOE）数据表，第一行按列名解析，可含仿真或试验得到的响应列。\n"
+                              "不要求文件带试验序号列，缺失时按行序自动编号；导入会替换当前表格内容，需再点击「保存响应数据」写入项目。",
     }.get(key, "")
     return f"{chinese}（{english}{suffix}）" + ("\n" + explanation if explanation else "")
 
@@ -243,9 +252,9 @@ CELL_TERMS = {
     "克里金模型": "kriging",
     "支持向量回归模型": "svr",
     "神经网络模型": "bpnn",
-    "多目标优化（帕累托）": "multiobjective_nsga2",
-    "加权目标优化": "weighted_single_objective",
-    "波动约束优化": "constrained_optimization",
+    "帕累托前沿法": "multiobjective_nsga2",
+    "加权和法": "weighted_single_objective",
+    "波动约束法": "constrained_optimization",
     "约束裕量系数 k": "constraint_margin_multiplier",
     "区间标准差换算系数 k": "interval_std_factor",
     "望性损失权重 λ": "desirability_loss_weight",

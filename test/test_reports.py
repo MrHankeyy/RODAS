@@ -55,7 +55,7 @@ class ReportTests(unittest.TestCase):
         self.assertEqual([row['单位'] for row in rows],['℃','℃'])
         self.assertEqual(source,before)
         html=re.render_html(re.build_report(re.bundle(p)))
-        self.assertIn('均值/标准差',html)
+        self.assertIn('均值偏移/标准差',html)
 
     def test_operations_emit_messages_without_history(self):
         from frontend.notifications import bus

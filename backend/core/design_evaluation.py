@@ -21,17 +21,23 @@ DEFAULT_K_DESIGN = math.sqrt(3.0)
 DEFAULT_K_CONSTRAINT = 1.0
 
 
-def _sigma_of_factor(f, k_design):
-    """因子不确定性标准差。"""
+def _sigma_of_factor(f, k_design, point=None):
+    """因子不确定性标准差；百分数参数按当前设计值（概率按当前均值）换算。"""
     lo, hi = de.factor_limits(f)
     if f.uncertainty == "概率":
+        ratio = de.ratio_value(f.param2)
+        if ratio is not None:
+            return abs(de.factor_center(f, point) * ratio)
         try:
             return max(0.0, float(f.param2)) ** 0.5
         except (TypeError, ValueError):
             return (hi - lo) / 6.0
     if f.source == "环境" or f.nominal_lower != "":
         # Existing moment approximation: actual environmental width or design deviation width.
-        return (float(f.param2) - float(f.param1)) / (2.0 * max(1.0, k_design))
+        base = de.factor_center(f, point, include_deviation=False)
+        low = de.delta_value(f, f.param1, base)
+        high = de.delta_value(f, f.param2, base)
+        return (high - low) / (2.0 * max(1.0, k_design))
     # For actual environmental intervals (and legacy design ranges), half-width = k·σ.
     return (hi - lo) / (2.0 * max(1.0, k_design))
 
@@ -47,7 +53,7 @@ def robust_moments(model, x_design, context, k_design, include_residual=True):
     hess = model_hess_diag_x(model, x)
     sigma = []
     for f, idx in zip(inputs, range(len(inputs))):
-        sigma.append(_sigma_of_factor(f, k_design))
+        sigma.append(_sigma_of_factor(f, k_design, x_design))
     sigma = _np.array(sigma, float)
     # 一阶 + 二阶矩修正
     curvature = 0.5 * float(_np.sum((hess * sigma ** 2)))

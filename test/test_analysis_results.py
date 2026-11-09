@@ -63,7 +63,7 @@ class AnalysisResultsTests(unittest.TestCase):
         self.assertIn("不适用", visible_text(significance))
         self.assertFalse(significance.findChildren(SummaryTable))
         widget = self.panel("validation", context)
-        self.assertIn("留出集", widget.figure.axes[0].get_title())
+        self.assertIn("测试集", widget.figure.axes[0].get_title())
         np.testing.assert_allclose(widget.figure.axes[1].collections[0].get_offsets()[:, 1], [0, 0, -1])
         model = self.panel("model", context)
         self.assertIn("不提供二次多项式", visible_text(model))
@@ -85,10 +85,10 @@ class AnalysisResultsTests(unittest.TestCase):
         self.assertIn("kg", widget.figure.axes[1].get_ylabel())
         self.assertIn("训练集", widget.figure.axes[0].get_title())
         self.assertEqual(len(widget.figure.axes), 4)
-        self.assertIn("上方指标来自分折验证", '\n'.join(label.toolTip() for label in widget.findChildren(QLabel)))
+        self.assertIn("上方指标来自 K 折交叉验证", '\n'.join(label.toolTip() for label in widget.findChildren(QLabel)))
         validation = widget.result_tables[0][1]
         self.assertEqual(validation.rowCount(), 2)
-        self.assertEqual(validation.item(1, 0).text(), '留一验证')
+        self.assertEqual(validation.item(1, 0).text(), '留一交叉验证')
 
     def test_model_coding_coefficients_and_clearing_stale_results(self):
         _, context = make_context()

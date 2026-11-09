@@ -149,7 +149,7 @@ class AnalysisResults(QWidget):
         if proxy:
             self.section("当前模型不适用此检验", message=(
                 "克里金模型、支持向量回归模型和神经网络模型的预测器不直接套用多项式回归方差分析或失拟检验。"
-                "请在「验证与残差」查看留出集验证结果。"))
+                "请在「验证与残差」查看测试集验证结果。"))
             return
         if not values:
             self.section("检验不可估计", message="没有可用的观测与拟合统计量。")
@@ -192,7 +192,7 @@ class AnalysisResults(QWidget):
         reasons = diagnostic.get('missing_reasons', {}).get('summary', {})
         response = next((item for item in self.context['_responses'] if item.name == name), None)
         unit = f"（{response.unit}）" if response and response.unit else ""
-        rows = [[('留出集验证' if proxy else f"{display(result.get('folds'))}折交叉验证"),
+        rows = [[('测试集验证' if proxy else f"{display(result.get('folds'))}折交叉验证"),
                  result.get('r2'), result.get('rmse'), result.get('samples')]]
         missing = {}
         for column, key in ((1, 'r2'), (2, 'rmse')):
@@ -201,15 +201,15 @@ class AnalysisResults(QWidget):
                     '验证响应全部相同，无法计算决定系数。' if key == 'r2' and result.get('samples')
                     else '当前验证指标不可估计。')
         if not proxy:
-            rows.append(['留一验证', values.get('预测 R² (LOO)'), values.get('LOO RMSE'),
+            rows.append(['留一交叉验证', values.get('预测 R² (LOO)'), values.get('LOO RMSE'),
                          values.get('样本数') if values.get('LOO PRESS') is not None else None])
             for column, key in ((1, '预测 R² (LOO)'), (2, 'LOO RMSE'), (3, 'LOO PRESS')):
                 if key in reasons:
                     missing[1, column] = reasons[key]
-        box = self.section('验证结果', ['验证方式', '决定系数', '均方根误差' + unit, '有效验证样本数'],
+        box = self.section('验证结果', ['验证方式', '决定系数', '均方根误差' + unit, '测试样本数'],
                            rows, missing_reasons=missing)
-        box.parentWidget().setToolTip('留出验证集未参与训练；当前未执行分折验证。' if proxy else
-            '分折验证与留一验证分别计算，在同一张表中展示；验证样本不足或矩阵秩不足时不降阶替代。')
+        box.parentWidget().setToolTip('测试集未参与训练；当前未执行 K 折交叉验证。' if proxy else
+            'K 折交叉验证与留一交叉验证分别计算，在同一张表中展示；验证样本不足或矩阵秩不足时不降阶替代。')
         if result.get('message'):
             box.addWidget(label('当前验证不可估计', 'muted'))
             box.parentWidget().setToolTip(result['message'])
@@ -217,7 +217,7 @@ class AnalysisResults(QWidget):
                 '残差 Shapiro p') if proxy else (
                 'R²', 'RMSE', 'MAE', '最大绝对误差', '残差均值', '残差样本标准差',
                 'LOO PRESS', '残差 Shapiro p')
-        self.section('误差与残差概况 · ' + ('留出验证集' if proxy else '训练集'),
+        self.section('误差与残差概况 · ' + ('测试集' if proxy else '训练集'),
                      ['统计量', '值'], [[statistic_name(key), values[key]] for key in keys if key in values],
                      missing_reasons={(i, 1): reasons[key] for i, key in
                          enumerate(key for key in keys if key in values) if key in reasons})
@@ -226,9 +226,9 @@ class AnalysisResults(QWidget):
             self.section('暂无图表数据', message='没有匹配的有限观测与预测。')
             return
         self.heading.setToolTip(tooltip('cross_validation_residuals') + '\n' + diagnostic.get('source', '') + (
-            '。图表和上方指标均来自留出集。' if proxy else
-            '。上方指标来自分折验证与留一验证，图表为训练集拟合结果。') +
-            '残差＝观测值－预测值；矩阵行序不一定是实际试验时间。')
+            '。图表和上方指标均来自测试集。' if proxy else
+            '。上方指标来自 K 折交叉验证与留一交叉验证，图表为训练集拟合结果。') +
+            '残差＝观测值－预测值；试验数据表行序不一定是实际试验时间。')
         self.figure = Figure(figsize=(8, 6.2), dpi=100, layout='constrained')
         canvas = DiagnosticCanvas(self.figure)
         canvas.setMinimumHeight(540)
@@ -248,7 +248,7 @@ class AnalysisResults(QWidget):
         limits = [min((fit_y - spread).min(), fit_x.min()), max((fit_y + spread).max(), fit_x.max())]
         fit.plot(limits, limits, '--', color='#8495a6')
         fit.set(xlabel='预测值' + unit, ylabel='观测均值' + unit,
-                title='留出集：观测均值与预测值' if proxy else '训练集：观测均值与预测值')
+                title='测试集：观测均值与预测值' if proxy else '训练集：观测均值与预测值')
         errors.scatter(predicted, residual, s=22, color='#246da4', alpha=.75)
         errors.axhline(0, linestyle='--', color='#8495a6')
         errors.set(xlabel='预测值' + unit, ylabel='残差' + unit, title='残差与预测值')
@@ -269,7 +269,7 @@ class AnalysisResults(QWidget):
             normal: '残差正态分位图（Normal Quantile–Quantile Plot，Q–Q）\n'
                     '使用全部逐次残差，辅助检查分布是否接近正态；接近参考直线不等于证明正态。',
             sequence: '残差序列图（Residual Sequence Plot）\n'
-                      '按数据序号展示逐次残差。矩阵行序不一定是实际试验时间，不作为时间独立性检验。',
+                      '按数据序号展示逐次残差。试验数据表行序不一定是实际试验时间，不作为时间独立性检验。',
         }
         self.column.addWidget(canvas)
         canvas.draw_idle()
@@ -323,7 +323,7 @@ class AnalysisResults(QWidget):
     def export_csv(self):
         if not self.result_tables:
             return
-        from frontend.workspace import dialog_path
+        from frontend.workspace import dialog_path, table_save_path
         from backend.infrastructure import file_io
         tables = self.result_tables[-1:] if self.kind == 'model' else self.result_tables
         records = []
@@ -332,9 +332,12 @@ class AnalysisResults(QWidget):
             for r in range(table.rowCount()):
                 records.append({'分节': title, **{key: table.item(r, c).text() for c, key in enumerate(headers)}})
         headers = list(dict.fromkeys(key for row in records for key in row))
-        path, _ = QFileDialog.getSaveFileName(self, '导出当前统计', dialog_path(self), 'CSV (*.csv)')
+        path, selected = QFileDialog.getSaveFileName(
+            self, '导出当前统计', dialog_path(self, '当前统计.csv'), file_io.TABLE_FILTER)
         if path:
-            self._export(lambda: file_io.write_csv_table(path, headers, [[row.get(key, '') for key in headers] for row in records]))
+            path = table_save_path(path, selected)
+            self._export(lambda: file_io.write_table(
+                path, headers, [[row.get(key, '') for key in headers] for row in records]))
 
     def _export(self, write):
         from frontend.notifications import Notice
