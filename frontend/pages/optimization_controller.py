@@ -26,9 +26,7 @@ class OptimizationController:
             Notice.warning(page, "无方案", "请先在【方案配置】生成试验方案。")
             return
         try:
-            if "筛选" in method:
-                page._run_screening()
-            elif any(text in method for text in ("响应面", "响应曲面")):
+            if any(text in method for text in ("响应面", "响应曲面")):
                 page._run_rsm()
             elif "田口" in method:
                 page._run_taguchi()
@@ -45,10 +43,6 @@ class OptimizationController:
             return
         page.status_label.setText("分析完成：结果已更新")
         page._refresh_view()
-        if "筛选" in method:
-            page.tabs.setCurrentWidget(page.screening_panel)
-            page._finish_classic(page.project_data.screening_result)
-            return
         if "田口" in method:
             page.tabs.setCurrentWidget(page.taguchi_panel)
             page._finish_classic(page.project_data.taguchi_result)
@@ -69,7 +63,6 @@ class OptimizationController:
             page._oe_context = None
             page._robust_res = {}
             page.model_overview.clear()
-            page.screening_panel.set_result({})
             page.taguchi_panel.set_result({})
             for name in ("robust_results", "signif_panel", "cv_panel", "model_panel", "history_panel"):
                 getattr(page, name).clear()
@@ -80,7 +73,7 @@ class OptimizationController:
         page = self.page
         if getattr(page, "_worker", None) is not None:
             return
-        if any(x in page._method() for x in ("筛选", "田口")):
+        if "田口" in page._method():
             page.run_optimization()
             return
         from frontend.notifications import bus
@@ -137,7 +130,7 @@ class OptimizationController:
     def _execute_workbench(self):
         page = self.page
         page._check_inputs()
-        if any(x in page._method() for x in ("筛选", "田口")):
+        if "田口" in page._method():
             page.run_optimization()
             return
         context = page._prepare_context()
@@ -250,7 +243,6 @@ class OptimizationController:
             if name in settings.get('sigma_limits', {}):
                 editor.setText(settings['sigma_limits'][name])
         page._refresh_view()
-        page.screening_panel.set_result(project.screening_result)
         page.taguchi_panel.set_result(project.taguchi_result)
         context = None
         if project.surrogate_result:

@@ -4,7 +4,7 @@ from dataclasses import asdict
 from backend.domain.models import RUN_ID, factor_definition
 import json
 
-RESULT_FIELDS = ('screening_result', 'taguchi_result', 'rsm_result',
+RESULT_FIELDS = ('taguchi_result', 'rsm_result',
                  'surrogate_result', 'workbench_result')
 INPUT_FIELDS = ('task_type', 'responses', 'factors', 'design_method', 'design_params',
                 'doe_matrix', 'surrogate_config')

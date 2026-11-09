@@ -29,28 +29,6 @@ def _noise_factors(project):
         [item for item in project.factors if item.source == "环境"])
 
 
-def screening_plan(project, method, kind, seed, centers, replicates,
-                   randomize, top_n):
-    factors = _design_factors(project)
-    _require_design_factors(factors)
-    rows, meta = doe.build_screening(
-        factors, kind, seed=seed, centers=centers, replicates=replicates,
-        randomize=randomize)
-    result = {
-        "factor_rankings": [], "main_effects": [], "plot_points": [],
-        "stability_impact": [], "response_effects": {},
-        "response_analysis": {},
-        "diagnostic_summary":
-            f"{meta['kind']}，{meta['total_runs']} 次试验。{meta['diagnostic']}",
-        "conclusion": "方案已生成，尚无响应数据；不生成先验因子排名。",
-        "analysis_status": "等待响应数据",
-    }
-    return DesignPlan(
-        method, rows, {"doe_family": meta["kind"], "meta": meta,
-                       "top_n": top_n, "seed": seed, "randomize": randomize},
-        initial_results={"screening_result": result}, surrogate_config={})
-
-
 def response_surface_plan(project, method, rsm_type, alpha_mode, alpha,
                           centers, replicates, seed, randomize):
     return model_plan(project, method, dict(model="RSM", doe_method=rsm_type,

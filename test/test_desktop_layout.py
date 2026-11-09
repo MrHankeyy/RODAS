@@ -34,7 +34,7 @@ class DesktopLayoutTests(unittest.TestCase):
 
     def test_result_navigation_tracks_visible_method_pages(self):
         page = self.window.page_OPT
-        for method, wanted, unwanted in [('筛选设计', 7, 8), ('田口设计', 8, 7), ('响应曲面设计', 1, 7)]:
+        for method, wanted, unwanted in [('田口设计', 7, 8), ('响应曲面设计', 1, 7)]:
             page.project_data.design_method = method
             page._update_method_actions()
             workspace = page.results_workspace
@@ -52,7 +52,7 @@ class DesktopLayoutTests(unittest.TestCase):
         self.window.on_switch_module('方案配置', 1)
         page = self.window.page_CFG
         self.assertFalse(hasattr(page, 'info_group'))
-        page.dynamic_params_widget.setCurrentIndex(2)
+        page.dynamic_params_widget.setCurrentIndex(1)
         for model in range(4):
             page.model_combo.setCurrentIndex(model)
             APP.processEvents()

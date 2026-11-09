@@ -10,9 +10,9 @@ class ProjectServiceTests(unittest.TestCase):
             factors=[FactorItem(
                 name="A", param1="0", param2="1")],
             responses=[ResponseItem(name="Y")],
-            design_method="两水平筛选设计",
+            design_method="田口设计",
             doe_matrix=[{"试验序号": 1, "A": 0.0, "Y": ""}],
-            screening_result={"old": True},
+            taguchi_result={"old": True},
             workbench_result={"old": True},
         )
 
@@ -28,21 +28,21 @@ class ProjectServiceTests(unittest.TestCase):
         self.assertTrue(changed)
         self.assertEqual(project.factors[0].name, "B")
         self.assertEqual(project.responses[0].name, "Z")
-        self.assertEqual(project.screening_result, {})
+        self.assertEqual(project.taguchi_result, {})
         self.assertEqual(project.workbench_result, {})
 
     def test_invalid_response_update_is_atomic(self):
         project = self.make_project()
         service = ProjectService.for_project(project)
         original_matrix = [dict(row) for row in project.doe_matrix]
-        original_result = dict(project.screening_result)
+        original_result = dict(project.taguchi_result)
 
         with self.assertRaisesRegex(ValueError, "必须是数字"):
             service.update_responses([
                 {"试验序号": "1", "A": "0", "Y": "invalid"}])
 
         self.assertEqual(project.doe_matrix, original_matrix)
-        self.assertEqual(project.screening_result, original_result)
+        self.assertEqual(project.taguchi_result, original_result)
 
     def test_stale_async_result_is_rejected(self):
         project = self.make_project()

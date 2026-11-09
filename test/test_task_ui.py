@@ -34,7 +34,7 @@ class TaskUITests(unittest.TestCase):
     def test_native_global_menu_and_keyboard_save(self):
         self.assertIsInstance(self.w.menuBar(), QMenuBar)
         actions = self.w.menuBar().actions()
-        self.assertEqual([a.text() for a in actions], ['文件', '教程', '设置工作目录'])
+        self.assertEqual([a.text() for a in actions], ['文件', '设置工作目录'])
         self.assertEqual([a.text() for a in actions[0].menu().actions()], ['保存', '另存为', '读取'])
         self.assertEqual(self.w.task_actions.actions['保存'].shortcut().toString(), 'Ctrl+S')
         for index in (self.w.welcome_index, 0, 1, 2, 3, 4):

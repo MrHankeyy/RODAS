@@ -80,36 +80,6 @@ def quadratic_optimum(fit_result, X_min, X_max, objective, target=None, samples=
     }
 
 
-def screening_from_responses(factors, doe_matrix, response_name):
-    """根据已填响应按 ± 编码计算主效应（中心点自动剔除）。"""
-    lows, highs = {}, {}
-    for f in factors:
-        lo, hi = factor_limits(f)
-        lows[f.name], highs[f.name] = lo, hi
-    vals_by_sign = {f.name: {"+": [], "-": []} for f in factors}
-    for row in doe_matrix:
-        try:
-            y = float(row.get(response_name, ""))
-        except (TypeError, ValueError):
-            continue
-        for f in factors:
-            try:
-                v = float(row.get(f.name))
-            except (TypeError, ValueError):
-                continue
-            mid = (lows[f.name] + highs[f.name]) / 2.0
-            if abs(v - mid) < 1e-9:
-                continue
-            vals_by_sign[f.name]["-" if v < mid else "+"].append(y)
-    effects = {}
-    for f in factors:
-        plus = vals_by_sign[f.name]["+"]
-        minus = vals_by_sign[f.name]["-"]
-        if plus and minus:
-            effects[f.name] = statistics.mean(plus) - statistics.mean(minus)
-    return effects
-
-
 def _design_terms(k):
     """返回二次模型项与名称。"""
     terms = [("const", None, None)]

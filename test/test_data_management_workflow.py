@@ -71,7 +71,7 @@ class DataManagementTests(unittest.TestCase):
             page.close()
 
     def test_three_workflows_share_checks_and_statistics_without_model(self):
-        for method in ("两水平筛选设计", "田口稳健设计", "代理模型建模 · Kriging"):
+        for method in ("田口稳健设计", "代理模型建模 · Kriging"):
             with self.subTest(method=method), patch(
                     "backend.services.model_service.train_surrogates", side_effect=AssertionError("trained")), patch(
                     "backend.engines.optimizer.build_models", side_effect=AssertionError("fitted")):

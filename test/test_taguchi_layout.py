@@ -62,7 +62,7 @@ class TaguchiLayoutTests(unittest.TestCase):
         self.assertFalse(page.gen_btn.isEnabled())
         self.assertIn('外表',page.preview_label.text())
         self.assertEqual(project.doe_matrix,original)
-        page.dynamic_params_widget.setCurrentIndex(2)
+        page.dynamic_params_widget.setCurrentIndex(1)
         page._on_selection_changed()
         self.assertGreaterEqual(page.actions.indexOf(page.gen_btn),0)
 

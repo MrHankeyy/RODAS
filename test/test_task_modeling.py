@@ -50,12 +50,12 @@ class TaskModelingTests(unittest.TestCase):
         return page, project
 
     def test_task_fields_and_navigation_use_only_the_required_controls(self):
-        for kind in ('robust', 'taguchi', 'factorial'):
+        for kind in ('robust', 'taguchi'):
             with self.subTest(kind=kind):
                 page, _ = self.page(kind)
                 design = page.add_design_factor_row()
                 response = page.add_response_row()
-                self.assertEqual(page.model_tabs.count(), 2 if kind == 'factorial' else 3)
+                self.assertEqual(page.model_tabs.count(), 3)
                 self.assertEqual(list(page.results_workspace.buttons), list(range(page.model_tabs.count())))
                 if kind == 'robust':
                     self.assertEqual(page.design_factors.table.columnCount(), 8)
@@ -64,7 +64,7 @@ class TaskModelingTests(unittest.TestCase):
                     self.assertEqual(len(page.responses.findChildren(QCheckBox)), 2)
                     self.assertTrue(hasattr(page.design_factors, 'relation'))
                 else:
-                    levels = ['低水平值', '高水平值'] if kind == 'taguchi' else ['低水平', '高水平']
+                    levels = ['低水平值', '高水平值']
                     self.assertEqual(headers(page.design_factors), ['名称', *levels, '单位', '操作'])
                     self.assertFalse(page.design_factors.findChildren(QComboBox))
                     self.assertFalse(page.responses.findChildren(QCheckBox))
@@ -75,12 +75,6 @@ class TaskModelingTests(unittest.TestCase):
                     self.assertEqual([page.model_tabs.tabText(i) for i in range(3)], ['响应', '控制因子', '噪声因子'])
                     self.assertEqual(page.design_factors.add_btn.text(), '+  新增控制因子')
                     self.assertEqual(page.environment_factors.add_btn.text(), '+  新增噪声因子')
-                elif kind == 'factorial':
-                    self.assertEqual(headers(page.responses), ['名称', '单位', '操作'])
-                    self.assertIsNone(page.environment_factors)
-                    self.assertFalse(page.responses.findChildren(QComboBox))
-                    self.assertEqual(page.model_tabs.tabText(1), '试验因子')
-                    self.assertEqual(page.design_factors.add_btn.text(), '+  新增试验因子')
                 for i, button in page.results_workspace.buttons.items():
                     self.assertEqual(button.text(), page.model_tabs.tabText(i))
                 design.unit.setText('cm')
@@ -169,7 +163,7 @@ class TaskModelingTests(unittest.TestCase):
         self.assertEqual(target.text(), '10')
 
     def test_all_business_columns_fill_viewport_without_blank_trailing_area(self):
-        for kind in ('robust', 'taguchi', 'factorial'):
+        for kind in ('robust', 'taguchi'):
             page, _ = self.page(kind)
             page.show()
             for width in (1050, 1440, 1920, 1050):
@@ -185,8 +179,6 @@ class TaskModelingTests(unittest.TestCase):
                     last = table.columnCount() - 1
                     header = table.horizontalHeader()
                     self.assertEqual(header.sectionViewportPosition(last) + header.sectionSize(last), table.viewport().width())
-                    if width == 1920 and kind == 'factorial' and index == 0:
-                        self.assertLess(table.columnWidth(0), table.viewport().width() / 2)
                     self.assertEqual(table.width(), section.contentsRect().width() - 20)
                     if kind == 'robust' and index == 2:
                         self.assertEqual(table.width(), section.contentsRect().width() - 20)
@@ -224,24 +216,8 @@ class TaskModelingTests(unittest.TestCase):
         self.assertEqual(project.responses[0].target, '11')
         self.assertFalse(project.taguchi_result)
 
-    def test_factorial_simple_fields_feed_two_level_effect_analysis(self):
-        page, project = self.fill_classical('factorial')
-        page.save_btn.click()
-        self.assertEqual(page.save_status_label.text(), '已保存')
-        plan = design_service.screening_plan(project, '两水平筛选设计', 'full', seed=1,
-            centers=1, replicates=2, randomize=False, top_n=2)
-        design_service.commit_plan(project, plan)
-        self.assertEqual({row['b'] for row in project.doe_matrix}, {10, 15, 20})
-        for row in project.doe_matrix:
-            row['Y'] = 2 * row['b'] + 3 * row['h']
-        result = design_analysis.screening(project)
-        self.assertFalse(result['errors'])
-        effects = {item['name']: item['effect'] for item in result['response_analysis']['Y']['effects']}
-        self.assertAlmostEqual(effects['b'], 20)
-        self.assertAlmostEqual(effects['h'], 60)
-
     def test_invalid_classical_bounds_and_names_cannot_partially_commit(self):
-        for kind in ('taguchi', 'factorial'):
+        for kind in ('taguchi',):
             page, project = self.fill_classical(kind)
             page.save_btn.click()
             before = task_storage.fingerprint(project)
@@ -264,7 +240,7 @@ class TaskModelingTests(unittest.TestCase):
             self.assertEqual(task_storage.fingerprint(project), before)
 
     def test_classical_archive_and_reload_keep_only_submitted_values(self):
-        for kind in ('taguchi', 'factorial'):
+        for kind in ('taguchi',):
             page, project = self.fill_classical(kind)
             if kind == 'taguchi':
                 response = page.responses.editors[0]

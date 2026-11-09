@@ -105,8 +105,7 @@ class NewTaskCard(QStackedWidget):
         layout.setContentsMargins(4, 4, 4, 4)
         layout.setSpacing(0)
         self.buttons = {}
-        term_keys = {'robust': 'task_robust', 'taguchi': 'taguchi_design',
-                     'factorial': 'factor_screening'}
+        term_keys = {'robust': 'task_robust', 'taguchi': 'taguchi_design'}
         for key, title in TASK_TYPES.items():
             button = QPushButton(title)
             button.setToolTip(tooltip(term_keys[key]))
@@ -160,7 +159,7 @@ class WelcomePage(QWidget):
         hero.setSpacing(28)
         intro = QVBoxLayout()
         intro.setSpacing(14)
-        welcome = QLabel('欢迎使用 RODAS   /   v0.2')
+        welcome = QLabel('欢迎使用 RODAS   /   V1.0')
         welcome.setProperty('role', 'muted')
         intro.addWidget(welcome)
         self.logo = BrandLogo()
@@ -196,7 +195,6 @@ class WelcomePage(QWidget):
             ('读取已有任务', 'task-open.svg'),
             ('新建任务', 'task-new.svg'),
             ('设置工作目录', 'workspace-folder.svg'),
-            ('教程', 'tutorial.svg'),
         ]
         for column, (title, icon) in enumerate(entries):
             button = QPushButton()
@@ -225,7 +223,7 @@ class WelcomePage(QWidget):
             if title == '设置工作目录':
                 button.clicked.connect(self.directory_requested.emit)
             else:
-                button.setToolTip('预留入口，后续接入任务与教程功能')
+                button.setToolTip('预留入口，后续接入任务功能')
                 button.setAccessibleDescription('预留入口，尚未接入功能')
             if title == '新建任务':
                 self.new_task_card = NewTaskCard(button)

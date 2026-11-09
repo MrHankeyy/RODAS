@@ -4,7 +4,6 @@ from dataclasses import dataclass, field, asdict
 TASK_TYPES = {
     'robust': '基于代理模型的鲁棒优化设计',
     'taguchi': '田口设计',
-    'factorial': '因子筛选',
 }
 RUN_ID = '试验序号'
 
@@ -12,8 +11,6 @@ RUN_ID = '试验序号'
 def factor_title(source, task_type='robust'):
     if task_type == 'taguchi':
         return '控制因子' if source == '设计' else '噪声因子'
-    if task_type == 'factorial':
-        return '试验因子'
     return '设计变量' if source == '设计' else '不确定性参数'
 
 
@@ -63,8 +60,7 @@ class ProjectData:
     design_params: dict = field(default_factory=dict)
     doe_matrix: list[dict] = field(default_factory=list) # 存储生成的DOE表格数据与测试结果
 
-    # 真实分析结果（筛选与田口）
-    screening_result: dict = field(default_factory=dict)
+    # 真实分析结果（田口）
     taguchi_result: dict = field(default_factory=dict)
 
     # 响应面 / 代理模型分析结果

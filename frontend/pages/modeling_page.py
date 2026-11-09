@@ -16,10 +16,8 @@ class ModelingPage(QWidget):
         task_type = project_data.task_type
         self.responses = ResponseTable(task_type)
         self.design_factors = FactorTable("设计", task_type)
-        self.environment_factors = FactorTable("环境", task_type) if task_type != "factorial" else None
-        self.sections = (self.responses, self.design_factors)
-        if self.environment_factors is not None:
-            self.sections += (self.environment_factors,)
+        self.environment_factors = FactorTable("环境", task_type)
+        self.sections = (self.responses, self.design_factors, self.environment_factors)
         self.model_tabs = ResultTabs()
         for section in self.sections:
             index = self.model_tabs.addTab(section, section.title)

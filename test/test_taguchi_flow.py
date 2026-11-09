@@ -1,4 +1,4 @@
-"""筛选设计与田口设计的专项回归测试。"""
+"""田口设计内表×外表的专项回归测试。"""
 
 from __future__ import annotations
 
@@ -16,22 +16,6 @@ from PyQt6.QtWidgets import QApplication
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 APP = QApplication.instance() or QApplication([])
-
-
-def test_screening_is_sensitivity_analysis():
-    factors = [("X1", 0.0, 1.0, None), ("X2", 0.0, 1.0, None)]
-    rows, meta = doe.build_screening(factors, "full", seed=3, randomize=False)
-    assert meta["total_runs"] == 4
-    values = [{**row, "Y": 3.0 * row["X1"] + row["X2"]} for row in rows]
-    effects = doe.screening_from_responses(
-        [FactorItem(name="X1", param1="0", param2="1"),
-         FactorItem(name="X2", param1="0", param2="1")],
-        values,
-        "Y",
-    )
-    assert abs(effects["X1"] - 3.0) < 1e-12
-    assert abs(effects["X2"] - 1.0) < 1e-12
-    assert abs(effects["X1"]) > abs(effects["X2"])
 
 
 def test_taguchi_cross_table_and_snr():
@@ -70,6 +54,5 @@ def test_taguchi_cross_table_and_snr():
 
 
 if __name__ == "__main__":
-    test_screening_is_sensitivity_analysis()
     test_taguchi_cross_table_and_snr()
-    print("screening/taguchi regression passed")
+    print("taguchi regression passed")

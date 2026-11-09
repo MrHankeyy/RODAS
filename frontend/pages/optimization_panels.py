@@ -6,7 +6,6 @@ from PyQt6.QtWidgets import (
     QLineEdit,
 )
 
-from frontend.pages.design_results import DesignResultsPanel
 from frontend.pages.taguchi_results import TaguchiResultsPanel
 from frontend.pages.result_overview import ResultOverview, label
 from frontend.pages.analysis_results import AnalysisResults
@@ -57,10 +56,7 @@ def build(owner):
         owner.tabs.setTabToolTip(index, tooltip("model_coefficients"))
         owner.tabs.addTab(owner.robust_results.comparison, "方案对比")
         owner.tabs.addTab(owner.robust_results.verification, "波动核验")
-        owner.screening_panel = DesignResultsPanel("screening")
         owner.taguchi_panel = TaguchiResultsPanel(owner.project_data)
-        index = owner.tabs.addTab(owner.screening_panel, name("main_effect_analysis"))
-        owner.tabs.setTabToolTip(index, tooltip("main_effect_analysis"))
         index = owner.tabs.addTab(owner.taguchi_panel, name("taguchi_analysis"))
         owner.tabs.setTabToolTip(index, tooltip("taguchi_analysis"))
         owner.tab_history = QWidget(); owner._build_history_tab()

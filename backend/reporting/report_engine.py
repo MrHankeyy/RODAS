@@ -56,7 +56,7 @@ def fingerprint(data):
 
 
 def results(project):
-    return serializable({'screening':project.screening_result,'taguchi':project.taguchi_result,
+    return serializable({'taguchi':project.taguchi_result,
         'rsm':project.rsm_result,'surrogate':project.surrogate_result,'workbench':project.workbench_result})
 
 
@@ -194,7 +194,7 @@ def build_report(data,kind='model',record_id=None,include_raw=False):
     def section(key,title,blocks):sections.append({'id':key,'title':title,'blocks':blocks})
     matrix=source.get('matrix') or [];responses=source.get('responses') or [];factors=source.get('factors') or []
     method=source.get('method') or ''
-    task_family='taguchi' if '田口' in method else 'factorial' if '筛选' in method else 'robust'
+    task_family='taguchi' if '田口' in method else 'robust'
     complete=[]
     for response in responses:
         name=response.get('name','')
@@ -206,7 +206,7 @@ def build_report(data,kind='model',record_id=None,include_raw=False):
             if math.isfinite(v):vals.append(v)
         complete.append({'响应':name,'有效数':len(vals),'总行数':len(matrix),'缺失或无效':len(matrix)-len(vals)})
     analysis_present=bool(wb.get('responses') or (res.get('rsm') or {}).get('fit') or
-        (res.get('surrogate') or {}).get('responses') or (res.get('screening') or {}).get('response_analysis') or
+        (res.get('surrogate') or {}).get('responses') or
         (res.get('taguchi') or {}).get('response_analysis'))
     risks=['模型计算不等于工程实测确认；是否满足最终产品要求需结合独立确认试验。']
     if not analysis_present:risks.append('当前版本尚无完整分析结果，不生成“验证通过”或最优取值结论。')
@@ -219,7 +219,7 @@ def build_report(data,kind='model',record_id=None,include_raw=False):
             risks.append('本输入版本保留的未通过 / 失败记录：'+'；'.join(f"{r['stage']}（{r['id'][:12]}，{r['status']}）" for r in not_passed)+'。请结合后续修正与确认记录解释。')
     if best and (best.get('infeas') or 0)>0:risks.append('优化返回点违反设定约束，不可作为可行设计推荐。')
     if kind=='trial' and record['status']!='完成':risks.append(f"该记录状态为{record['status']}：{record.get('message','')}")
-    for family in ('screening','taguchi'):
+    for family in ('taguchi',):
         for name,error in (res.get(family) or {}).get('errors',{}).items():risks.append(f'{name}：{error}')
     if source.get('surrogate_config') and analysis_present:
         risks.append('代理模型检验使用测试集，不套用 OLS 系数显著性；训练精度不代表整个设计域的预测精度。')
@@ -268,15 +268,6 @@ def build_report(data,kind='model',record_id=None,include_raw=False):
             blocks.append(table(f'{name} · 测试集验证',[{'训练样本':item.get('train_samples'),'测试样本数':item.get('test_samples'),'测试集决定系数':item.get('r2_test'),'归一化平均绝对误差%':item.get('nmae_test_%')}]))
             if item.get('actual') and len(item['actual'])==len(item.get('predicted',[])):
                 charts.append({'kind':'prediction','title':f'{name}：测试集预测与实测','x':item['actual'],'y':item['predicted']})
-    for name,item in (res.get('screening') or {}).get('response_analysis',{}).items():
-        effects=item.get('effects',[])
-        blocks.append(table(f'{name} · 主效应分析',[{'因子':r['name'],'主效应':r['effect'],'主效应平方占比%':r['share'],
-            '标准误':r.get('se'),'未校正p':r.get('p')} for r in effects]))
-        blocks += [text(item.get('note','')),text(f"中心与角点均值差：{fmt(item.get('curvature'))}")]
-        charts.append({'kind':'bar','title':f'{name}：有符号主效应','x':[r['name'] for r in effects],'y':[r['effect'] for r in effects]})
-    if res.get('screening'):
-        blocks.extend(text(v) for v in res['screening'].get('aliases',[]))
-        risks.append('主效应平方占比不等于因果贡献或统计显著性，须结合交互混杂解释。')
     for name,item in (res.get('taguchi') or {}).get('response_analysis',{}).items():
         blocks.append(table(f'{name} · 水平分析',[{'因子':r['factor'],'水平':r['level_value'],'均值':r['mean'],
             '平均组内标准差':r.get('std'),item.get('metric_label','指标'):r['metric'],'候选':r.get('recommended')} for r in item.get('levels',[])]))
@@ -309,7 +300,7 @@ def build_report(data,kind='model',record_id=None,include_raw=False):
             blocks.extend({'type': 'formula', 'parts': [value]} for value in formulas['coding'])
     elif wb.get('model_text'):
         blocks.append(text(wb['model_text']))
-    if not blocks:blocks=[text('尚无优化方案结果。筛选设计只提供因子筛选结论，不输出连续最优点。')]
+    if not blocks:blocks=[text('尚无优化方案结果。')]
     section('settings','优化方案与波动核验',blocks)
     if optimization or wb:risks.append('μ±kσ 是独立输入、对角二阶近似下的稳健带，不是预测区间，不保证概率覆盖。')
     section('risks','风险、未通过项与确认计划',[text(r) for r in dict.fromkeys(risks)]+[

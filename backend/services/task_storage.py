@@ -69,7 +69,7 @@ def _pack(project):
     data['factors'] = [asdict(f) for f in project.factors]
     data['responses'] = [asdict(r) for r in project.responses]
     document = encode(dict(project=data, models=service.model_cache))
-    manifest = dict(format='RODAS', version=2, software_version='0.2', document=document,
+    manifest = dict(format='RODAS', version=2, software_version='1.0', document=document,
                     input_sha256=sha256(service.input_signature().encode('utf-8')).hexdigest())
     return _json(manifest), arrays
 

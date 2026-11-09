@@ -44,19 +44,18 @@ class TaskActions:
             action.triggered.connect(slot)
             menu.addAction(action)
             self.actions[title] = action
-        bar.addAction('教程', self.tutorial)
         bar.addAction('设置工作目录', window.choose_working_directory)
         self.bind_welcome()
 
     def bind_welcome(self):
-        for title, slot in (('读取已有任务', self.open), ('教程', self.tutorial)):
+        for title, slot in (('读取已有任务', self.open),):
             button = self.window.welcome_page.action_buttons[title]
             button.setToolTip('')
             button.setAccessibleDescription(title)
             button.clicked.connect(slot)
         cover = self.window.welcome_page.action_buttons['新建任务']
         cover.setToolTip('悬停或点击，选择任务主线')
-        cover.setAccessibleDescription('选择基于代理模型的鲁棒优化设计、田口设计或因子筛选')
+        cover.setAccessibleDescription('选择基于代理模型的鲁棒优化设计或田口设计')
         self.window.welcome_page.new_task_card.task_requested.connect(self.new)
 
     def busy(self):
@@ -170,13 +169,3 @@ class TaskActions:
         kind = TASK_TYPES.get(self.window.project_data.task_type)
         label += (kind + ' · ') if kind else ''
         self.window.setWindowTitle(label + 'RODAS · ' + CHINESE_NAME)
-
-    def tutorial(self, *_args):
-        QMessageBox.information(self.window, '教程',
-            '1. 在开始页的“新建任务”选择主线，进入业务建模定义响应与因子并保存。\n'
-            '2. 在方案配置中填写所选主线的参数，生成试验方案。\n'
-            '3. 在数据管理中填写或导入响应，保存并检查完整度。\n'
-            '4. 在优化设计中执行分析或优化，查看模型诊断与设计结果。\n'
-            '5. 在分析报告中预览、导出结果。\n\n'
-            '文件 → 保存：将已提交任务和训练模型保存为 .rodas 文件。\n'
-            '文件 → 读取：恢复任务和模型，保持当前工作目录不变。')

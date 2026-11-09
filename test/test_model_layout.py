@@ -31,7 +31,7 @@ class ModelLayoutTests(unittest.TestCase):
                          ['统计检验', '验证与残差', '模型与系数'])
         self.assertEqual([group.title() for group in page.model_overview.summary.cards],
                          ['统计检验', '验证与残差', '模型与系数'])
-        self.assertEqual(page.tabs.count(), 10)
+        self.assertEqual(page.tabs.count(), 9)
         overview = page.model_overview
         overview.response.setCurrentIndex(overview.response.findData('M'))
         with patch.object(oe, 'build_models', side_effect=AssertionError('navigation refitted')):
@@ -46,7 +46,7 @@ class ModelLayoutTests(unittest.TestCase):
 
     def test_task_specific_navigation_and_removed_manual_start(self):
         _, page = self.make_page()
-        for method, wanted, absent in (('筛选设计', 7, 8), ('田口设计', 8, 7), ('二次响应面模型', 1, 7)):
+        for method, wanted, absent in (('田口设计', 7, 8), ('二次响应面模型', 1, 7)):
             page.project_data.design_method = method
             page._check_inputs()
             self.assertIn(wanted, page.results_workspace.buttons)

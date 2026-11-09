@@ -58,7 +58,7 @@ class ConfigurationPage(QWidget):
         main.setContentsMargins(12, 12, 12, 12)
         main.setSpacing(12)
         self.dynamic_params_widget = ResultTabs()
-        self.results_workspace = ResultsWorkspace(self.dynamic_params_widget, [("方案类型", [0, 1, 2])])
+        self.results_workspace = ResultsWorkspace(self.dynamic_params_widget, [("方案类型", [0, 1])])
         model_page = QWidget()
         column = QVBoxLayout(model_page)
         column.setContentsMargins(10, 12, 10, 10)
@@ -70,7 +70,6 @@ class ConfigurationPage(QWidget):
             add_combo_item(self.model_combo, MODEL_TERM_KEYS[key], key)
         row.addWidget(self.model_combo, 1)
         column.addLayout(row)
-        self.screening_widget = configuration_panels.screening(self)
         self.taguchi_widget = configuration_panels.taguchi(self)
         self.model_stack = ModelStack()
         self.model_editors = {}
@@ -79,11 +78,10 @@ class ConfigurationPage(QWidget):
             self.model_editors[key] = editor
             self.model_stack.addWidget(editor)
         column.addWidget(self.model_stack)
-        for widget in (self.screening_widget, self.taguchi_widget, model_page):
+        for widget in (self.taguchi_widget, model_page):
             widget.layout().setContentsMargins(10, 12, 10, 10)
             widget.layout().addStretch()
-        for widget, term in ((self.screening_widget, "screening_design"),
-                             (self.taguchi_widget, "taguchi_design"),
+        for widget, term in ((self.taguchi_widget, "taguchi_design"),
                              (model_page, "task_robust")):
             scroll = QScrollArea()
             scroll.setWidgetResizable(True)
@@ -120,7 +118,7 @@ class ConfigurationPage(QWidget):
         self.model_combo.currentIndexChanged.connect(self._on_selection_changed)
         for editor in self.model_editors.values():
             editor.changed.connect(self._configuration_changed)
-        for widget in (self.screening_widget, self.taguchi_widget):
+        for widget in (self.taguchi_widget,):
             for control in widget.findChildren(QComboBox):
                 control.currentIndexChanged.connect(self._configuration_changed)
             for control in widget.findChildren(QSpinBox):
@@ -129,8 +127,8 @@ class ConfigurationPage(QWidget):
             self._select_method(self.project_data.design_method)
             self._restore_classical_settings()
         if self.project_data.task_type:
-            family = {'robust': 2, 'taguchi': 1, 'factorial': 0}[self.project_data.task_type]
-            for index in range(3):
+            family = {'robust': 1, 'taguchi': 0}[self.project_data.task_type]
+            for index in range(2):
                 self.dynamic_params_widget.setTabVisible(index, index == family)
             self.dynamic_params_widget.setCurrentIndex(family)
             self.results_workspace.refresh()
@@ -138,7 +136,7 @@ class ConfigurationPage(QWidget):
         self._on_selection_changed()
         if self.project_data.doe_matrix:
             key = self.MODEL_KEYS[self.model_combo.currentIndex()]
-            saved = self._saved_config(key) if self.dynamic_params_widget.currentIndex() == 2 else None
+            saved = self._saved_config(key) if self.dynamic_params_widget.currentIndex() == 1 else None
             if saved and saved.get("doe_method") not in design_service.MODEL_DESIGNS[key]:
                 self.config_status.setText("原方案使用了当前不支持的搭配；当前已选默认试验设计，重新生成后生效")
             else:
@@ -163,8 +161,6 @@ class ConfigurationPage(QWidget):
     def _selected_method(self):
         category = self.dynamic_params_widget.currentIndex()
         if category == 0:
-            return name("screening_design")
-        if category == 1:
             return name("taguchi_design")
         key = self.MODEL_KEYS[self.model_combo.currentIndex()]
         return MODEL_TITLES[key] if key == "RSM" else f"代理模型建模 · {MODEL_TITLES[key]}"
@@ -173,14 +169,6 @@ class ConfigurationPage(QWidget):
         params = self.project_data.design_params
         meta = params.get("meta", {})
         if self.dynamic_params_widget.currentIndex() == 0:
-            kind = meta.get("kind", "")
-            self.screen_kind_combo.setCurrentIndex(1 if "1/2" in kind else 2 if "1/4" in kind else 3 if "Plackett" in kind else 0)
-            self.f_topn_spin.setValue(params.get("top_n", 5))
-            self.f_center_spin.setValue(meta.get("centers", 2))
-            self.f_repeat_spin.setValue(meta.get("replicates", 1))
-            self.f_seed_spin.setValue(params.get("seed", 123))
-            self.f_order_combo.setCurrentIndex(0 if params.get("randomize", True) else 1)
-        elif self.dynamic_params_widget.currentIndex() == 1:
             self.t_levels_combo.setCurrentIndex(0 if meta.get("levels", 2) == 2 else 1)
             self.t_noise_levels_combo.setCurrentIndex(0 if meta.get("noise_level_count", 2) in (0, 2) else 1)
             for combo, key in ((self.t_inner_combo, "inner_label"), (self.t_outer_combo, "outer_label")):
@@ -192,37 +180,35 @@ class ConfigurationPage(QWidget):
             self.t_order_combo.setCurrentIndex(0 if params.get("randomize", True) else 1)
 
     def _select_method(self, method):
-        if "筛选" in method:
+        if "田口" in method:
             self.dynamic_params_widget.setCurrentIndex(0)
-        elif "田口" in method:
-            self.dynamic_params_widget.setCurrentIndex(1)
         else:
             key = ("RSM" if any(text in method for text in ("响应曲面", "响应面")) else
                    "Kriging" if any(text in method for text in ("Kriging", "克里金")) else
                    "SVR" if any(text in method for text in ("SVR", "支持向量回归")) else "ANN")
             self.model_combo.setCurrentIndex(self.MODEL_KEYS.index(key))
-            self.dynamic_params_widget.setCurrentIndex(2)
+            self.dynamic_params_widget.setCurrentIndex(1)
 
     def _on_selection_changed(self, *_args):
         self.model_stack.setCurrentIndex(self.model_combo.currentIndex())
         category = self.dynamic_params_widget.currentIndex()
-        content = self.model_stack.currentWidget() if category == 2 else (self.screening_widget, self.t_scale_zone)[category]
+        content = self.model_stack.currentWidget() if category == 1 else self.t_scale_zone
         if self.preview_group.parentWidget() is not content:
             layout = content.layout()
-            index = layout.count() if category in (1, 2) else layout.count() - 1
+            index = layout.count() if category == 1 else layout.count() - 1
             layout.insertWidget(index, self.preview_group)
-        actions = self.t_settings_header if category == 1 else self.actions
+        actions = self.t_settings_header if category == 0 else self.actions
         for button in (self.refresh_btn, self.gen_btn):
             if actions.indexOf(button) < 0:
                 actions.addWidget(button)
-        status_layout = self.t_scale_header if category == 1 else self.actions
+        status_layout = self.t_scale_header if category == 0 else self.actions
         if status_layout.indexOf(self.config_status) < 0:
-            status_layout.insertWidget(1 if category == 1 else 0, self.config_status, 1)
-        self.config_status.setProperty('role', 'muted' if category == 1 else 'badge')
+            status_layout.insertWidget(1 if category == 0 else 0, self.config_status, 1)
+        self.config_status.setProperty('role', 'muted' if category == 0 else 'badge')
         self.config_status.style().unpolish(self.config_status)
         self.config_status.style().polish(self.config_status)
-        self.preview_group.setTitle('内表 × 外表 × 重复' if category == 1 else '试验规模')
-        self.taguchi_preview.setVisible(category == 1)
+        self.preview_group.setTitle('内表 × 外表 × 重复' if category == 0 else '试验规模')
+        self.taguchi_preview.setVisible(category == 0)
         self.gen_btn.setEnabled(True)
         self._configuration_changed()
 
@@ -239,7 +225,7 @@ class ConfigurationPage(QWidget):
 
     def _draft_state(self):
         widget = self.dynamic_params_widget.currentWidget()
-        if self.dynamic_params_widget.currentIndex() == 2:
+        if self.dynamic_params_widget.currentIndex() == 1:
             widget = self.model_stack.currentWidget()
         controls = ([c.currentText() for c in widget.findChildren(QComboBox)],
                     [c.text() for c in widget.findChildren(QAbstractSpinBox)])
@@ -292,14 +278,9 @@ class ConfigurationPage(QWidget):
         raise ValueError("因子数量超过当前正交表的容量")
 
     def _build_plan(self, preview=False):
-        if not preview and self.dynamic_params_widget.currentIndex() != 2:
+        if not preview and self.dynamic_params_widget.currentIndex() != 1:
             commit_numeric_inputs(self.dynamic_params_widget.currentWidget())
         method = self._selected_method()
-        if "筛选" in method:
-            return design_service.screening_plan(self.project_data, method,
-                ("full", "half", "quarter", "pb")[self.screen_kind_combo.currentIndex()],
-                self.f_seed_spin.value(), self.f_center_spin.value(), self.f_repeat_spin.value(),
-                self.f_order_combo.currentText() == "随机", self.f_topn_spin.value())
         if "田口" in method:
             levels = 2 if self.t_levels_combo.currentIndex() == 0 else 3
             noise_levels = 2 if self.t_noise_levels_combo.currentIndex() == 0 else 3
@@ -313,7 +294,7 @@ class ConfigurationPage(QWidget):
             editor.collect_config(commit=not preview), preview=preview)
 
     def _refresh_preview(self):
-        is_taguchi = self.dynamic_params_widget.currentIndex() == 1
+        is_taguchi = self.dynamic_params_widget.currentIndex() == 0
         mode = self.t_snr_combo.currentText()
         self.t_response_label.setText('；'.join(f"{r.name}：{r.feature if '按各响应' in mode else mode.split('（')[0]}型信噪比"
                                                 for r in self.project_data.responses if r.name))

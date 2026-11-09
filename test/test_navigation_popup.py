@@ -47,22 +47,22 @@ class NavigationPopupTests(unittest.TestCase):
                         responses=[ResponseItem(name="Y")])
         page = ConfigurationPage(p)
         self.assertFalse(hasattr(page, "method_combo"))
-        page.f_repeat_spin.setValue(2)
-        page.results_workspace.buttons[1].click()
+        page.t_repeat_spin.setValue(2)
+        page.results_workspace.buttons[0].click()
         page.t_seed_spin.setValue(64)
-        page.results_workspace.buttons[2].click()
+        page.results_workspace.buttons[1].click()
         page.model_combo.setCurrentIndex(3)
         page.model_editors["ANN"].sample_count_spin.setValue(42)
         page.model_editors["ANN"].epoch_spin.setValue(1200)
-        for index in (0, 1, 2):
+        for index in (0, 1):
             page.results_workspace.buttons[index].click()
             self.assertEqual(page.dynamic_params_widget.currentIndex(), index)
-        self.assertEqual(page.f_repeat_spin.value(), 2)
+        self.assertEqual(page.t_repeat_spin.value(), 2)
         self.assertEqual(page.t_seed_spin.value(), 64)
         page._generate_by_method()
         restored = ConfigurationPage(p)
-        self.assertEqual(restored.dynamic_params_widget.currentIndex(), 2)
-        self.assertTrue(restored.results_workspace.buttons[2].isChecked())
+        self.assertEqual(restored.dynamic_params_widget.currentIndex(), 1)
+        self.assertTrue(restored.results_workspace.buttons[1].isChecked())
         self.assertEqual(restored.model_editors["ANN"].epoch_spin.value(), 1200)
         self.assertEqual(len(p.doe_matrix), 42)
         page.close()
@@ -75,7 +75,7 @@ class NavigationPopupTests(unittest.TestCase):
         window.show()
         window.switch_page(1)
         page = window.page_CFG
-        for index in (0, 1, 2):
+        for index in (0, 1):
             page.results_workspace.buttons[index].click()
             APP.processEvents()
             rect = window.rect()
@@ -153,8 +153,8 @@ class NavigationPopupTests(unittest.TestCase):
         self.assert_list_popup(combo)
         window.switch_page(1)
         APP.processEvents()
-        window.page_CFG.screen_kind_combo.setCurrentIndex(3)
-        self.assert_list_popup(window.page_CFG.screen_kind_combo)
+        window.page_CFG.model_combo.setCurrentIndex(1)
+        self.assert_list_popup(window.page_CFG.model_combo)
         window.close()
 
 

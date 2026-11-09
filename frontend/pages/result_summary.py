@@ -36,21 +36,6 @@ def _model_results(project, labels):
     return errors, successes, len(errors)
 
 
-def _screening_results(project, labels):
-    result = project.screening_result
-    sections = []
-    for name, item in result.get("response_analysis", {}).items():
-        effects = item.get("effects", [])[:project.design_params.get("top_n", 5)]
-        sections.append(section(f"重点主效应 · {labels.get(name, name)}",
-            ["因子", "主效应", "主效应平方占比（%）"],
-            [[e["name"], e["effect"], e["share"]] for e in effects],
-            "效应单位同响应。下一步：在「主效应分析」查看完整效应与设计诊断，再决定后续研究因子。"))
-    errors = result.get("errors", {})
-    count = len(sections)
-    sections += [section(f"{name} · 分析失败", message=message) for name, message in errors.items()]
-    return sections, count, len(errors)
-
-
 def _taguchi_results(project, labels):
     result = project.taguchi_result
     sections = []
@@ -88,9 +73,7 @@ def overview(project):
     readiness = [(labels[name], count, total) for name, count, total in dataset["readiness"]]
     ready = dataset["ready"]
     render = _model_results
-    if "筛选" in method:
-        render = _screening_results
-    elif "田口" in method:
+    if "田口" in method:
         render = _taguchi_results
     sections, successes, errors = render(project, labels) if method else ([], 0, 0)
     if not method:
@@ -102,12 +85,12 @@ def overview(project):
     elif successes:
         status, next_step = "分析已完成", "当前数据与分析结果已就绪。"
     else:
-        action = "计算因子主效应" if "筛选" in method else "计算田口信噪比" if "田口" in method else "代理模型构建"
+        action = "计算田口信噪比" if "田口" in method else "代理模型构建"
         status, next_step = "等待分析", f"下一步：使用页面上方「{action}」。"
     if not sections:
         sections = [section("分析结果", message="尚未执行分析。" if ready else "响应数据就绪后显示当前方案的分析结果。")]
     information = dataset['information']
-    if project.task_type not in ('taguchi', 'factorial') and not any(key in method for key in ('筛选', '田口')):
+    if project.task_type != 'taguchi' and '田口' not in method:
         model = project.surrogate_config.get('model') or ('RSM' if any(key in method for key in ('响应面', '响应曲面')) else method.rsplit('·', 1)[-1].strip())
         model_name = {'RSM': '二次响应面模型', 'Kriging': '克里金模型',
                       'SVR': '支持向量回归模型', 'ANN': '神经网络模型'}.get(model, '未选择')

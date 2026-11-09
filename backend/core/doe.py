@@ -19,12 +19,6 @@ _PB_CORES = {
     20: "+ + - - + + + + - + - + - - - - + + -".replace(" ", ""),
 }
 
-SCREENING_KINDS = {
-    "full": "全因子设计",
-    "half": "二分之一部分因子设计",
-    "quarter": "四分之一部分因子设计",
-    "pb": "普拉克特–伯曼设计",
-}
 from .factors import _round_row, to_actual
 from .response_models import _design_matrix
 
@@ -69,94 +63,6 @@ def _pb_matrix(n: int):
         rows.append([core[(i - shift) % (n - 1)] for i in range(n - 1)])
     rows.append([-1] * (n - 1))  # 最后一行全低
     return rows
-
-
-def screening_coded_runs(k: int, kind: str):
-    """返回筛选设计的编码行 [[+1/-1/0(中心), ...], ...] 与元信息。"""
-    limits = {"full": (1, 7), "half": (3, 10), "quarter": (5, 10), "pb": (1, 19)}
-    if kind not in limits or not limits[kind][0] <= k <= limits[kind][1]:
-        raise ValueError(f"{SCREENING_KINDS.get(kind, kind)}支持因子数：{limits.get(kind, '未知')}；当前 {k}。")
-    if kind == "full":
-        n = 2 ** k
-        rows = [[1 if (i >> j) & 1 else -1 for j in range(k)] for i in range(n)]
-        info_extra = f"全因子设计，2^{k} = {n} 次试验"
-    elif kind == "half":
-        n = 2 ** (k - 1)
-        rows = []
-        for i in range(n):
-            row = [1 if (i >> j) & 1 else -1 for j in range(k - 1)]
-            prod = 1
-            for v in row:
-                prod *= v
-            rows.append(row + [prod])  # 第 k 个因子 = 前 k-1 个乘积
-        info_extra = f"分辨率为 {k}（第 {k} 个因子作为生成元）"
-    elif kind == "quarter":
-        n = 2 ** (k - 2)
-        masks = [m for m in range(1, n) if m.bit_count() >= 2]
-        a, b = max(itertools.combinations(masks, 2), key=lambda pair: (
-            min(pair[0].bit_count() + 1, pair[1].bit_count() + 1,
-                (pair[0] ^ pair[1]).bit_count() + 2),
-            pair[0].bit_count() + pair[1].bit_count() + (pair[0] ^ pair[1]).bit_count()))
-        rows = []
-        for i in range(n):
-            row = [1 if (i >> j) & 1 else -1 for j in range(k - 2)]
-            g1 = math.prod(v for j, v in enumerate(row) if a & (1 << j))
-            g2 = math.prod(v for j, v in enumerate(row) if b & (1 << j))
-            rows.append(row + [g1, g2])
-        resolution = min(a.bit_count() + 1, b.bit_count() + 1, (a ^ b).bit_count() + 2)
-        generator = lambda mask: "×".join(f"x{j+1}" for j in range(k-2) if mask & (1 << j))
-        info_extra = f"分辨率 {resolution}；生成元 x{k-1}={generator(a)}，x{k}={generator(b)}；主效应正交，仍需检查交互混杂"
-    elif kind == "pb":
-        n = 12 if k <= 11 else 20
-        matrix = _pb_matrix(n)
-        rows = [row[:k] for row in matrix]
-        info_extra = f"普拉克特–伯曼设计，{n} 次试验（主效应正交）"
-    else:
-        raise ValueError(kind)
-    return rows, n, info_extra
-
-
-def build_screening(factors, kind: str, seed: int, centers: int = 0,
-                    replicates: int = 1, randomize: bool = True):
-    """构造两水平筛选设计表。factors: [(名称,低,高,固定值),...]"""
-    if centers < 0 or replicates < 1:
-        raise ValueError("中心点数不能为负，重复次数至少为 1")
-    fixed_factors = [f for f in factors if f[3] is not None]
-    factors = [f for f in factors if f[3] is None]
-    k = len(factors)
-    if kind == "full" and k > 7:
-        raise ValueError("全因子设计仅支持不超过 7 个因子（试验次数 2^k 过大）")
-    if kind == "half" and k > 10:
-        raise ValueError("二分之一部分因子设计仅支持不超过 10 个因子")
-    if kind == "quarter" and k < 5:
-        raise ValueError("四分之一部分因子设计至少需要 5 个因子")
-    if kind == "pb" and k > 19:
-        raise ValueError("普拉克特–伯曼设计最多支持 19 个因子")
-
-    coded, base_runs, info = screening_coded_runs(k, kind)
-    all_coded = list(coded)
-    all_coded.extend([[0] * k] * centers)
-    rows = []
-    for _ in range(max(1, replicates)):
-        for coded_row in all_coded:
-            row = {}
-            for (name, lo, hi, fixed), code in zip(factors, coded_row):
-                row[name] = fixed if fixed is not None else to_actual(code, lo, hi)
-            rows.append(_round_row(row))
-            rows[-1].update({f[0]: f[3] for f in fixed_factors})
-    if randomize:
-        rng = random.Random(seed)
-        rng.shuffle(rows)
-    meta = {
-        "kind": SCREENING_KINDS[kind],
-        "base_runs": base_runs,
-        "centers": centers,
-        "replicates": replicates,
-        "total_runs": len(rows),
-        "diagnostic": info,
-        "active_factors": [f[0] for f in factors],
-    }
-    return rows, meta
 
 
 def ccd_runs(k: int, alpha: float, centers: int):

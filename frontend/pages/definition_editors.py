@@ -12,7 +12,7 @@ from frontend.pages.table_widgets import BalancedColumnsTable
 from frontend.terminology import apply_header_tooltips, tooltip
 
 
-LEVEL_HEADERS = {"taguchi": ("低水平值", "高水平值"), "factorial": ("低水平", "高水平")}
+LEVEL_HEADERS = {"taguchi": ("低水平值", "高水平值")}
 
 
 def stacked(*widgets):
@@ -141,7 +141,7 @@ class FactorEditor(QWidget):
     def __init__(self, source, item=None, task_type="robust"):
         super().__init__()
         self.source = source
-        self.classical = task_type in ("taguchi", "factorial")
+        self.classical = task_type == "taguchi"
         item = item or FactorItem(source=source)
         self.name, self.unit = QLineEdit(item.name), QLineEdit(item.unit)
         design = source == "设计"
@@ -312,7 +312,7 @@ class FactorEditor(QWidget):
 class FactorTable(DefinitionTable):
     def __init__(self, source, task_type="robust"):
         design = source == "设计"
-        classical = task_type in ("taguchi", "factorial")
+        classical = task_type == "taguchi"
         if classical:
             headers = ["名称", *LEVEL_HEADERS[task_type], "单位", "操作"]
             widths = (110, 140, 140, 60, 64)
@@ -339,9 +339,6 @@ class ResponseEditor(QWidget):
         self.task_type = task_type
         item = item or ResponseItem(kind="目标")
         self.name, self.unit = QLineEdit(item.name), QLineEdit(item.unit)
-        if task_type == "factorial":
-            self.cells = (self.name, self.unit)
-            return
         if task_type != "taguchi":
             self.objective, self.constraint = QCheckBox(), QCheckBox()
             self.role_group = QButtonGroup(self)
@@ -384,8 +381,6 @@ class ResponseEditor(QWidget):
         name = self.name.text().strip()
         if not name:
             raise ValueError("请填写响应名称。")
-        if self.task_type == "factorial":
-            return ResponseItem(name=name, unit=self.unit.text().strip())
         feature = self.feature.currentText()
         if self.task_type == "taguchi":
             if feature == "望目":
@@ -408,9 +403,7 @@ class ResponseEditor(QWidget):
 
 class ResponseTable(DefinitionTable):
     def __init__(self, task_type="robust"):
-        if task_type == "factorial":
-            headers, widths = ["名称", "单位", "操作"], (180, 60, 64)
-        elif task_type == "taguchi":
+        if task_type == "taguchi":
             headers, widths = ["名称", "目标特征", "目标值", "单位", "操作"], (110, 100, 140, 60, 64)
         else:
             headers = ["名称", "目标响应", "约束响应", "目标特征", "响应鲁棒性阈值", "单位", "操作"]

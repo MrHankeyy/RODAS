@@ -53,7 +53,7 @@ class AnalysisPage(QWidget):
             data = reports.bundle(self.project_data)
             if not any(data["results"].values()):
                 self.preview.setPlainText(
-                    "暂无当前结果。请先完成筛选分析、田口分析或模型优化。"
+                    "暂无当前结果。请先完成田口分析或模型优化。"
                     "输入改变后需要重新计算。")
                 self.status_label.setText("等待当前输入的分析结果")
                 return

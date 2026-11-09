@@ -417,10 +417,6 @@ class DefinitionEditorTests(unittest.TestCase):
                 for value, expected in zip(actual, levels):
                     self.assertAlmostEqual(value, expected)
                 self.assertTrue(all('T' in row for row in plan.rows))
-            plan = design_service.screening_plan(project, '筛选设计', 'full', seed=1,
-                                                 centers=0, replicates=1, randomize=False, top_n=2)
-            self.assertEqual({row['b'] for row in plan.rows}, {40, 60})
-            self.assertTrue(all('T' not in row for row in plan.rows))
 
     def test_previous_nominal_environment_definitions_convert_to_actual_values_on_submit(self):
         for probability, distribution in ((False, '无'), (True, '正态分布'), (True, '均匀分布')):

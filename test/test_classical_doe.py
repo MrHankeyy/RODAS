@@ -1,4 +1,4 @@
-"""Analytical checks and Qt integration for the three classical DOE workflows."""
+"""Analytical checks and Qt integration for the classical DOE workflows."""
 import os
 import sys
 import math
@@ -40,30 +40,6 @@ def taguchi(feature='望小', outer=True, repeats=1):
 
 
 class ClassicalDOE(unittest.TestCase):
-    def test_screening_all_columns(self):
-        for kind, ks in [('full', range(1,8)), ('half',range(3,11)), ('quarter',range(5,11)), ('pb',range(1,20))]:
-            for k in ks:
-                with self.subTest(kind=kind,k=k):
-                    x = np.array(de.screening_coded_runs(k,kind)[0])
-                    np.testing.assert_equal(x.sum(axis=0),np.zeros(k))
-                    np.testing.assert_equal(x.T@x,len(x)*np.eye(k))
-        with self.assertRaises(ValueError): de.screening_coded_runs(4,'quarter')
-
-    def test_screening_real_effects_missing_and_scale(self):
-        fs=factors(3)
-        rows,meta=de.build_screening(de.simple_factors(fs),'full',seed=1,centers=2,replicates=2)
-        for row in rows:
-            row['Y']=5+3*row['X0']-row['X1']+.5*row['X2']+2*row['X0']*row['X1']
-            row['Z']=1000*row['Y']
-        p=ProjectData(factors=fs,responses=[ResponseItem(name='Y'),ResponseItem(name='Z')],doe_matrix=rows,design_params={'meta':meta,'top_n':1})
-        r=da.screening(p)
-        self.assertEqual(len(r['main_effects']),1)
-        self.assertEqual([e['effect'] for e in r['response_analysis']['Y']['effects']],[6,-2,1])
-        self.assertEqual(r['response_analysis']['Y']['pure_error_df'],11)
-        self.assertAlmostEqual(r['response_analysis']['Y']['effects'][0]['share'],r['response_analysis']['Z']['effects'][0]['share'])
-        rows[0]['Y']=''
-        self.assertNotIn('Y',da.screening(p)['response_analysis'])
-
     def test_oa_balance(self):
         for label,k in [('L4',3),('L8',7),('L12',11),('L16',15),('L9',4),('L27',13)]:
             _,levels,n,rows=de.taguchi_arrays(label,k)
@@ -145,7 +121,7 @@ class ClassicalDOE(unittest.TestCase):
         with self.assertRaises(ValueError): de.build_response_surface(de.simple_factors(fs),'BBD','face',1,centers=0,replicates=1,seed=1)
 
     def test_qt_generation_dispatch_report_and_invalidation(self):
-        for method in ['筛选设计','田口稳健设计（内表×外表）','响应曲面设计']:
+        for method in ['田口稳健设计（内表×外表）','响应曲面设计']:
             p=ProjectData(factors=factors(3),responses=[ResponseItem(name='Y')],design_method=method)
             cfg=ConfigurationPage(p);cfg._generate_by_method(method)
             for row in p.doe_matrix: row['Y']=10+row['X0']+2*row['X1']+row['X2']**2
@@ -157,16 +133,13 @@ class ClassicalDOE(unittest.TestCase):
                     page._run_primary_action()
                 error.assert_not_called()
             report=AnalysisPage(p);report.run_analysis()
-            if '筛选' in method:
-                self.assertEqual(page.screening_panel.table.rowCount(),3)
-                self.assertIn("筛选", report.report_html)
-            elif '田口' in method:
+            if '田口' in method:
                 self.assertEqual(page.taguchi_panel.table.rowCount(),6)
                 self.assertIn("田口", report.report_html)
             else: self.assertTrue(p.rsm_result['fit'])
             p.doe_matrix[0]['Y']+=1
             page._check_inputs()
-            self.assertFalse(p.screening_result or p.taguchi_result or p.rsm_result)
+            self.assertFalse(p.taguchi_result or p.rsm_result)
             self.assertIsNone(page._oe_context)
             cfg.close();page.close();report.close()
 
@@ -186,10 +159,6 @@ class ClassicalDOE(unittest.TestCase):
 
     def test_fixed_factors_and_seed(self):
         fs=[('X0',-1,1,None),('X1',-1,1,None),('FIX',0,1,.4)]
-        a,meta=de.build_screening(fs,'full',seed=3,replicates=2,centers=1)
-        b,_=de.build_screening(fs,'full',seed=3,replicates=2,centers=1)
-        self.assertEqual(a,b);self.assertEqual(len(a),10)
-        self.assertTrue(all(row['FIX']==.4 for row in a))
         rows,meta=de.build_taguchi(fs,[('N',-1,1,0)],'L4','无',2)
         self.assertEqual(meta['outer_runs'],1)
         self.assertTrue(all(row['N']==0 for row in rows))
@@ -198,7 +167,7 @@ class ClassicalDOE(unittest.TestCase):
         p=taguchi();p.doe_matrix[0]['Y']=''
         r=da.taguchi(p)
         self.assertFalse(r['best_levels']);self.assertFalse(r['response_analysis'])
-        p=ProjectData(factors=factors(2),design_method='筛选设计')
+        p=ProjectData(factors=factors(2),design_method='田口设计')
         report=AnalysisPage(p);report.run_analysis()
         self.assertIsNone(report.report)
         self.assertIn("暂无", report.preview.toPlainText())
