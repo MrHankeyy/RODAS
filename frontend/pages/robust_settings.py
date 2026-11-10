@@ -44,8 +44,16 @@ def build_settings(owner, layout):
     row.addWidget(owner.robust_mode_combo)
     row.addStretch()
     strategy.addLayout(row)
+    owner.objective_limits_check = QCheckBox("将目标鲁棒性要求作为独立约束")
+    owner.objective_limits_check.setToolTip(
+        "对业务建模中已填写性能阈值的目标响应启用：最小化要求 μ+kσ≤上限，"
+        "最大化要求 μ−kσ≥下限，趋近目标值要求 μ±kσ 位于目标区间。"
+        "目标响应仍参与目标优化。此设置与标准差上限相互独立，适用于三种优化策略。")
+    owner.objective_limits_check.setAccessibleDescription(owner.objective_limits_check.toolTip())
+    owner.objective_limits_check.toggled.connect(owner._settings_changed)
+    strategy.addWidget(owner.objective_limits_check)
     owner.weight_spin = numeric_input(float, 0, 1, .5)
-    owner.weight_fields = field("目标损失权重 λ", owner.weight_spin, "Target Loss Weight",
+    owner.weight_fields = field("望性损失权重 λ", owner.weight_spin, "Desirability Loss Weight",
                                "将归一化目标损失与波动加权求和；波动权重为 1−λ。")
     owner.variability_weight = QLabel()
     owner.variability_weight.setToolTip(tooltip("variability_weight") + "\n波动权重等于 1−λ。")
@@ -54,9 +62,9 @@ def build_settings(owner, layout):
         lambda value: owner.variability_weight.setText(f"波动权重：{1-value:.2f}"))
     owner.variability_weight.setText("波动权重：0.50")
     strategy.addWidget(owner.weight_fields)
-    owner.sigma_limits_group = QGroupBox("响应波动上限")
+    owner.sigma_limits_group = QGroupBox("目标响应标准差上限")
     owner.sigma_limits_group.setToolTip(
-        "响应波动上限（Response Variability Limit）\n为每个目标响应设置标准差上限；"
+        "目标响应标准差上限（Objective Response Standard Deviation Limit）\n为每个目标响应设置标准差上限；"
         "满足波动限制后继续优化目标表现。标准差由输入不确定性传播和模型残差共同估计。")
     limits_layout = QVBoxLayout(owner.sigma_limits_group)
     limits_layout.setContentsMargins(4, 6, 4, 4)

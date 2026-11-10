@@ -70,7 +70,7 @@ class TaskModelingTests(unittest.TestCase):
                     self.assertFalse(page.responses.findChildren(QCheckBox))
                     self.assertFalse(hasattr(page.design_factors, 'relation'))
                 if kind == 'taguchi':
-                    self.assertEqual(headers(page.responses), ['名称', '目标特征', '目标值', '单位', '操作'])
+                    self.assertEqual(headers(page.responses), ['名称', '优化方向', '目标值', '单位', '操作'])
                     self.assertEqual(headers(page.environment_factors), ['名称', '低水平值', '高水平值', '单位', '操作'])
                     self.assertEqual([page.model_tabs.tabText(i) for i in range(3)], ['响应', '控制因子', '噪声因子'])
                     self.assertEqual(page.design_factors.add_btn.text(), '+  新增控制因子')
@@ -101,13 +101,13 @@ class TaskModelingTests(unittest.TestCase):
         page, project = self.fill_classical('taguchi')
         response = page.responses.editors[0]
         for feature in ('望大', '望小'):
-            response.feature.setCurrentText(feature)
+            response.feature.setCurrentIndex(response.feature.findData(feature))
             self.assertFalse(response.target.isEnabled())
             page.save_btn.click()
             self.assertEqual(project.responses[0].feature, feature)
             self.assertEqual(project.responses[0].robust_limit, '')
         before = task_storage.fingerprint(project)
-        response.feature.setCurrentText('望目')
+        response.feature.setCurrentIndex(response.feature.findData('望目'))
         self.assertTrue(response.target.isEnabled())
         with patch('frontend.pages.modeling_page.Notice.warning') as notice:
             page.save_btn.click()
@@ -128,10 +128,10 @@ class TaskModelingTests(unittest.TestCase):
         self.assertIn('目标偏差', result['response_analysis']['Y']['metric_label'])
         for run in result['response_analysis']['Y']['runs']:
             self.assertAlmostEqual(run['metric'], -10 * math.log10(.2))
-        response.feature.setCurrentText('望小')
+        response.feature.setCurrentIndex(response.feature.findData('望小'))
         page.save_btn.click()
         self.assertEqual(project.responses[0].target, '')
-        response.feature.setCurrentText('望目')
+        response.feature.setCurrentIndex(response.feature.findData('望目'))
         self.assertEqual(response.target.text(), '10')
 
     def test_target_disabled_state_is_visible_before_click_and_preserves_draft(self):
@@ -148,7 +148,7 @@ class TaskModelingTests(unittest.TestCase):
         QTest.mouseClick(target, Qt.MouseButton.LeftButton)
         QTest.keyClicks(target, '123')
         self.assertEqual(target.text(), '')
-        response.feature.setCurrentText('望目')
+        response.feature.setCurrentIndex(response.feature.findData('望目'))
         APP.processEvents()
         self.assertTrue(target.isVisible())
         self.assertTrue(target.isEnabled())
@@ -156,7 +156,7 @@ class TaskModelingTests(unittest.TestCase):
         QTest.mouseClick(target, Qt.MouseButton.LeftButton)
         QTest.keyClicks(target, '10')
         self.assertEqual(target.text(), '10')
-        response.feature.setCurrentText('望大')
+        response.feature.setCurrentIndex(response.feature.findData('望大'))
         APP.processEvents()
         self.assertTrue(target.isVisible())
         self.assertFalse(target.isEnabled())
@@ -188,7 +188,7 @@ class TaskModelingTests(unittest.TestCase):
     def test_target_accepts_zero_and_negative_values_and_rejects_nonfinite_input(self):
         page, project = self.fill_classical('taguchi')
         response = page.responses.editors[0]
-        response.feature.setCurrentText('望目')
+        response.feature.setCurrentIndex(response.feature.findData('望目'))
         for target in ('0', '-10', '1.25'):
             response.target.setText(target)
             page.save_btn.click()
@@ -204,7 +204,7 @@ class TaskModelingTests(unittest.TestCase):
     def test_changed_target_invalidates_results_only_after_explicit_submission(self):
         page, project = self.fill_classical('taguchi')
         response = page.responses.editors[0]
-        response.feature.setCurrentText('望目')
+        response.feature.setCurrentIndex(response.feature.findData('望目'))
         response.target.setText('10')
         page.save_btn.click()
         project.taguchi_result = {'sentinel': 'existing result'}
@@ -244,7 +244,7 @@ class TaskModelingTests(unittest.TestCase):
             page, project = self.fill_classical(kind)
             if kind == 'taguchi':
                 response = page.responses.editors[0]
-                response.feature.setCurrentText('望目')
+                response.feature.setCurrentIndex(response.feature.findData('望目'))
                 response.target.setText('10')
             page.save_btn.click()
             before = task_storage.fingerprint(project)

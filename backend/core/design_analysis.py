@@ -111,7 +111,7 @@ def taguchi(project):
               "recommendation": "按响应分别给出候选水平；组合采用主效应可加假设，必须进行确认试验。",
               "summary": f"{n_inner} 内表组 × {n_outer} 外表组 × {repeats} 次重复。"}
     has_replication = n_outer * repeats >= 2
-    mode = project.design_params.get("snr_mode", "按各响应目标特征自动")
+    mode = project.design_params.get("snr_mode", "按各响应优化方向自动")
     for resp in project.responses:
         if not resp.name:
             continue

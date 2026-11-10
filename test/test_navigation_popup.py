@@ -115,7 +115,7 @@ class NavigationPopupTests(unittest.TestCase):
         for index in range(3):
             combo.setCurrentIndex(index)
             self.assert_list_popup(combo)
-        self.assertEqual([combo.itemText(i) for i in range(combo.count())], ["望大", "望小", "望目"])
+        self.assertEqual([combo.itemText(i) for i in range(combo.count())], ["最大化", "最小化", "趋近目标值"])
         window.close()
 
     def test_popup_stays_on_screen_when_below_space_is_insufficient(self):

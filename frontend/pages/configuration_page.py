@@ -175,7 +175,7 @@ class ConfigurationPage(QWidget):
                 index = next((i for i in range(combo.count()) if combo.itemText(i).startswith(meta.get(key, "无"))), 0)
                 combo.setCurrentIndex(index)
             self.t_repeat_spin.setValue(meta.get("replicates", 1))
-            self.t_snr_combo.setCurrentText(params.get("snr_mode", "按各响应目标特征自动"))
+            self.t_snr_combo.setCurrentText(params.get("snr_mode", "按各响应优化方向自动"))
             self.t_seed_spin.setValue(params.get("seed", 789))
             self.t_order_combo.setCurrentIndex(0 if params.get("randomize", True) else 1)
 

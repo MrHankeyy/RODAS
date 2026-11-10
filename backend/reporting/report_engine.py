@@ -1,4 +1,5 @@
 """Versioned, source-grounded reports. No fitting or optimization occurs here."""
+from backend.domain.response_terms import criterion_name, limit_name
 import base64
 import copy
 import hashlib
@@ -46,7 +47,7 @@ def _factor_rows(factors, task_type='robust'):
         rows.append({'模型输入' if task_type=='robust' else '因子':factor.get('name'),
                      '来源':factor_title(factor.get('source'),task_type),
                      '不确定性':factor.get('uncertainty'),'分布':factor.get('distribution'),
-                     '名义下限':factor.get('nominal_lower'),'名义上限':factor.get('nominal_upper'),
+                     '设计下限':factor.get('nominal_lower'),'设计上限':factor.get('nominal_upper'),
                      '不确定参数1':p1,'不确定参数2':p2,'单位':factor.get('unit')})
     return rows
 
@@ -229,8 +230,8 @@ def build_report(data,kind='model',record_id=None,include_raw=False):
     section('summary','摘要与结论',[table('报告摘要',summary),text('本报告仅汇集已记录的数据与结果，不在报告页重新拟合或优化。'),
         text('当前有分析结果，工程确认状态：待确认。' if analysis_present else '当前证据不足，报告为待完善状态。')])
     section('purpose','目的与验证条件',[text(metadata.get('purpose') or '目的尚未填写。'),
-        table('响应定义',[{'指标':r.get('name'),'角色':r.get('kind'),'目标特征':r.get('feature'),'下界':r.get('lower'),
-        '上界':r.get('upper'),'响应鲁棒性阈值':r.get('robust_limit'),**({'目标值':r['target']} if r.get('target') else {}),'单位':r.get('unit')} for r in responses])])
+        table('响应定义',[{'响应名称':r.get('name'),'响应角色':r.get('kind'),'优化方向 / 约束形式':criterion_name(r.get('kind'), r.get('feature')),'阈值类型':limit_name(r.get('kind')) if task_family=='robust' else '目标值','下限':r.get('lower'),
+        '上限':r.get('upper'),'单侧阈值':r.get('robust_limit'),**({'目标值':r['target']} if r.get('target') else {}),'单位':r.get('unit')} for r in responses])])
     section('materials','材料、对象与输入',[text(metadata.get('materials') or '样机、材料、设备和试验环境尚未填写。'),
         table('模型输入定义' if task_family=='robust' else '因子定义',_factor_rows(factors,task_family)),
         text('设计变量的名义范围用于搜索，不确定性描述其加性偏差；不确定性参数不设名义范围，分布参数描述其实际取值。区间及均匀分布的两项参数为上下界，正态分布为均值偏移/标准差，均使用所列单位；带 % 的参数按当前设计值（标准差按当前均值）的比例取值。' if task_family=='robust' else '因子水平用于安排试验，水平统计按实际观测计算。')])
@@ -240,7 +241,7 @@ def build_report(data,kind='model',record_id=None,include_raw=False):
         table('响应完整性',complete)]
     if source.get('surrogate_config'):blocks.append(table('代理模型配置',[{'配置项':_CONFIG_KEYS.get(k,k),'值':v} for k,v in source['surrogate_config'].items()]))
     if optimization:blocks.append(table('优化条件',[{'鲁棒优化策略':{'multi':'帕累托前沿法','weighted':'加权和法','constraint':'波动约束法'}.get(optimization.get('mode'),optimization.get('mode')),'望性损失权重':optimization.get('weight'),
-        '区间标准差换算系数':optimization.get('k_design'),'约束裕量系数':optimization.get('k_constraint'),
+        '启用目标鲁棒性独立约束':optimization.get('enforce_objective_limits', False),'目标鲁棒性约束响应':optimization.get('objective_limit_names', []),'区间标准差换算系数':optimization.get('k_design'),'约束裕量系数':optimization.get('k_constraint'),
         '可行候选数':optimization.get('feasible_count'),'评价数':optimization.get('evaluated_count'),
         '种群数':optimization.get('population_size'),'代数':optimization.get('generations'),'随机种子':optimization.get('seed'),
         '逐变量交叉概率':optimization.get('pc'), '逐变量变异概率':optimization.get('effective_pm'),

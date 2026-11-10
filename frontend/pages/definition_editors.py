@@ -6,6 +6,7 @@ from PyQt6.QtWidgets import (
     QStackedWidget, QLineEdit, QComboBox, QCheckBox, QButtonGroup, QAbstractItemView,
 )
 from backend.domain.models import FactorItem, ResponseItem, factor_title
+from backend.domain.response_terms import criterion_name, limit_name
 from backend.core.factors import factor_limits
 from frontend.numeric_inputs import numeric_text_input
 from frontend.pages.table_widgets import BalancedColumnsTable
@@ -253,7 +254,7 @@ class FactorEditor(QWidget):
             raise ValueError("请填写因子名称。")
         design = self.source == "设计"
         if design or self.classical:
-            labels = self.range_labels if self.classical else ("名义下限", "名义上限")
+            labels = self.range_labels if self.classical else ("设计下限", "设计上限")
             lower, upper = number(self.lower, name + labels[0]), number(self.upper, name + labels[1])
             if lower >= upper:
                 raise ValueError(f"{name}：{labels[0]}须小于{labels[1]}。")
@@ -317,8 +318,8 @@ class FactorTable(DefinitionTable):
             headers = ["名称", *LEVEL_HEADERS[task_type], "单位", "操作"]
             widths = (110, 140, 140, 60, 64)
         else:
-            headers = ["名称"] + (["名义下限", "名义上限"] if design else []) + [
-                "不确定性类型", "分布类型", "不确定性参数", "单位", "操作"]
+            headers = ["名称"] + (["设计下限", "设计上限"] if design else []) + [
+                "不确定性类型", "分布类型", "不确定性特征", "单位", "操作"]
             widths = (70, 80, 80, 90, 110, 250, 60, 64) if design else (100, 90, 110, 250, 60, 64)
         title = factor_title(source, task_type)
         super().__init__(title, lambda item: FactorEditor(source, item, task_type),
@@ -349,39 +350,59 @@ class ResponseEditor(QWidget):
             self.objective.setChecked(item.kind == '目标')
             self.constraint.setChecked(item.kind == '约束')
         self.feature = QComboBox()
-        self.feature.addItems(["望大", "望小", "望目"])
-        self.feature.setCurrentText(item.feature)
+        for value in ("望大", "望小", "望目"):
+            self.feature.addItem(value, value)
+        self.feature.setCurrentIndex(self.feature.findData(item.feature))
         if task_type == "taguchi":
             self.target = numeric_text_input(item.target)
             self.target.setToolTip("望目目标值，与响应使用相同单位")
             self.limits = self.target
         else:
             self.lower, self.upper = numeric_text_input(item.lower), numeric_text_input(item.upper)
-            self.lower.setToolTip(tooltip('response_limit')+'\n下限')
-            self.upper.setToolTip(tooltip('response_limit')+'\n上限')
+            self.lower_label = QLabel()
+            self.upper_label = QLabel()
             self.limit = numeric_text_input(item.robust_limit)
             self.limit_label = QLabel()
             self.limits = stacked(field_row((self.limit_label, self.limit)),
-                                  field_row(("下限", self.lower), ("上限", self.upper)))
+                                  field_row((self.lower_label, self.lower), (self.upper_label, self.upper)))
         roles = () if task_type == "taguchi" else (centered(self.objective), centered(self.constraint))
         self.cells = (self.name,) + roles + (self.feature, self.limits, self.unit)
         self.feature.currentTextChanged.connect(self.update_feature)
+        if task_type != "taguchi":
+            self.objective.toggled.connect(self.update_feature)
+            self.constraint.toggled.connect(self.update_feature)
         self.update_feature()
 
-    def update_feature(self):
-        feature = self.feature.currentText()
+    def update_feature(self, *_args):
+        feature = self.feature.currentData()
+        kind = '约束' if self.task_type != 'taguchi' and self.constraint.isChecked() else '目标'
+        self.feature.blockSignals(True)
+        for i in range(self.feature.count()):
+            value = self.feature.itemData(i)
+            self.feature.setItemText(i, criterion_name(kind, value))
+            explanation = criterion_name(kind, value) + ('（田口' + value + '型）' if self.task_type == 'taguchi' else '')
+            self.feature.setItemData(i, explanation, Qt.ItemDataRole.ToolTipRole)
+        self.feature.blockSignals(False)
+        self.feature.setToolTip(tooltip('response_criterion'))
         if self.task_type == "taguchi":
             self.target.setEnabled(feature == "望目")
             return
         self.limits.setCurrentIndex(1 if feature == "望目" else 0)
-        self.limit_label.setText("下限" if feature == "望大" else "上限")
-        self.limit.setToolTip(tooltip('response_limit')+'\n'+self.limit_label.text())
+        prefix = '约束' if kind == '约束' else '目标'
+        self.limit_label.setText(prefix + ("下限" if feature == "望大" else "上限"))
+        self.lower_label.setText(prefix + '下限')
+        self.upper_label.setText(prefix + '上限')
+        term = 'constraint_limit' if kind == '约束' else 'objective_robustness_limit'
+        for control in (self.limit, self.lower, self.upper):
+            control.setToolTip(tooltip(term))
+            control.setAccessibleDescription(tooltip(term))
+        self.limit.setPlaceholderText('必填' if kind == '约束' else '可选')
 
     def collect(self):
         name = self.name.text().strip()
         if not name:
             raise ValueError("请填写响应名称。")
-        feature = self.feature.currentText()
+        feature = self.feature.currentData()
         if self.task_type == "taguchi":
             if feature == "望目":
                 number(self.target, name + "目标值")
@@ -391,9 +412,9 @@ class ResponseEditor(QWidget):
             raise ValueError(f"{name}：请勾选目标或约束。")
         if feature == "望目":
             if number(self.lower, name + "下限") >= number(self.upper, name + "上限"):
-                raise ValueError(f"{name}：响应鲁棒性阈值下限须小于上限。")
+                raise ValueError(f"{name}：{limit_name("约束" if self.constraint.isChecked() else "目标")}下限须小于上限。")
         elif self.limit.text().strip() or self.constraint.isChecked():
-            number(self.limit, name + "响应鲁棒性阈值")
+            number(self.limit, name + limit_name("约束" if self.constraint.isChecked() else "目标"))
         kind = '目标' if self.objective.isChecked() else '约束'
         return ResponseItem(name=name, unit=self.unit.text().strip(), kind=kind, feature=feature,
                             lower=self.lower.text().strip() if feature == "望目" else "",
@@ -404,8 +425,8 @@ class ResponseEditor(QWidget):
 class ResponseTable(DefinitionTable):
     def __init__(self, task_type="robust"):
         if task_type == "taguchi":
-            headers, widths = ["名称", "目标特征", "目标值", "单位", "操作"], (110, 100, 140, 60, 64)
+            headers, widths = ["名称", "优化方向", "目标值", "单位", "操作"], (110, 100, 140, 60, 64)
         else:
-            headers = ["名称", "目标响应", "约束响应", "目标特征", "响应鲁棒性阈值", "单位", "操作"]
-            widths = (110, 80, 80, 100, 250, 60, 64)
+            headers = ["名称", "目标响应", "约束响应", "优化方向 / 约束形式", "阈值设置", "单位", "操作"]
+            widths = (100, 70, 70, 150, 260, 60, 64)
         super().__init__("响应", lambda item: ResponseEditor(item, task_type), headers, widths)

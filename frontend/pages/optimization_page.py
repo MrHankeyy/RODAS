@@ -75,7 +75,7 @@ class OptimizationPage(QWidget):
         is_taguchi = "田口" in method
         is_special = is_taguchi
         if is_taguchi:
-            self.run_all_btn.setText("田口设计：计算信噪比")
+            self.run_all_btn.setText("执行田口分析")
         else:
             self.run_all_btn.setText("执行鲁棒优化设计")
         for index in (1, 2, 3, 4, 5, 6, 8):
@@ -187,7 +187,7 @@ class OptimizationPage(QWidget):
                     auto_stop=self.auto_stop_check.isChecked(),
                     stall_generations=self.stall_gen_spin.value(),
                     tolerance=round(self.tolerance_spin.value() / 100.0, 6),
-                    sigma_limits=self._sigma_limits())
+                    sigma_limits=self._sigma_limits(), enforce_objective_limits=self.objective_limits_check.isChecked())
 
     def _build_signif_tab(self):
         return optimization_panels.build_signif_tab(self)
@@ -296,7 +296,7 @@ class OptimizationPage(QWidget):
 
     # ============================================================ 工作台
     def _analysis_settings(self):
-        return {"mode": self.robust_mode_combo.currentData(), "k_design": DEFAULT_K_DESIGN,
+        return {"enforce_objective_limits": self.objective_limits_check.isChecked(), "mode": self.robust_mode_combo.currentData(), "k_design": DEFAULT_K_DESIGN,
                 "k_constraint": DEFAULT_K_CONSTRAINT, "weight": self.weight_spin.value(),
                 "sigma_limits": {name: editor.text() for name, editor in self.sigma_limit_inputs.items()},
                 "population": self.pop_spin.value(), "generations": self.gen_spin.value(),

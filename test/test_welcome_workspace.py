@@ -80,7 +80,7 @@ class WelcomeWorkspaceTests(unittest.TestCase):
             w.resize(width, height)
             APP.processEvents()
             text_width = label.fontMetrics().horizontalAdvance(CHINESE_NAME)
-            self.assertGreaterEqual(text_width, w.welcome_page.logo.pixmap().width())
+            self.assertGreaterEqual(text_width, w.welcome_page.logo.pixmap().deviceIndependentSize().width())
             self.assertLessEqual(text_width, label.width())
         self.assertEqual(w.brand_button.text(), '开始')
         self.assertFalse(brand_pixmap().isNull())
@@ -90,6 +90,24 @@ class WelcomeWorkspaceTests(unittest.TestCase):
                          ['读取已有任务', '新建任务', '设置工作目录'])
         self.assertTrue(all(button.height() >= 108
                             for button in w.welcome_page.action_buttons.values()))
+
+    def test_welcome_expands_with_window_and_keeps_content_inside_viewport(self):
+        previous = None
+        for width, height in ((1050, 700), (1440, 940), (1920, 1080), (2560, 1364)):
+            self.window.resize(width, height)
+            for _ in range(3):
+                APP.processEvents()
+            page = self.window.welcome_page
+            self.assertGreaterEqual(page.content.width(), page.width() * .9)
+            self.assertGreaterEqual(page.content.height(), page.height() * .8)
+            self.assertTrue(page.rect().contains(page.content.geometry()))
+            self.assertLessEqual(page.title.fontMetrics().horizontalAdvance(CHINESE_NAME), page.title.width())
+            current = (page.content.width(), page.hero.height(),
+                       page.surface.width(), page.logo.pixmap().deviceIndependentSize().width())
+            if previous is not None:
+                self.assertTrue(all(now > before for now, before in zip(current, previous)),
+                                (width, current, previous))
+            previous = current
 
     def test_directory_cancel_change_and_every_module(self):
         w = self.window

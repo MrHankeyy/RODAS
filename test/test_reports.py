@@ -37,7 +37,7 @@ class ReportTests(unittest.TestCase):
         section=next(s for s in report['sections'] if s['id']=='purpose')
         rows=next(b['rows'] for b in section['blocks'] if b.get('title')=='响应定义')
         self.assertEqual(rows[0]['目标值'],'10.125')
-        self.assertEqual((rows[0]['下界'],rows[0]['上界']),('',''))
+        self.assertEqual((rows[0]['下限'],rows[0]['上限']),('',''))
         content=re.render_html(report)
         self.assertIn('目标值',content)
         self.assertIn('10.125',content)

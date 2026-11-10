@@ -53,7 +53,10 @@ TERMS = {
     "variability_weight": ("波动权重", "Variability Weight", ""),
     "constraint_margin_multiplier": ("约束裕量系数", "Constraint Margin Multiplier", ""),
     "interval_std_factor": ("区间标准差换算系数", "Interval-to-Standard-Deviation Conversion Factor", ""),
-    "response_limit": ("响应鲁棒性阈值", "Response Robustness Limit", ""),
+    "response_limit": ("阈值设置", "Response Limit Settings", ""),
+    "objective_robustness_limit": ("目标鲁棒性阈值", "Objective Robustness Limit", ""),
+    "constraint_limit": ("约束阈值", "Constraint Limit", ""),
+    "response_criterion": ("优化方向 / 约束形式", "Optimization Direction / Constraint Form", ""),
     "design_variable": ("设计变量", "Design Variable", ""),
     "uncertain_parameter": ("不确定性参数", "Uncertain Parameter", ""),
     "main_effect": ("主效应", "Main Effect", ""),
@@ -110,7 +113,7 @@ STATISTICS = {
     "候选水平": ("Candidate Level", "", "主效应分析推荐的因子取值"),
     "内表组": ("Inner Array Run", "", "田口内表中的控制因子组合"),
     "标准差": ("Standard Deviation", "SD", "衡量数据围绕均值的离散程度"),
-    "信噪比": ("Signal-to-Noise Ratio", "S/N", "综合反映目标特征与波动的指标"),
+    "信噪比": ("Signal-to-Noise Ratio", "S/N", "综合反映优化方向与响应波动的指标"),
     "均值指标": ("Mean-Based Metric", "", "无重复观测时用于比较水平的指标"),
     "数据来源": ("Data Source", "", "当前统计使用的训练集或验证集"),
     "样本数": ("Sample Size", "", "参与当前统计计算的数据条数"),
@@ -174,7 +177,11 @@ def tooltip(key):
         return statistical
     suffix = f"，{abbreviation}" if abbreviation else ""
     explanation = {
-        "robust_strategy": "三种策略都是多目标优化的处理方式，目标表现与响应波动分别作为目标，区别只在如何取舍。",
+        "response_limit": "目标响应填写目标鲁棒性阈值，约束响应填写约束阈值；均为响应性能要求，单位同响应。标准差上限在优化设置中单独定义。",
+        "objective_robustness_limit": "性能要求：最大化时 μ−kσ≥下限，最小化时 μ+kσ≤上限；趋近目标值时以目标区间中点为目标值，要求 μ±kσ 位于该区间。可在优化设置中启用为独立约束；未启用时仅用于目标望性评价。不是标准差上限。",
+        "constraint_limit": "性能界限：不小于下限、不大于上限或位于区间内。优化时按 μ±kσ 核验约束裕量；标准差上限属于另一类波动约束。",
+        "response_criterion": "目标响应选择最大化、最小化或趋近目标值；约束响应选择下限约束、上限约束或区间约束。",
+        "robust_strategy": "帕累托前沿法采用多目标优化，同时考虑目标表现与波动；加权和法将二者合成一个目标；波动约束法限制标准差后优化目标表现。性能约束与目标鲁棒性要求可单独设置。",
         "multiobjective_nsga2": "以望性损失和归一化标准差为两个目标求帕累托前沿，再按折中解给出单一推荐设计点。",
         "constrained_optimization": "为每个目标响应设定标准差上限（即 ε 约束法），在满足上限的前提下最小化望性损失。",
         "weighted_single_objective": "把望性损失与归一化标准差按权重加成单一目标，权重越大越偏向目标表现。",
@@ -226,7 +233,10 @@ HEADER_TERMS = {
     "测试集决定系数": "holdout_r2",
     "调整决定系数": "adjusted_r2",
     "归一化平均绝对误差（%）": "nmae",
-    "响应鲁棒性阈值": "response_limit",
+    "阈值设置": "response_limit",
+    "目标鲁棒性阈值": "objective_robustness_limit",
+    "约束阈值": "constraint_limit",
+    "优化方向 / 约束形式": "response_criterion",
     "信噪比（dB）": "snr",
 }
 

@@ -12,7 +12,7 @@ except Exception:
     _np = None
     HAS_NUMPY = False
 from . import factors as de
-from .design_evaluation import DEFAULT_K_DESIGN, DEFAULT_K_CONSTRAINT, _response_ref, _response_scale, _sigma_of_factor, design_inputs, evaluate_design, project_responses, self_is_constraint
+from .design_evaluation import DEFAULT_K_DESIGN, DEFAULT_K_CONSTRAINT, _response_ref, _response_scale, _sigma_of_factor, design_inputs, evaluate_design, project_responses, self_is_constraint, response_uses_limits, validate_response_limits
 
 
 def _dominates(a, b):
@@ -263,7 +263,7 @@ def _knee_point(front):
 def robust_optimize(context, mode="multi", pop=60, gen=100, weight=0.5,
                     k_design=DEFAULT_K_DESIGN, k_constraint=DEFAULT_K_CONSTRAINT, seed=1, sigma_limits=None, progress=None,
                     pc=0.5, pm=None, eta_c=15.0, eta_m=20.0,
-                    auto_stop=False, stall_generations=20, tolerance=0.001):
+                    auto_stop=False, stall_generations=20, tolerance=0.001, enforce_objective_limits=False):
     """执行鲁棒优化，返回结果 dict。"""
     if mode not in ("multi", "weighted", "constraint"):
         raise ValueError("未知鲁棒优化策略")
@@ -274,6 +274,14 @@ def robust_optimize(context, mode="multi", pop=60, gen=100, weight=0.5,
             raise ValueError("收敛容差必须是有限正数。")
     context = dict(context)
     context.pop("sigma_limits", None)
+    context['enforce_objective_limits'] = bool(enforce_objective_limits)
+    objective_limit_names = [r.name for r in project_responses(context)
+                             if not self_is_constraint(r) and response_uses_limits(context, r)]
+    if enforce_objective_limits and not objective_limit_names:
+        raise ValueError('尚未设置目标鲁棒性阈值，请先在【业务建模】定义目标响应的性能要求。')
+    for response in project_responses(context):
+        if response_uses_limits(context, response):
+            validate_response_limits(response)
     if mode == "constraint":
         objective_names = {r.name for r in project_responses(context) if not self_is_constraint(r) or "目标" in r.kind}
         if not objective_names:
@@ -292,7 +300,7 @@ def robust_optimize(context, mode="multi", pop=60, gen=100, weight=0.5,
     lo = [de.factor_limits(f)[0] for f in dinputs]
     hi = [de.factor_limits(f)[1] for f in dinputs]
     # 响应角色来自业务建模，不能因选择 NSGA-II / 加权模式而把约束变成目标。
-    use_cons = any(self_is_constraint(resp) for resp in project_responses(context))
+    use_cons = any(response_uses_limits(context, resp) for resp in project_responses(context))
 
     def evaluate(vec):
         xd = dict(zip(dnames, vec))
@@ -366,6 +374,8 @@ def robust_optimize(context, mode="multi", pop=60, gen=100, weight=0.5,
                             "sigma": item["sigma"], "d": round(item["d"], 4), "role": role})
 
     result = {
+        "enforce_objective_limits": bool(enforce_objective_limits),
+        "objective_limit_names": objective_limit_names,
         "sigma_limits": context.get("sigma_limits", {}),
         "population_size": pop, "generations": gen, "seed": seed,
         "pc": pc, "pm": pm, "effective_pm": 1.0 / len(dnames) if pm is None else pm,
@@ -396,6 +406,8 @@ def robust_optimize(context, mode="multi", pop=60, gen=100, weight=0.5,
         "stop_reason": "stall" if len(history) < gen else "max_generations",
     }
     result["text"] = _robust_result_text(result)
+    if objective_limit_names:
+        result['text'] += '\n已启用目标鲁棒性独立约束（μ±kσ性能要求）：' + '、'.join(objective_limit_names)
     if mode == "constraint":
         result["text"] += "\n独立标准差约束（响应原单位）：" + "；".join(f"{n}: σ ≤ {v:g}" for n,v in context["sigma_limits"].items())
     return result

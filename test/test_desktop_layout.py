@@ -28,7 +28,7 @@ class DesktopLayoutTests(unittest.TestCase):
             self.window.btns_switch[index].click()
             APP.processEvents()
             self.assertEqual(self.window.stacked_widget.currentIndex(), index)
-            self.assertEqual(self.window.page_title.text(), self.window.PAGE_INFO[index][0])
+            self.assertEqual(self.window.page_title.text(), self.window.PAGE_HEADINGS[index])
             self.assertEqual(self.window.width(), 1100)
             self.assertEqual(sum(b.property('active') for b in self.window.btns_switch), 1)
 

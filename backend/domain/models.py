@@ -19,9 +19,9 @@ class ResponseItem:
     name: str = ""
     kind: str = "目标"          # 目标 / 约束 / 目标+约束
     feature: str = "望小"       # 望大 / 望小 / 望目
-    lower: str = ""             # 望目时: 响应鲁棒性阈值下界
-    upper: str = ""             # 望目时: 响应鲁棒性阈值上界
-    robust_limit: str = ""      # 响应鲁棒性阈值: 望大=要求最小值, 望小=要求最大值
+    lower: str = ""             # 望目时: 目标性能区间或约束区间下界
+    upper: str = ""             # 望目时: 目标性能区间或约束区间上界
+    robust_limit: str = ""      # 目标鲁棒性阈值/约束阈值：望大为下限，望小为上限；不是标准差上限
     unit: str = ""
     target: str = ""           # 田口望目响应的目标值，与规格限分开
 

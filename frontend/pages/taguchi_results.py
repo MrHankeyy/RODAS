@@ -1,3 +1,4 @@
+from backend.domain.response_terms import criterion_name
 """Structured Taguchi results with actual grouped observations and local drilldown."""
 import math
 from PyQt6.QtCore import Qt, QTimer
@@ -37,7 +38,7 @@ class TaguchiResultsPanel(QScrollArea):
         row.addWidget(label('响应'), 0, 0)
         self.response_combo = QComboBox()
         row.addWidget(self.response_combo, 1, 0)
-        row.addWidget(label('响应目标特征'), 0, 1)
+        row.addWidget(label('优化方向'), 0, 1)
         self.feature_label = label()
         row.addWidget(self.feature_label, 1, 1)
         row.addWidget(label('信噪比评价方式'), 0, 2)
@@ -179,7 +180,7 @@ class TaguchiResultsPanel(QScrollArea):
             return
         response = next(r for r in self.project.responses if r.name == self.name)
         self.unit = response.unit
-        self.feature_label.setText(item['feature'])
+        self.feature_label.setText(criterion_name('目标', item['feature']))
         self.evaluation.setText(item['feature']+'型'+item['metric_label'] if item['has_replication'] else item['metric_label'])
         self.evaluation.setToolTip('信噪比（Signal-to-Noise Ratio，S/N）\n'+item['note'])
         self.candidate_group.setToolTip('候选水平组合（Candidate Level Combination）\n'+self.result.get('recommendation',''))

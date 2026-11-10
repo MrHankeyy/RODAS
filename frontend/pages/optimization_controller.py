@@ -120,6 +120,7 @@ class OptimizationController:
             if robust.get("error"):
                 raise ValueError(robust["error"])
             page._oe_context["sigma_limits"] = robust.get("sigma_limits", {})
+            page._oe_context['enforce_objective_limits'] = robust.get('enforce_objective_limits', False)
             page._robust_res = robust
             page._update_analysis(page._oe_context, robust)
             page.status_label.setText("计算完成" if robust["feasible_count"] else "计算完成，未找到可行候选")
@@ -139,6 +140,7 @@ class OptimizationController:
         if robust.get("error"):
             raise ValueError(robust["error"])
         context["sigma_limits"] = robust.get("sigma_limits", {})
+        context['enforce_objective_limits'] = robust.get('enforce_objective_limits', False)
         page._robust_res = robust
     
         page._update_analysis(context, robust)
@@ -229,6 +231,8 @@ class OptimizationController:
                 control.setValue(settings[key])
         if 'tolerance' in settings:
             page.tolerance_spin.setValue(settings['tolerance'] * 100)
+        if 'enforce_objective_limits' in settings:
+            page.objective_limits_check.setChecked(bool(settings['enforce_objective_limits']))
         if 'auto_stop' in settings:
             page.auto_stop_check.setChecked(bool(settings['auto_stop']))
         if 'mode' in settings:
@@ -254,6 +258,7 @@ class OptimizationController:
         page._oe_context = context
         robust = snapshot.get('optimization', {})
         context['sigma_limits'] = robust.get('sigma_limits', {})
+        context['enforce_objective_limits'] = robust.get('enforce_objective_limits', False)
         page._robust_res = robust
         page.robust_results.set_result(context, robust, snapshot.get('optimization_view_index'))
         page.history_panel.set_result(robust)

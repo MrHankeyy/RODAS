@@ -1,4 +1,4 @@
-from .design_evaluation import _constraint_limits, design_inputs, evaluate_design, robust_moments, self_is_constraint
+from .design_evaluation import _constraint_limits, design_inputs, evaluate_design, robust_moments, self_is_constraint, response_uses_limits
 from .response_models import _design_row, model_predict
 from .factors import _isfinite
 """Structured statistics for the workbench; no fitting or silent model substitution."""
@@ -212,12 +212,12 @@ def point_analysis(context, point, kd, kc):
         nominal=model_predict(model,raw)
         lower,upper=mu-kc*sigma,mu+kc*sigma
         margin=None
-        if self_is_constraint(response):
+        if response_uses_limits(context, response):
             kind,limit=_constraint_limits(response)
             margin=limit-upper if kind=='upper' else lower-limit if kind=='lower' else min(lower-limit[0],limit[1]-upper)
         sigma_limit = context.get('sigma_limits', {}).get(response.name)
         sigma_margin = sigma_limit - sigma if sigma_limit is not None else None
-        rows.append({'标准差上限':sigma_limit, '波动约束余量':sigma_margin, '响应':response.name,'角色':response.kind,'名义预测':nominal,'鲁棒均值':mu,'传播标准差':sigma,
+        rows.append({'约束来源':('约束响应' if self_is_constraint(response) else '目标鲁棒性要求') if margin is not None else None, '标准差上限':sigma_limit, '波动约束余量':sigma_margin, '响应':response.name,'角色':response.kind,'名义预测':nominal,'鲁棒均值':mu,'传播标准差':sigma,
                      '均值−kσ':lower,'均值+kσ':upper,'约束余量':margin,
                      '判定':'违反' if any(v is not None and v < 0 for v in (margin,sigma_margin)) else '通过' if margin is not None or sigma_margin is not None else '目标'})
     return {'point':dict(point),'k_design':kd,'k_constraint':kc,'feasible':evaluation['infeas']<=1e-12,'responses':rows,
