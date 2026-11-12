@@ -6,3 +6,5 @@ __pycache__/
 !/temp/.gitkeep
 /output/*
 !/output/.gitkeep
+/build/
+/dist/

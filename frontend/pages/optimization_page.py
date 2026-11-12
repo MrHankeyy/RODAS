@@ -38,7 +38,7 @@ from backend.services.project_service import ProjectService
 from backend.reporting.math_format import PLOT_STYLE, rich_text
 
 import matplotlib
-matplotlib.use('Qt5Agg')
+matplotlib.use('QtAgg')
 matplotlib.rcParams.update(PLOT_STYLE)
 
 
