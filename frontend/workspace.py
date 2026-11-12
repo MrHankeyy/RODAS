@@ -32,6 +32,22 @@ def dialog_path(widget, filename=''):
     return workspace.file_path(filename) if workspace is not None else filename
 
 
+TABLE_SUFFIXES = ('.csv', '.xlsx', '.xls')
+
+
+def table_save_path(path, selected_filter=''):
+    """Give the typed name an extension that matches the chosen file type."""
+    if not path:
+        return path
+    target = Path(path)
+    if target.suffix.lower() in TABLE_SUFFIXES:
+        return str(target)
+    wanted = selected_filter.lower()
+    suffix = '.xlsx' if '.xlsx' in wanted and '.csv' not in wanted else (
+        '.xls' if '.xls' in wanted and '.xlsx' not in wanted and '.csv' not in wanted else '.csv')
+    return str(target.with_suffix(suffix))
+
+
 class DirectoryButton(QPushButton):
     """A global status-bar entry with an elided path and a full-path tooltip."""
     def __init__(self, parent=None):

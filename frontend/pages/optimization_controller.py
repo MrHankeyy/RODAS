@@ -26,9 +26,7 @@ class OptimizationController:
             Notice.warning(page, "无方案", "请先在【方案配置】生成试验方案。")
             return
         try:
-            if "筛选" in method:
-                page._run_screening()
-            elif any(text in method for text in ("响应面", "响应曲面")):
+            if any(text in method for text in ("响应面", "响应曲面")):
                 page._run_rsm()
             elif "田口" in method:
                 page._run_taguchi()
@@ -45,10 +43,6 @@ class OptimizationController:
             return
         page.status_label.setText("分析完成：结果已更新")
         page._refresh_view()
-        if "筛选" in method:
-            page.tabs.setCurrentWidget(page.screening_panel)
-            page._finish_classic(page.project_data.screening_result)
-            return
         if "田口" in method:
             page.tabs.setCurrentWidget(page.taguchi_panel)
             page._finish_classic(page.project_data.taguchi_result)
@@ -69,9 +63,8 @@ class OptimizationController:
             page._oe_context = None
             page._robust_res = {}
             page.model_overview.clear()
-            page.screening_panel.set_result({})
             page.taguchi_panel.set_result({})
-            for name in ("robust_results", "signif_panel", "cv_panel", "model_panel"):
+            for name in ("robust_results", "signif_panel", "cv_panel", "model_panel", "history_panel"):
                 getattr(page, name).clear()
             page.status_label.setText("输入已更新，请重新执行当前方案分析。")
             page._refresh_view()
@@ -80,7 +73,7 @@ class OptimizationController:
         page = self.page
         if getattr(page, "_worker", None) is not None:
             return
-        if any(x in page._method() for x in ("筛选", "田口")):
+        if "田口" in page._method():
             page.run_optimization()
             return
         from frontend.notifications import bus
@@ -93,7 +86,7 @@ class OptimizationController:
             page._run_signature = page.project_service.input_signature()
             page._worker = OptimizationWorker(context, settings, page)
             page.setEnabled(False)
-            page._worker.progress.connect(lambda done,total: bus.post("进度", "鲁棒性优化设计", f"已完成 {done}/{total} 代"))
+            page._worker.progress.connect(lambda done,total: bus.post("进度", "鲁棒优化设计", f"已完成 {done}/{total} 代"))
             page._worker.result_ready.connect(page._optimization_ready)
             page._worker.failed.connect(page._optimization_failed)
             page._worker.finished.connect(page._worker_finished)
@@ -115,6 +108,7 @@ class OptimizationController:
         page._oe_context = None
         page._robust_res = {}
         page.robust_results.clear()
+        page.history_panel.clear()
         page.project_service.clear_workbench()
         Notice.warning(page, "优化失败", message)
 
@@ -126,6 +120,7 @@ class OptimizationController:
             if robust.get("error"):
                 raise ValueError(robust["error"])
             page._oe_context["sigma_limits"] = robust.get("sigma_limits", {})
+            page._oe_context['enforce_objective_limits'] = robust.get('enforce_objective_limits', False)
             page._robust_res = robust
             page._update_analysis(page._oe_context, robust)
             page.status_label.setText("计算完成" if robust["feasible_count"] else "计算完成，未找到可行候选")
@@ -136,23 +131,24 @@ class OptimizationController:
     def _execute_workbench(self):
         page = self.page
         page._check_inputs()
-        if any(x in page._method() for x in ("筛选", "田口")):
+        if "田口" in page._method():
             page.run_optimization()
             return
         context = page._prepare_context()
-        page.status_label.setText("正在执行鲁棒性优化设计与统计分析…（可能稍候）")
+        page.status_label.setText("正在执行鲁棒优化设计与统计分析…（可能稍候）")
         robust = oe.robust_optimize(context, **page._optimizer_settings())
         if robust.get("error"):
             raise ValueError(robust["error"])
         context["sigma_limits"] = robust.get("sigma_limits", {})
+        context['enforce_objective_limits'] = robust.get('enforce_objective_limits', False)
         page._robust_res = robust
     
         page._update_analysis(context, robust)
     
         page.status_label.setText("分析完成：全部工作台已更新")
         Notice.information(
-            page, "鲁棒性优化设计分析完成",
-            "已执行鲁棒性优化设计与统计分析。可切换标签页查看帕累托前沿、折中解、推荐取值、"
+            page, "鲁棒优化设计分析完成",
+            "已执行鲁棒优化设计与统计分析。可切换标签页查看帕累托前沿、折中解、推荐取值、"
             "方案对比、波动核验与模型方程。")
         page.optimization_finished.emit()
 
@@ -184,7 +180,7 @@ class OptimizationController:
             page.robust_results.clear()
             page._update_analysis(context, {})
             page.tabs.setCurrentWidget(page.tab_overview)
-            page.status_label.setText("建模与统计分析完成，未执行鲁棒性优化设计。")
+            page.status_label.setText("建模与统计分析完成，未执行鲁棒优化设计。")
             page.optimization_finished.emit()
         except Exception as exc:
             page.project_service.record_operation("工作台统计分析", "失败", {"settings": page._analysis_settings()}, message=str(exc))
@@ -202,6 +198,7 @@ class OptimizationController:
             page.project_data, context, robust, kd, kc)
         bundle['snapshot']['settings'] = page._analysis_settings()
         page.robust_results.set_result(context, robust)
+        page.history_panel.set_result(robust)
     
         page._refresh_view()
         for panel in (page.signif_panel, page.cv_panel, page.model_panel):
@@ -214,7 +211,7 @@ class OptimizationController:
             workbench_result=reports.serializable(bundle["snapshot"]))
         failed = bool(robust and robust.get("feasible_count", 0) == 0)
         service.record_operation(
-            "鲁棒性优化设计与统计分析" if robust else "工作台统计分析",
+            "鲁棒优化设计与统计分析" if robust else "工作台统计分析",
             "未通过" if failed else "完成",
             {"results": reports.results(page.project_data)},
             "未找到可行候选" if failed else "计算完成，工程结论待确认")
@@ -228,9 +225,16 @@ class OptimizationController:
         for key, control in (('population', page.pop_spin), ('generations', page.gen_spin),
                              ('weight', page.weight_spin), ('seed', page.seed_spin),
                              ('pc', page.crossover_spin), ('eta_c', page.eta_c_spin),
-                             ('eta_m', page.eta_m_spin)):
+                             ('eta_m', page.eta_m_spin),
+                             ('stall_generations', page.stall_gen_spin)):
             if key in settings:
                 control.setValue(settings[key])
+        if 'tolerance' in settings:
+            page.tolerance_spin.setValue(settings['tolerance'] * 100)
+        if 'enforce_objective_limits' in settings:
+            page.objective_limits_check.setChecked(bool(settings['enforce_objective_limits']))
+        if 'auto_stop' in settings:
+            page.auto_stop_check.setChecked(bool(settings['auto_stop']))
         if 'mode' in settings:
             index = page.robust_mode_combo.findData(settings['mode'])
             if index >= 0:
@@ -243,7 +247,6 @@ class OptimizationController:
             if name in settings.get('sigma_limits', {}):
                 editor.setText(settings['sigma_limits'][name])
         page._refresh_view()
-        page.screening_panel.set_result(project.screening_result)
         page.taguchi_panel.set_result(project.taguchi_result)
         context = None
         if project.surrogate_result:
@@ -255,8 +258,10 @@ class OptimizationController:
         page._oe_context = context
         robust = snapshot.get('optimization', {})
         context['sigma_limits'] = robust.get('sigma_limits', {})
+        context['enforce_objective_limits'] = robust.get('enforce_objective_limits', False)
         page._robust_res = robust
         page.robust_results.set_result(context, robust, snapshot.get('optimization_view_index'))
+        page.history_panel.set_result(robust)
         if snapshot:
             for panel in (page.signif_panel, page.cv_panel, page.model_panel):
                 panel.set_result(context, snapshot)

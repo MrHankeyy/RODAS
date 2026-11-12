@@ -80,16 +80,34 @@ class WelcomeWorkspaceTests(unittest.TestCase):
             w.resize(width, height)
             APP.processEvents()
             text_width = label.fontMetrics().horizontalAdvance(CHINESE_NAME)
-            self.assertGreaterEqual(text_width, w.welcome_page.logo.pixmap().width())
+            self.assertGreaterEqual(text_width, w.welcome_page.logo.pixmap().deviceIndependentSize().width())
             self.assertLessEqual(text_width, label.width())
         self.assertEqual(w.brand_button.text(), '开始')
         self.assertFalse(brand_pixmap().isNull())
         self.assertFalse(w.windowIcon().isNull())
         self.assertTrue(w.windowTitle().startswith('RODAS'))
         self.assertEqual(list(w.welcome_page.action_buttons),
-                         ['读取已有任务', '新建任务', '设置工作目录', '教程'])
+                         ['读取已有任务', '新建任务', '设置工作目录'])
         self.assertTrue(all(button.height() >= 108
                             for button in w.welcome_page.action_buttons.values()))
+
+    def test_welcome_expands_with_window_and_keeps_content_inside_viewport(self):
+        previous = None
+        for width, height in ((1050, 700), (1440, 940), (1920, 1080), (2560, 1364)):
+            self.window.resize(width, height)
+            for _ in range(3):
+                APP.processEvents()
+            page = self.window.welcome_page
+            self.assertGreaterEqual(page.content.width(), page.width() * .9)
+            self.assertGreaterEqual(page.content.height(), page.height() * .8)
+            self.assertTrue(page.rect().contains(page.content.geometry()))
+            self.assertLessEqual(page.title.fontMetrics().horizontalAdvance(CHINESE_NAME), page.title.width())
+            current = (page.content.width(), page.hero.height(),
+                       page.surface.width(), page.logo.pixmap().deviceIndependentSize().width())
+            if previous is not None:
+                self.assertTrue(all(now > before for now, before in zip(current, previous)),
+                                (width, current, previous))
+            previous = current
 
     def test_directory_cancel_change_and_every_module(self):
         w = self.window
@@ -119,10 +137,10 @@ class WelcomeWorkspaceTests(unittest.TestCase):
     def test_existing_file_actions_use_latest_directory(self):
         w = self.window
         self.workspace.set_directory(self.root)
-        w.project_data.doe_matrix = [{'Run_ID': 1, 'X': 2}]
+        w.project_data.doe_matrix = [{'试验序号': 1, 'X': 2}]
         with patch.object(QFileDialog, 'getSaveFileName', return_value=('', '')) as dialog:
             w.page_DM.export_to_csv()
-        self.assertEqual(dialog.call_args.args[2], str(self.root))
+        self.assertEqual(dialog.call_args.args[2], str(self.root / '试验数据表.csv'))
         with patch.object(QFileDialog, 'getOpenFileName', return_value=('', '')) as dialog:
             w.page_DM.import_from_csv()
         self.assertEqual(dialog.call_args.args[2], str(self.root))
@@ -157,8 +175,7 @@ class WelcomeWorkspaceTests(unittest.TestCase):
         APP.processEvents()
         self.assertIs(card.currentWidget(), card.options)
         self.assertEqual([button.text() for button in card.buttons.values()], list(TASK_TYPES.values()))
-        term_keys = {'robust': 'task_robust', 'taguchi': 'taguchi_design',
-                     'factorial': 'factor_screening'}
+        term_keys = {'robust': 'task_robust', 'taguchi': 'taguchi_design'}
         for key, button in card.buttons.items():
             self.assertEqual(button.toolTip(), tooltip(term_keys[key]))
         for button in card.buttons.values():
@@ -181,10 +198,10 @@ class WelcomeWorkspaceTests(unittest.TestCase):
         QTest.keyClick(card.buttons['robust'], Qt.Key.Key_Escape)
         self.assertIs(card.currentWidget(), card.cover)
 
-    def test_three_task_choices_create_matching_empty_tasks_and_keep_workspace(self):
+    def test_two_task_choices_create_matching_empty_tasks_and_keep_workspace(self):
         w = self.window
         self.workspace.set_directory(self.root)
-        for kind, family in (('robust', 2), ('taguchi', 1), ('factorial', 0)):
+        for kind, family in (('robust', 1), ('taguchi', 0)):
             w.show_welcome()
             card = w.welcome_page.new_task_card
             card.cover.click()
@@ -195,8 +212,8 @@ class WelcomeWorkspaceTests(unittest.TestCase):
             self.assertEqual(w.page_CFG.dynamic_params_widget.currentIndex(), family)
             self.assertEqual(list(w.page_CFG.results_workspace.buttons), [family])
             self.assertEqual(w.page_MOD.design_factors.table.columnCount(), 8 if kind == 'robust' else 5)
-            self.assertEqual(w.page_MOD.responses.table.columnCount(), {'robust': 7, 'taguchi': 5, 'factorial': 3}[kind])
-            self.assertEqual(w.page_MOD.model_tabs.count(), 2 if kind == 'factorial' else 3)
+            self.assertEqual(w.page_MOD.responses.table.columnCount(), {'robust': 7, 'taguchi': 5}[kind])
+            self.assertEqual(w.page_MOD.model_tabs.count(), 3)
             self.assertFalse(w.project_data.design_method)
             self.assertFalse(w.project_data.doe_matrix)
             self.assertEqual(self.workspace.directory, str(self.root))
@@ -211,8 +228,8 @@ class WelcomeWorkspaceTests(unittest.TestCase):
         restored = task_storage.load_task(path)
         self.assertEqual(restored.task_type, 'taguchi')
         w.task_actions._replace(restored, path)
-        self.assertEqual(w.page_CFG.dynamic_params_widget.currentIndex(), 1)
-        self.assertEqual(list(w.page_CFG.results_workspace.buttons), [1])
+        self.assertEqual(w.page_CFG.dynamic_params_widget.currentIndex(), 0)
+        self.assertEqual(list(w.page_CFG.results_workspace.buttons), [0])
 
     def test_environment_width_is_stable_across_repeated_new_tasks_and_file_reads(self):
         w = self.window
@@ -223,8 +240,8 @@ class WelcomeWorkspaceTests(unittest.TestCase):
             w.resize(width, height)
             APP.processEvents()
             measurements = {}
-            for action, kind in (('new', 'robust'), ('read', 'taguchi'), ('new', 'factorial'),
-                                 ('read', 'robust'), ('new', 'taguchi'), ('read', 'factorial'),
+            for action, kind in (('new', 'robust'), ('read', 'taguchi'),
+                                 ('read', 'robust'), ('new', 'taguchi'),
                                  ('new', 'robust'), ('read', 'robust')):
                 if action == 'new':
                     w.show_welcome()
@@ -238,8 +255,7 @@ class WelcomeWorkspaceTests(unittest.TestCase):
                 for _ in range(4):
                     w.page_MOD.add_response_row()
                     w.page_MOD.add_design_factor_row()
-                    if kind != 'factorial':
-                        w.page_MOD.add_environment_factor_row()
+                    w.page_MOD.add_environment_factor_row()
                 for index, section in enumerate(w.page_MOD.sections):
                     w.page_MOD.model_tabs.setCurrentIndex(index)
                     QTest.qWait(1)
@@ -259,7 +275,7 @@ class WelcomeWorkspaceTests(unittest.TestCase):
         card = w.welcome_page.new_task_card
         card.cover.click()
         with patch.object(w.task_actions, 'confirm_leave', return_value=False) as confirm:
-            card.buttons['factorial'].click()
+            card.buttons['taguchi'].click()
             confirm.assert_called_once()
         self.assertIs(w.project_data, project)
         self.assertEqual(project.task_type, '')

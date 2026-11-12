@@ -22,6 +22,8 @@ class MainWindow(QMainWindow):
         ("分析报告", "预览本次计算结果，填写编制信息并导出报告。"),
     ]
 
+    PAGE_HEADINGS = ('定义优化设计问题', '配置试验与模型', '管理试验数据', '分析与优化', '编制结果报告')
+
     def __init__(self, workspace=None):
         super().__init__()
         self.project_data = ProjectData()
@@ -49,7 +51,7 @@ class MainWindow(QMainWindow):
         header.setContentsMargins(22, 12, 22, 12)
         text = QVBoxLayout()
         text.setSpacing(3)
-        self.page_title = QLabel(self.PAGE_INFO[0][0])
+        self.page_title = QLabel(self.PAGE_HEADINGS[0])
         self.page_title.setProperty("role", "heading")
         self.page_title.setToolTip(self.PAGE_INFO[0][1])
         text.addWidget(self.page_title)
@@ -238,7 +240,7 @@ class MainWindow(QMainWindow):
         self.message_panel.show()
         self._refresh_navigation(index)
         title, description = self.PAGE_INFO[index]
-        self.page_title.setText(title)
+        self.page_title.setText(self.PAGE_HEADINGS[index])
         self.page_title.setToolTip(description)
         self.step_label.setText(f"工作流程  {index + 1} / 5")
 

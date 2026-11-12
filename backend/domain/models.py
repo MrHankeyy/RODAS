@@ -2,17 +2,15 @@ from dataclasses import dataclass, field, asdict
 
 
 TASK_TYPES = {
-    'robust': '基于代理模型的鲁棒性优化设计',
+    'robust': '基于代理模型的鲁棒优化设计',
     'taguchi': '田口设计',
-    'factorial': '因子筛选',
 }
+RUN_ID = '试验序号'
 
 
 def factor_title(source, task_type='robust'):
     if task_type == 'taguchi':
         return '控制因子' if source == '设计' else '噪声因子'
-    if task_type == 'factorial':
-        return '试验因子'
     return '设计变量' if source == '设计' else '不确定性参数'
 
 
@@ -21,9 +19,9 @@ class ResponseItem:
     name: str = ""
     kind: str = "目标"          # 目标 / 约束 / 目标+约束
     feature: str = "望小"       # 望大 / 望小 / 望目
-    lower: str = ""             # 望目时: 响应鲁棒性阈值下界
-    upper: str = ""             # 望目时: 响应鲁棒性阈值上界
-    robust_limit: str = ""      # 响应鲁棒性阈值: 望大=要求最小值, 望小=要求最大值
+    lower: str = ""             # 望目时: 目标性能区间或约束区间下界
+    upper: str = ""             # 望目时: 目标性能区间或约束区间上界
+    robust_limit: str = ""      # 目标鲁棒性阈值/约束阈值：望大为下限，望小为上限；不是标准差上限
     unit: str = ""
     target: str = ""           # 田口望目响应的目标值，与规格限分开
 
@@ -62,11 +60,10 @@ class ProjectData:
     design_params: dict = field(default_factory=dict)
     doe_matrix: list[dict] = field(default_factory=list) # 存储生成的DOE表格数据与测试结果
 
-    # 真实分析结果（筛选与田口）
-    screening_result: dict = field(default_factory=dict)
+    # 真实分析结果（田口）
     taguchi_result: dict = field(default_factory=dict)
 
-    # 响应曲面 / 代理模型分析结果
+    # 响应面 / 代理模型分析结果
     rsm_result: dict = field(default_factory=dict)
     surrogate_config: dict = field(default_factory=dict)   # 方案配置中选择的代理模型参数
     surrogate_result: dict = field(default_factory=dict)   # 后端训练/评估结果

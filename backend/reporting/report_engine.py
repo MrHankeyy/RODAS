@@ -1,4 +1,5 @@
 """Versioned, source-grounded reports. No fitting or optimization occurs here."""
+from backend.domain.response_terms import criterion_name, limit_name
 import base64
 import copy
 import hashlib
@@ -46,7 +47,7 @@ def _factor_rows(factors, task_type='robust'):
         rows.append({'模型输入' if task_type=='robust' else '因子':factor.get('name'),
                      '来源':factor_title(factor.get('source'),task_type),
                      '不确定性':factor.get('uncertainty'),'分布':factor.get('distribution'),
-                     '名义下限':factor.get('nominal_lower'),'名义上限':factor.get('nominal_upper'),
+                     '设计下限':factor.get('nominal_lower'),'设计上限':factor.get('nominal_upper'),
                      '不确定参数1':p1,'不确定参数2':p2,'单位':factor.get('unit')})
     return rows
 
@@ -56,7 +57,7 @@ def fingerprint(data):
 
 
 def results(project):
-    return serializable({'screening':project.screening_result,'taguchi':project.taguchi_result,
+    return serializable({'taguchi':project.taguchi_result,
         'rsm':project.rsm_result,'surrogate':project.surrogate_result,'workbench':project.workbench_result})
 
 
@@ -125,12 +126,12 @@ _TERM_VALUES = {
     '低差异序列 SOBOL': '索博尔序列', '均匀网格抽样': '均匀网格采样',
     '稀疏配点法': '低维组合采样', '随机抽样': '随机采样',
     'Gaussian（高斯）': '高斯相关函数', '指数 Exponential': '指数相关函数',
-    'Matern 3/2': '马特恩三分之二相关函数',
+    'Matern 3/2': '马特恩 3/2 相关函数',
     '常数（Ordinary）': '常数趋势', 'RBF 核': '径向基函数核',
-    'Sigmoid 核': '双曲正切核', 'sigmoid': '逻辑S形函数',
+    'Sigmoid 核': 'S形核', 'sigmoid': 'S形函数',
     'tanh': '双曲正切函数', 'relu': '修正线性单元',
-    'multi': '多目标优化（帕累托）', 'weighted': '加权目标优化',
-    'constraint': '波动约束优化',
+    'multi': '帕累托前沿法', 'weighted': '加权和法',
+    'constraint': '波动约束法',
 }
 
 _CONFIG_KEYS = {
@@ -185,7 +186,7 @@ def build_report(data,kind='model',record_id=None,include_raw=False):
         title='试验与分析记录报告';created=record['time']
     else:
         source=data['input'];metadata=data.get('metadata',{});res=data.get('results',{})
-        selected_history=history;status='当前输入版本的模型报告';title='产品鲁棒性优化设计模型报告';created=data.get('created_utc','')
+        selected_history=history;status='当前输入版本的模型报告';title='产品鲁棒优化设计模型报告';created=data.get('created_utc','')
     sha=fingerprint(source)
     wb=res.get('workbench') or {}
     optimization=wb.get('optimization') or {}
@@ -194,7 +195,7 @@ def build_report(data,kind='model',record_id=None,include_raw=False):
     def section(key,title,blocks):sections.append({'id':key,'title':title,'blocks':blocks})
     matrix=source.get('matrix') or [];responses=source.get('responses') or [];factors=source.get('factors') or []
     method=source.get('method') or ''
-    task_family='taguchi' if '田口' in method else 'factorial' if '筛选' in method else 'robust'
+    task_family='taguchi' if '田口' in method else 'robust'
     complete=[]
     for response in responses:
         name=response.get('name','')
@@ -206,7 +207,7 @@ def build_report(data,kind='model',record_id=None,include_raw=False):
             if math.isfinite(v):vals.append(v)
         complete.append({'响应':name,'有效数':len(vals),'总行数':len(matrix),'缺失或无效':len(matrix)-len(vals)})
     analysis_present=bool(wb.get('responses') or (res.get('rsm') or {}).get('fit') or
-        (res.get('surrogate') or {}).get('responses') or (res.get('screening') or {}).get('response_analysis') or
+        (res.get('surrogate') or {}).get('responses') or
         (res.get('taguchi') or {}).get('response_analysis'))
     risks=['模型计算不等于工程实测确认；是否满足最终产品要求需结合独立确认试验。']
     if not analysis_present:risks.append('当前版本尚无完整分析结果，不生成“验证通过”或最优取值结论。')
@@ -219,28 +220,28 @@ def build_report(data,kind='model',record_id=None,include_raw=False):
             risks.append('本输入版本保留的未通过 / 失败记录：'+'；'.join(f"{r['stage']}（{r['id'][:12]}，{r['status']}）" for r in not_passed)+'。请结合后续修正与确认记录解释。')
     if best and (best.get('infeas') or 0)>0:risks.append('优化返回点违反设定约束，不可作为可行设计推荐。')
     if kind=='trial' and record['status']!='完成':risks.append(f"该记录状态为{record['status']}：{record.get('message','')}")
-    for family in ('screening','taguchi'):
+    for family in ('taguchi',):
         for name,error in (res.get(family) or {}).get('errors',{}).items():risks.append(f'{name}：{error}')
     if source.get('surrogate_config') and analysis_present:
-        risks.append('代理模型检验使用留出集，不套用 OLS 系数显著性；训练精度不代表整个设计域的预测精度。')
+        risks.append('代理模型检验使用测试集，不套用 OLS 系数显著性；训练精度不代表整个设计域的预测精度。')
     summary=[{'项目':metadata.get('project_name') or '未填写','报告类型':title,'状态':status,
         '设计方法':source.get('method') or '未设置','因子数':len(factors),'响应数':len(responses),'试验行数':len(matrix),
         '可追溯记录数':len(selected_history)}]
     section('summary','摘要与结论',[table('报告摘要',summary),text('本报告仅汇集已记录的数据与结果，不在报告页重新拟合或优化。'),
         text('当前有分析结果，工程确认状态：待确认。' if analysis_present else '当前证据不足，报告为待完善状态。')])
     section('purpose','目的与验证条件',[text(metadata.get('purpose') or '目的尚未填写。'),
-        table('响应定义',[{'指标':r.get('name'),'角色':r.get('kind'),'目标特征':r.get('feature'),'下界':r.get('lower'),
-        '上界':r.get('upper'),'响应鲁棒性阈值':r.get('robust_limit'),**({'目标值':r['target']} if r.get('target') else {}),'单位':r.get('unit')} for r in responses])])
+        table('响应定义',[{'响应名称':r.get('name'),'响应角色':r.get('kind'),'优化方向 / 约束形式':criterion_name(r.get('kind'), r.get('feature')),'阈值类型':limit_name(r.get('kind')) if task_family=='robust' else '目标值','下限':r.get('lower'),
+        '上限':r.get('upper'),'单侧阈值':r.get('robust_limit'),**({'目标值':r['target']} if r.get('target') else {}),'单位':r.get('unit')} for r in responses])])
     section('materials','材料、对象与输入',[text(metadata.get('materials') or '样机、材料、设备和试验环境尚未填写。'),
         table('模型输入定义' if task_family=='robust' else '因子定义',_factor_rows(factors,task_family)),
-        text('设计变量的名义范围用于搜索，不确定性描述其加性偏差；不确定性参数不设名义范围，分布参数描述其实际取值。区间及均匀分布的两项参数为上下界，正态分布为均值/标准差，均使用所列单位。' if task_family=='robust' else '因子水平用于安排试验，水平统计按实际观测计算。')])
+        text('设计变量的名义范围用于搜索，不确定性描述其加性偏差；不确定性参数不设名义范围，分布参数描述其实际取值。区间及均匀分布的两项参数为上下界，正态分布为均值偏移/标准差，均使用所列单位；带 % 的参数按当前设计值（标准差按当前均值）的比例取值。' if task_family=='robust' else '因子水平用于安排试验，水平统计按实际观测计算。')])
     params=source.get('design_params') or {}
     blocks=[text('设计方法：'+(source.get('method') or '未设置')),
         table('试验设计配置',[{'配置项':_CONFIG_KEYS.get(k,k),'值':v} for k,v in (params.get('meta') or params).items() if k!='groups']),
         table('响应完整性',complete)]
     if source.get('surrogate_config'):blocks.append(table('代理模型配置',[{'配置项':_CONFIG_KEYS.get(k,k),'值':v} for k,v in source['surrogate_config'].items()]))
-    if optimization:blocks.append(table('优化条件',[{'鲁棒优化策略':{'multi':'多目标优化（帕累托）','weighted':'加权目标优化','constraint':'波动约束优化'}.get(optimization.get('mode'),optimization.get('mode')),'望性损失权重':optimization.get('weight'),
-        '区间标准差换算系数':optimization.get('k_design'),'约束裕量系数':optimization.get('k_constraint'),
+    if optimization:blocks.append(table('优化条件',[{'鲁棒优化策略':{'multi':'帕累托前沿法','weighted':'加权和法','constraint':'波动约束法'}.get(optimization.get('mode'),optimization.get('mode')),'望性损失权重':optimization.get('weight'),
+        '启用目标鲁棒性独立约束':optimization.get('enforce_objective_limits', False),'目标鲁棒性约束响应':optimization.get('objective_limit_names', []),'区间标准差换算系数':optimization.get('k_design'),'约束裕量系数':optimization.get('k_constraint'),
         '可行候选数':optimization.get('feasible_count'),'评价数':optimization.get('evaluated_count'),
         '种群数':optimization.get('population_size'),'代数':optimization.get('generations'),'随机种子':optimization.get('seed'),
         '逐变量交叉概率':optimization.get('pc'), '逐变量变异概率':optimization.get('effective_pm'),
@@ -265,18 +266,9 @@ def build_report(data,kind='model',record_id=None,include_raw=False):
             blocks.append(table(f'{name} · 二次响应面模型',[{'决定系数':item.get('r2'),'调整决定系数':item.get('adj_r2'),'均方根误差':item.get('rmse'),'残差自由度':item.get('df_residual')}]))
         for name,item in (res.get('surrogate') or {}).get('responses',{}).items():
             if item.get('error'):blocks.append(text(f'{name}：{item["error"]}'));risks.append(f'{name} 训练失败：{item["error"]}');continue
-            blocks.append(table(f'{name} · 留出法验证',[{'训练样本':item.get('train_samples'),'测试样本':item.get('test_samples'),'测试集决定系数':item.get('r2_test'),'归一化平均绝对误差%':item.get('mape_test_%')}]))
+            blocks.append(table(f'{name} · 测试集验证',[{'训练样本':item.get('train_samples'),'测试样本数':item.get('test_samples'),'测试集决定系数':item.get('r2_test'),'归一化平均绝对误差%':item.get('nmae_test_%')}]))
             if item.get('actual') and len(item['actual'])==len(item.get('predicted',[])):
-                charts.append({'kind':'prediction','title':f'{name}：留出集预测与实测','x':item['actual'],'y':item['predicted']})
-    for name,item in (res.get('screening') or {}).get('response_analysis',{}).items():
-        effects=item.get('effects',[])
-        blocks.append(table(f'{name} · 主效应分析',[{'因子':r['name'],'主效应':r['effect'],'主效应平方占比%':r['share'],
-            '标准误':r.get('se'),'未校正p':r.get('p')} for r in effects]))
-        blocks += [text(item.get('note','')),text(f"中心与角点均值差：{fmt(item.get('curvature'))}")]
-        charts.append({'kind':'bar','title':f'{name}：有符号主效应','x':[r['name'] for r in effects],'y':[r['effect'] for r in effects]})
-    if res.get('screening'):
-        blocks.extend(text(v) for v in res['screening'].get('aliases',[]))
-        risks.append('主效应平方占比不等于因果贡献或统计显著性，须结合交互混杂解释。')
+                charts.append({'kind':'prediction','title':f'{name}：测试集预测与实测','x':item['actual'],'y':item['predicted']})
     for name,item in (res.get('taguchi') or {}).get('response_analysis',{}).items():
         blocks.append(table(f'{name} · 水平分析',[{'因子':r['factor'],'水平':r['level_value'],'均值':r['mean'],
             '平均组内标准差':r.get('std'),item.get('metric_label','指标'):r['metric'],'候选':r.get('recommended')} for r in item.get('levels',[])]))
@@ -309,7 +301,7 @@ def build_report(data,kind='model',record_id=None,include_raw=False):
             blocks.extend({'type': 'formula', 'parts': [value]} for value in formulas['coding'])
     elif wb.get('model_text'):
         blocks.append(text(wb['model_text']))
-    if not blocks:blocks=[text('尚无优化方案结果。筛选设计只提供因子筛选结论，不输出连续最优点。')]
+    if not blocks:blocks=[text('尚无优化方案结果。')]
     section('settings','优化方案与波动核验',blocks)
     if optimization or wb:risks.append('μ±kσ 是独立输入、对角二阶近似下的稳健带，不是预测区间，不保证概率覆盖。')
     section('risks','风险、未通过项与确认计划',[text(r) for r in dict.fromkeys(risks)]+[
@@ -319,7 +311,7 @@ def build_report(data,kind='model',record_id=None,include_raw=False):
         '状态':r['status'],'输入版本':r['input_sha256'][:12],'适用于本版':r['input_sha256']==sha,'说明':r.get('message','')} for r in selected_history]),
         text('记录从本功能启用后开始；此前未记录的操作无法追补。完成表示计算或录入完成，不表示工程验证通过。'),
         text('输入 SHA-256：'+sha)])
-    if include_raw or kind=='trial':section('appendix','附录：原始试验设计数据',[table('试验矩阵与回填响应',matrix)])
+    if include_raw or kind=='trial':section('appendix','附录：原始试验设计数据',[table('试验数据表与回填响应',matrix)])
     return {'title':title,'kind':kind,'record_id':record_id,'created_utc':created,'input_sha256':sha,
         'metadata':metadata,'status':status,'sections':sections,'risks':list(dict.fromkeys(risks))}
 
@@ -380,7 +372,7 @@ def build_current_report(data):
     """Render only this calculation, without trial history or authoring workflow."""
     current = dict(data, history=[])
     report = build_report(current)
-    report['title'] = '产品鲁棒性优化设计结果报告'
+    report['title'] = '产品鲁棒优化设计结果报告'
     report['status'] = '本次计算结果'
     optimization = (data.get('results', {}).get('workbench') or {}).get('optimization') or {}
     if optimization.get('sigma_limits'):

@@ -46,7 +46,7 @@ class ModelLayoutTests(unittest.TestCase):
 
     def test_task_specific_navigation_and_removed_manual_start(self):
         _, page = self.make_page()
-        for method, wanted, absent in (('筛选设计', 7, 8), ('田口设计', 8, 7), ('二次响应面模型', 1, 7)):
+        for method, wanted, absent in (('田口设计', 7, 8), ('二次响应面模型', 1, 7)):
             page.project_data.design_method = method
             page._check_inputs()
             self.assertIn(wanted, page.results_workspace.buttons)

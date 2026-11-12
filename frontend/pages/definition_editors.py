@@ -6,13 +6,14 @@ from PyQt6.QtWidgets import (
     QStackedWidget, QLineEdit, QComboBox, QCheckBox, QButtonGroup, QAbstractItemView,
 )
 from backend.domain.models import FactorItem, ResponseItem, factor_title
+from backend.domain.response_terms import criterion_name, limit_name
 from backend.core.factors import factor_limits
 from frontend.numeric_inputs import numeric_text_input
 from frontend.pages.table_widgets import BalancedColumnsTable
 from frontend.terminology import apply_header_tooltips, tooltip
 
 
-LEVEL_HEADERS = {"taguchi": ("低水平值", "高水平值"), "factorial": ("低水平", "高水平")}
+LEVEL_HEADERS = {"taguchi": ("低水平值", "高水平值")}
 
 
 def stacked(*widgets):
@@ -51,6 +52,20 @@ def number(control, label):
     except ValueError:
         pass
     raise ValueError(f"{label}：请填写有限数字。")
+
+
+def ratio_number(control, label):
+    """参数值：普通数字按原单位，带 % 的按比例返回 (数值, 原文)。"""
+    text = control.text().strip()
+    if text.endswith("%"):
+        try:
+            value = float(text[:-1]) / 100.0
+        except ValueError:
+            raise ValueError(f"{label}：百分数格式不正确，应形如 5% 或 -5%。")
+        if not math.isfinite(value):
+            raise ValueError(f"{label}：请填写有限数字。")
+        return value, text
+    return number(control, label), text
 
 
 class DefinitionTable(QWidget):
@@ -127,7 +142,7 @@ class FactorEditor(QWidget):
     def __init__(self, source, item=None, task_type="robust"):
         super().__init__()
         self.source = source
-        self.classical = task_type in ("taguchi", "factorial")
+        self.classical = task_type == "taguchi"
         item = item or FactorItem(source=source)
         self.name, self.unit = QLineEdit(item.name), QLineEdit(item.unit)
         design = source == "设计"
@@ -156,8 +171,12 @@ class FactorEditor(QWidget):
         defined = separate or not design
         self.delta_lower = numeric_text_input(p1 if defined and item.uncertainty == "区间" else "")
         self.delta_upper = numeric_text_input(p2 if defined and item.uncertainty == "区间" else "")
+        self.delta_lower.setPlaceholderText("如 -1 或 -5%")
+        self.delta_upper.setPlaceholderText("如 1 或 5%")
         self.mean = numeric_text_input(p1 if defined and item.uncertainty == "概率" else "0")
+        self.mean.setPlaceholderText("如 2 或 -2")
         self.stddev = numeric_text_input()
+        self.stddev.setPlaceholderText("如 0.5 或 5%")
         if item.uncertainty == "概率" and item.param2:
             self.stddev.setText(format(math.sqrt(float(item.param2)), '.15g'))
         self.stddev_original = (self.stddev.text(), item.param2)
@@ -182,7 +201,8 @@ class FactorEditor(QWidget):
         no_distribution.setEnabled(False)
         self.distribution_cell = stacked(no_distribution, self.distribution)
         self.parameters = stacked(field_row(("下界", self.delta_lower), ("上界", self.delta_upper)),
-                                  field_row(("均值", self.mean), ("标准差", self.stddev)),
+                                  field_row(("均值偏移" if design else "均值", self.mean),
+                                            ("标准差", self.stddev)),
                                   field_row(("下界", self.uniform_lower), ("上界", self.uniform_upper)))
         self.cells = (self.name,) + ((self.lower, self.upper) if design else ()) + (
             self.type_combo, self.distribution_cell, self.parameters, self.unit)
@@ -194,19 +214,26 @@ class FactorEditor(QWidget):
 
     def update_units(self):
         unit = self.unit.text().strip()
+        unit_text = "（" + unit + "）" if unit else ""
         design = self.source == "设计"
         prefix = "不确定性偏差" if design else "不确定性参数实际取值"
         if design or self.classical:
             labels = self.range_labels if self.classical else ("名义设计下限", "名义设计上限")
-            self.lower.setToolTip(labels[0] + ("（" + unit + "）" if unit else ""))
-            self.upper.setToolTip(labels[1] + ("（" + unit + "）" if unit else ""))
+            self.lower.setToolTip(labels[0] + unit_text)
+            self.upper.setToolTip(labels[1] + unit_text)
         if self.classical:
             return
+        ratio_hint = "\n可填百分数（如 -5%），边界按当前设计值的该比例取值。"
         for control, label in ((self.delta_lower, prefix + "下界"), (self.delta_upper, prefix + "上界"),
-                               (self.mean, prefix + "均值"), (self.uniform_lower, "均匀分布" + prefix + "下界"),
+                               (self.uniform_lower, "均匀分布" + prefix + "下界"),
                                (self.uniform_upper, "均匀分布" + prefix + "上界")):
-            control.setToolTip(label + ("（" + unit + "）" if unit else ""))
-        self.stddev.setToolTip(prefix + "标准差" + ("（" + unit + "）" if unit else ""))
+            hint = ratio_hint if design and control in (self.delta_lower, self.delta_upper) else ""
+            control.setToolTip(label + unit_text + hint)
+        self.mean.setToolTip(
+            (prefix + "均值偏移" + unit_text + "\n正数表示在当前设计值上正偏移，负数表示负偏移。") if design
+            else (prefix + "均值" + unit_text))
+        self.stddev.setToolTip(
+            prefix + "标准差" + unit_text + "\n可填百分数（如 5%），按当前均值的该比例计算标准差。")
 
     def update_inline_parameters(self):
         probability = self.type_combo.currentIndex() == 1
@@ -227,7 +254,7 @@ class FactorEditor(QWidget):
             raise ValueError("请填写因子名称。")
         design = self.source == "设计"
         if design or self.classical:
-            labels = self.range_labels if self.classical else ("名义下限", "名义上限")
+            labels = self.range_labels if self.classical else ("设计下限", "设计上限")
             lower, upper = number(self.lower, name + labels[0]), number(self.upper, name + labels[1])
             if lower >= upper:
                 raise ValueError(f"{name}：{labels[0]}须小于{labels[1]}。")
@@ -239,29 +266,42 @@ class FactorEditor(QWidget):
                               param2="0" if design else self.upper.text().strip())
         parameter = "偏差" if design else "不确定性参数取值"
         probability = self.parameters.currentIndex() != 0
-        first, second = (self.mean, self.stddev) if probability else (self.delta_lower, self.delta_upper)
         uniform_bounds = self.parameters.currentIndex() == 2
         if uniform_bounds:
-            first, second = self.uniform_lower, self.uniform_upper
-        p1, p2 = number(first, name + parameter + "参数"), number(second, name + parameter + "参数")
-        if probability and not uniform_bounds and p2 < 0:
-            raise ValueError(f"{name}：{parameter}标准差不能为负数。")
-        if (not probability or uniform_bounds) and p1 > p2:
-            raise ValueError(f"{name}：{parameter}下界不能大于上界。")
-        param1, param2 = first.text().strip(), second.text().strip()
-        if probability and not uniform_bounds:
-            variance = p2 * p2
-            if not math.isfinite(variance):
-                raise ValueError(f"{name}：标准差过大，无法计算有限方差。")
-            param2 = self.stddev_original[1] if param2 == self.stddev_original[0] else repr(variance)
-        if uniform_bounds:
+            p1 = number(self.uniform_lower, name + "均匀分布" + parameter + "下界")
+            p2 = number(self.uniform_upper, name + "均匀分布" + parameter + "上界")
+            if p1 > p2:
+                raise ValueError(f"{name}：{parameter}下界不能大于上界。")
             mean, sigma = p1 / 2 + p2 / 2, (p2 - p1) / math.sqrt(12)
             variance = sigma * sigma
             if not math.isfinite(variance):
                 raise ValueError(f"{name}：均匀分布{parameter}范围过大，无法换算有限方差。")
             # Task files and propagation retain their existing mean/variance convention.
-            param1, param2 = (self.uniform_original[2:] if (param1, param2) == self.uniform_original[:2]
+            current = (self.uniform_lower.text().strip(), self.uniform_upper.text().strip())
+            param1, param2 = (self.uniform_original[2:] if current == self.uniform_original[:2]
                               else (repr(mean), repr(variance)))
+        elif probability:
+            number(self.mean, name + parameter + "均值")
+            p2, text = ratio_number(self.stddev, name + parameter + "标准差")
+            if p2 < 0:
+                raise ValueError(f"{name}：{parameter}标准差不能为负数。")
+            param1 = self.mean.text().strip()
+            if text.endswith("%"):
+                # 百分数标准差按当前均值换算，保留原文以便复现。
+                param2 = text
+            else:
+                variance = p2 * p2
+                if not math.isfinite(variance):
+                    raise ValueError(f"{name}：标准差过大，无法计算有限方差。")
+                param2 = self.stddev_original[1] if text == self.stddev_original[0] else repr(variance)
+        else:
+            p1, first_text = ratio_number(self.delta_lower, name + parameter + "下界")
+            p2, second_text = ratio_number(self.delta_upper, name + parameter + "上界")
+            if p1 > p2:
+                raise ValueError(f"{name}：{parameter}下界不能大于上界。")
+            if not design and (first_text.endswith("%") or second_text.endswith("%")):
+                raise ValueError(f"{name}：不确定性参数没有名义取值，区间上下界请填写数值。")
+            param1, param2 = first_text, second_text
         return FactorItem(name=name, source=self.source, unit=self.unit.text().strip(),
                           nominal_lower=self.lower.text().strip() if design else "",
                           nominal_upper=self.upper.text().strip() if design else "",
@@ -273,13 +313,13 @@ class FactorEditor(QWidget):
 class FactorTable(DefinitionTable):
     def __init__(self, source, task_type="robust"):
         design = source == "设计"
-        classical = task_type in ("taguchi", "factorial")
+        classical = task_type == "taguchi"
         if classical:
             headers = ["名称", *LEVEL_HEADERS[task_type], "单位", "操作"]
             widths = (110, 140, 140, 60, 64)
         else:
-            headers = ["名称"] + (["名义下限", "名义上限"] if design else []) + [
-                "不确定类型", "分布类型", "不确定性参数", "单位", "操作"]
+            headers = ["名称"] + (["设计下限", "设计上限"] if design else []) + [
+                "不确定性类型", "分布类型", "不确定性特征", "单位", "操作"]
             widths = (70, 80, 80, 90, 110, 250, 60, 64) if design else (100, 90, 110, 250, 60, 64)
         title = factor_title(source, task_type)
         super().__init__(title, lambda item: FactorEditor(source, item, task_type),
@@ -300,9 +340,6 @@ class ResponseEditor(QWidget):
         self.task_type = task_type
         item = item or ResponseItem(kind="目标")
         self.name, self.unit = QLineEdit(item.name), QLineEdit(item.unit)
-        if task_type == "factorial":
-            self.cells = (self.name, self.unit)
-            return
         if task_type != "taguchi":
             self.objective, self.constraint = QCheckBox(), QCheckBox()
             self.role_group = QButtonGroup(self)
@@ -313,41 +350,59 @@ class ResponseEditor(QWidget):
             self.objective.setChecked(item.kind == '目标')
             self.constraint.setChecked(item.kind == '约束')
         self.feature = QComboBox()
-        self.feature.addItems(["望大", "望小", "望目"])
-        self.feature.setCurrentText(item.feature)
+        for value in ("望大", "望小", "望目"):
+            self.feature.addItem(value, value)
+        self.feature.setCurrentIndex(self.feature.findData(item.feature))
         if task_type == "taguchi":
             self.target = numeric_text_input(item.target)
             self.target.setToolTip("望目目标值，与响应使用相同单位")
             self.limits = self.target
         else:
             self.lower, self.upper = numeric_text_input(item.lower), numeric_text_input(item.upper)
-            self.lower.setToolTip(tooltip('response_limit')+'\n下限')
-            self.upper.setToolTip(tooltip('response_limit')+'\n上限')
+            self.lower_label = QLabel()
+            self.upper_label = QLabel()
             self.limit = numeric_text_input(item.robust_limit)
             self.limit_label = QLabel()
             self.limits = stacked(field_row((self.limit_label, self.limit)),
-                                  field_row(("下限", self.lower), ("上限", self.upper)))
+                                  field_row((self.lower_label, self.lower), (self.upper_label, self.upper)))
         roles = () if task_type == "taguchi" else (centered(self.objective), centered(self.constraint))
         self.cells = (self.name,) + roles + (self.feature, self.limits, self.unit)
         self.feature.currentTextChanged.connect(self.update_feature)
+        if task_type != "taguchi":
+            self.objective.toggled.connect(self.update_feature)
+            self.constraint.toggled.connect(self.update_feature)
         self.update_feature()
 
-    def update_feature(self):
-        feature = self.feature.currentText()
+    def update_feature(self, *_args):
+        feature = self.feature.currentData()
+        kind = '约束' if self.task_type != 'taguchi' and self.constraint.isChecked() else '目标'
+        self.feature.blockSignals(True)
+        for i in range(self.feature.count()):
+            value = self.feature.itemData(i)
+            self.feature.setItemText(i, criterion_name(kind, value))
+            explanation = criterion_name(kind, value) + ('（田口' + value + '型）' if self.task_type == 'taguchi' else '')
+            self.feature.setItemData(i, explanation, Qt.ItemDataRole.ToolTipRole)
+        self.feature.blockSignals(False)
+        self.feature.setToolTip(tooltip('response_criterion'))
         if self.task_type == "taguchi":
             self.target.setEnabled(feature == "望目")
             return
         self.limits.setCurrentIndex(1 if feature == "望目" else 0)
-        self.limit_label.setText("下限" if feature == "望大" else "上限")
-        self.limit.setToolTip(tooltip('response_limit')+'\n'+self.limit_label.text())
+        prefix = '约束' if kind == '约束' else '目标'
+        self.limit_label.setText(prefix + ("下限" if feature == "望大" else "上限"))
+        self.lower_label.setText(prefix + '下限')
+        self.upper_label.setText(prefix + '上限')
+        term = 'constraint_limit' if kind == '约束' else 'objective_robustness_limit'
+        for control in (self.limit, self.lower, self.upper):
+            control.setToolTip(tooltip(term))
+            control.setAccessibleDescription(tooltip(term))
+        self.limit.setPlaceholderText('必填' if kind == '约束' else '可选')
 
     def collect(self):
         name = self.name.text().strip()
         if not name:
             raise ValueError("请填写响应名称。")
-        if self.task_type == "factorial":
-            return ResponseItem(name=name, unit=self.unit.text().strip())
-        feature = self.feature.currentText()
+        feature = self.feature.currentData()
         if self.task_type == "taguchi":
             if feature == "望目":
                 number(self.target, name + "目标值")
@@ -357,9 +412,9 @@ class ResponseEditor(QWidget):
             raise ValueError(f"{name}：请勾选目标或约束。")
         if feature == "望目":
             if number(self.lower, name + "下限") >= number(self.upper, name + "上限"):
-                raise ValueError(f"{name}：响应鲁棒性阈值下限须小于上限。")
+                raise ValueError(f"{name}：{limit_name("约束" if self.constraint.isChecked() else "目标")}下限须小于上限。")
         elif self.limit.text().strip() or self.constraint.isChecked():
-            number(self.limit, name + "响应鲁棒性阈值")
+            number(self.limit, name + limit_name("约束" if self.constraint.isChecked() else "目标"))
         kind = '目标' if self.objective.isChecked() else '约束'
         return ResponseItem(name=name, unit=self.unit.text().strip(), kind=kind, feature=feature,
                             lower=self.lower.text().strip() if feature == "望目" else "",
@@ -369,11 +424,9 @@ class ResponseEditor(QWidget):
 
 class ResponseTable(DefinitionTable):
     def __init__(self, task_type="robust"):
-        if task_type == "factorial":
-            headers, widths = ["名称", "单位", "操作"], (180, 60, 64)
-        elif task_type == "taguchi":
-            headers, widths = ["名称", "目标特征", "目标值", "单位", "操作"], (110, 100, 140, 60, 64)
+        if task_type == "taguchi":
+            headers, widths = ["名称", "优化方向", "目标值", "单位", "操作"], (110, 100, 140, 60, 64)
         else:
-            headers = ["名称", "目标响应", "约束响应", "目标特征", "响应鲁棒性阈值", "单位", "操作"]
-            widths = (110, 80, 80, 100, 250, 60, 64)
+            headers = ["名称", "目标响应", "约束响应", "优化方向 / 约束形式", "阈值设置", "单位", "操作"]
+            widths = (100, 70, 70, 150, 260, 60, 64)
         super().__init__("响应", lambda item: ResponseEditor(item, task_type), headers, widths)

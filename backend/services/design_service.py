@@ -5,6 +5,7 @@ import math
 import random
 
 from backend.core import doe, factors as factor_tools, sampling
+from backend.domain.models import RUN_ID
 from backend.services.project_service import ProjectService
 
 
@@ -26,28 +27,6 @@ def _design_factors(project):
 def _noise_factors(project):
     return factor_tools.simple_factors(
         [item for item in project.factors if item.source == "环境"])
-
-
-def screening_plan(project, method, kind, seed, centers, replicates,
-                   randomize, top_n):
-    factors = _design_factors(project)
-    _require_design_factors(factors)
-    rows, meta = doe.build_screening(
-        factors, kind, seed=seed, centers=centers, replicates=replicates,
-        randomize=randomize)
-    result = {
-        "factor_rankings": [], "main_effects": [], "plot_points": [],
-        "stability_impact": [], "response_effects": {},
-        "response_analysis": {},
-        "diagnostic_summary":
-            f"{meta['kind']}，{meta['total_runs']} 次试验。{meta['diagnostic']}",
-        "conclusion": "方案已生成，尚无响应数据；不生成先验因子排名。",
-        "analysis_status": "等待响应数据",
-    }
-    return DesignPlan(
-        method, rows, {"doe_family": meta["kind"], "meta": meta,
-                       "top_n": top_n, "seed": seed, "randomize": randomize},
-        initial_results={"screening_result": result}, surrogate_config={})
 
 
 def response_surface_plan(project, method, rsm_type, alpha_mode, alpha,
@@ -188,7 +167,7 @@ def _validate_model_design(model, rows, factors, config):
         if rank < matrix.shape[1]:
             raise ValueError(f"当前设计不能识别完整二次模型（矩阵秩 {rank}/{matrix.shape[1]}）；请增加有效设计点或更换试验设计。")
     elif len(rows) < 6:
-        raise ValueError("代理模型至少需要 6 个样本，才能进行训练与留出集评估。")
+        raise ValueError("代理模型至少需要 6 个样本，才能进行训练与测试集评估。")
     elif model == "Kriging":
         trend = config.get("model_params", {}).get("trend", "常数（Ordinary）")
         train = np.random.default_rng(2026).permutation(len(rows))[max(1, round(len(rows)*.2)):]
@@ -213,13 +192,13 @@ def materialize_matrix(project, rows, groups=None):
     responses = [item.name for item in project.responses if item.name]
     factor_names = [item.name for item in project.factors if item.name]
     names = factor_names + responses
-    reserved = {"Run_ID", "内表组号", "外表组号", "重复组号"}
+    reserved = {RUN_ID, "内表组号", "外表组号", "重复组号"}
     if len(set(names)) != len(names) or set(names) & reserved:
         raise ValueError(
             "因子和响应名称必须互不重复，且不能使用试验编号/组号等保留列名")
     matrix = []
     for index, row in enumerate(rows):
-        record = {"Run_ID": index + 1, **row}
+        record = {RUN_ID: index + 1, **row}
         for factor in project.factors:
             if factor.name and factor.is_fixed:
                 try:

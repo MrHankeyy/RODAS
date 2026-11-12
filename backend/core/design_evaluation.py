@@ -21,17 +21,23 @@ DEFAULT_K_DESIGN = math.sqrt(3.0)
 DEFAULT_K_CONSTRAINT = 1.0
 
 
-def _sigma_of_factor(f, k_design):
-    """因子不确定性标准差。"""
+def _sigma_of_factor(f, k_design, point=None):
+    """因子不确定性标准差；百分数参数按当前设计值（概率按当前均值）换算。"""
     lo, hi = de.factor_limits(f)
     if f.uncertainty == "概率":
+        ratio = de.ratio_value(f.param2)
+        if ratio is not None:
+            return abs(de.factor_center(f, point) * ratio)
         try:
             return max(0.0, float(f.param2)) ** 0.5
         except (TypeError, ValueError):
             return (hi - lo) / 6.0
     if f.source == "环境" or f.nominal_lower != "":
         # Existing moment approximation: actual environmental width or design deviation width.
-        return (float(f.param2) - float(f.param1)) / (2.0 * max(1.0, k_design))
+        base = de.factor_center(f, point, include_deviation=False)
+        low = de.delta_value(f, f.param1, base)
+        high = de.delta_value(f, f.param2, base)
+        return (high - low) / (2.0 * max(1.0, k_design))
     # For actual environmental intervals (and legacy design ranges), half-width = k·σ.
     return (hi - lo) / (2.0 * max(1.0, k_design))
 
@@ -47,7 +53,7 @@ def robust_moments(model, x_design, context, k_design, include_residual=True):
     hess = model_hess_diag_x(model, x)
     sigma = []
     for f, idx in zip(inputs, range(len(inputs))):
-        sigma.append(_sigma_of_factor(f, k_design))
+        sigma.append(_sigma_of_factor(f, k_design, x_design))
     sigma = _np.array(sigma, float)
     # 一阶 + 二阶矩修正
     curvature = 0.5 * float(_np.sum((hess * sigma ** 2)))
@@ -125,6 +131,25 @@ def _response_scale(model):
     return span if span > 1e-12 else max(max(abs(v) for v in values), 1.0)
 
 
+def response_uses_limits(context, response):
+    """Keep the optimization role separate from optional performance constraints."""
+    if self_is_constraint(response):
+        return True
+    if not context.get('enforce_objective_limits', False):
+        return False
+    values = (response.lower, response.upper) if response.feature == '望目' else (response.robust_limit,)
+    return any(str(value).strip() for value in values)
+
+
+def validate_response_limits(response):
+    kind, limit = _constraint_limits(response)
+    values = limit if kind == 'both' else (limit,)
+    if any(value is None or not math.isfinite(value) for value in values):
+        raise ValueError(f'{response.name}：性能阈值必须为有限数字。')
+    if kind == 'both' and values[0] >= values[1]:
+        raise ValueError(f'{response.name}：性能阈值下限必须小于上限。')
+
+
 def evaluate_design(context, x_design, k_design, weight_r, use_constraints=False,
                     k_constraint=DEFAULT_K_CONSTRAINT, resp_stds=None):
     """设计点评估。返回 dict{obj, mean_perf, std_norm, infeas, details}。"""
@@ -151,7 +176,9 @@ def evaluate_design(context, x_design, k_design, weight_r, use_constraints=False
         std_n = sigma / max(scale, 1e-12)
         # 是否约束
         is_cons = self_is_constraint(resp)
-        if is_cons:
+        if response_uses_limits(context, resp):
+            if use_constraints:
+                validate_response_limits(resp)
             kind, lim = _constraint_limits(resp)
             if use_constraints and (lim is None or
                                     (kind == "both" and None in lim)):
@@ -173,7 +200,8 @@ def evaluate_design(context, x_design, k_design, weight_r, use_constraints=False
                               else ((lim[1] or 0.0) if lim else 0.0))
             if use_constraints:
                 infeas += infeas_in / max(limit_scale, 1.0)
-            resp_cons.append({"name": resp.name, "mu": mu, "sigma": sigma, "d": d})
+            if is_cons:
+                resp_cons.append({"name": resp.name, "mu": mu, "sigma": sigma, "d": d})
         if not is_cons or "目标" in resp.kind:
             resp_objs.append({"name": resp.name, "mu": mu, "sigma": sigma, "d": d})
             perf_sum += d
@@ -200,8 +228,8 @@ def project_responses(context):
 
 
 def self_is_constraint(resp):
-    # 响应阈值属于目标的望性参考，只有用户明确勾选“约束响应”
-    # 时才把该响应从目标集合移入约束集合。
+    # 响应角色由定义决定；目标性能阈值是否作为独立约束由
+    # enforce_objective_limits 控制，不改变目标响应的角色。
     return "约束" in getattr(resp, "kind", "")
 
 

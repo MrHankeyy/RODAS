@@ -46,8 +46,7 @@ class ResultOverviewTests(unittest.TestCase):
 
     def test_empty_plan_and_ready_data_have_distinct_next_actions(self):
         self.assertEqual(overview(ProjectData())["status"], "尚未生成方案")
-        for method, action in [("两水平筛选设计", "计算因子主效应"),
-                               ("田口稳健设计", "计算田口信噪比"),
+        for method, action in [("田口稳健设计", "计算田口信噪比"),
                                ("响应曲面设计", "代理模型构建")]:
             with self.subTest(method=method):
                 data = overview(self.project(method))
@@ -58,7 +57,7 @@ class ResultOverviewTests(unittest.TestCase):
         view = ResultOverview()
         for model in ("Kriging", "SVR", "ANN"):
             project = self.project(f"代理模型建模 · {model}")
-            project.surrogate_result = {"responses": {"Y": {"r2_test": .97, "mape_test_%": 2.1,
+            project.surrogate_result = {"responses": {"Y": {"r2_test": .97, "nmae_test_%": 2.1,
                 "train_samples": 8, "test_samples": 2, "params": {"model": model}}}}
             view.set_project(project)
             self.assertEqual(view.status_label.text(), "分析已完成")
@@ -79,16 +78,6 @@ class ResultOverviewTests(unittest.TestCase):
         self.assertEqual(len(data['sections']), 1)
         self.assertIn("数据不足", data["sections"][0]["message"])
 
-    def test_screening_preserves_signed_effects_for_each_response(self):
-        project = self.project("两水平筛选设计")
-        project.design_params = {"top_n": 1}
-        project.screening_result = {"response_analysis": {name: {"effects": [
-            {"name": "h", "effect": -2, "share": 80}, {"name": "b", "effect": 1, "share": 20}]}
-            for name in ("Y", "Z")}}
-        sections = overview(project)["sections"]
-        self.assertEqual(len(sections), 2)
-        self.assertEqual(sections[0]["rows"], [["h", -2, 80]])
-
     def test_taguchi_never_assigns_observed_statistics_to_untested_combination(self):
         project = self.project("田口稳健设计")
         item = {"best_levels": {"b": 60, "h": 110}, "runs": [
@@ -107,7 +96,7 @@ class ResultOverviewTests(unittest.TestCase):
         page._refresh_view()
         self.assertFalse(page.overview.result_tables)
         self.assertFalse(page.model_overview.isHidden())
-        project.design_method = "两水平筛选设计"
+        project.design_method = "田口稳健设计"
         page._check_inputs()
         self.assertFalse(project.surrogate_result)
         self.assertFalse(page.overview.result_tables)

@@ -2,7 +2,6 @@
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, QComboBox, QGroupBox, QPushButton,
 )
-from frontend.math_widgets import decorate_combo
 from frontend.numeric_inputs import numeric_input
 from frontend.terminology import add_combo_item
 from frontend.theme import content_zone
@@ -13,53 +12,6 @@ from frontend.pages.table_widgets import fill_records
 def _publish(owner, controls):
     for name, widget in controls.items():
         setattr(owner, name, widget)
-
-
-def screening(owner):
-    widget = QWidget()
-    layout = QVBoxLayout(widget)
-    layout.setContentsMargins(0, 0, 0, 0)
-    row = QHBoxLayout()
-    row.addWidget(QLabel("设计族："))
-    kind = QComboBox()
-    for term, value in (("full_factorial", "full"),
-                        ("half_fraction", "half"),
-                        ("quarter_fraction", "quarter"),
-                        ("plackett_burman", "pb")):
-        add_combo_item(kind, term, value)
-    decorate_combo(kind)
-    row.addWidget(kind)
-    row.addSpacing(24)
-    row.addWidget(QLabel("报告重点主效应数："))
-    top_n = numeric_input(int, 1, 10, 5)
-    row.addWidget(top_n)
-    row.addStretch()
-    layout.addLayout(row)
-
-    row = QHBoxLayout()
-    row.addWidget(QLabel("中心点补充数："))
-    centers = numeric_input(int, 0, 10, 2)
-    row.addWidget(centers)
-    row.addSpacing(24)
-    row.addWidget(QLabel("整表重复次数："))
-    repeats = numeric_input(int, 1, 5, 1)
-    row.addWidget(repeats)
-    row.addSpacing(24)
-    row.addWidget(QLabel("试验顺序："))
-    order = QComboBox()
-    order.addItems(["随机", "保持相同"])
-    row.addWidget(order)
-    row.addSpacing(24)
-    row.addWidget(QLabel("随机种子："))
-    seed = numeric_input(int, 0, 99999, 123)
-    row.addWidget(seed)
-    row.addStretch()
-    layout.addLayout(row)
-    _publish(owner, {
-        "screen_kind_combo": kind, "f_topn_spin": top_n,
-        "f_center_spin": centers, "f_repeat_spin": repeats,
-        "f_order_combo": order, "f_seed_spin": seed})
-    return widget
 
 
 def taguchi(owner):
@@ -86,7 +38,7 @@ def taguchi(owner):
     for control in (levels, noise_levels):
         control.addItems(['2 水平', '3 水平'])
     order.addItems(['随机', '保持相同'])
-    snr.addItems(['按各响应目标特征自动', '望大（越大越好）', '望小（越小越好）', '望目（名义最好）'])
+    snr.addItems(['按各响应优化方向自动', '望大（越大越好）', '望小（越小越好）', '望目（名义最好）'])
     repeats, seed = numeric_input(int, 1, 10, 1), numeric_input(int, 0, 99999, 789)
     inner_outer = QHBoxLayout()
     for title, explanation, controls in (
@@ -104,7 +56,7 @@ def taguchi(owner):
         field(grid, column, text, control)
     order.currentIndexChanged.connect(lambda index: seed.setEnabled(index == 0))
     body.addWidget(box)
-    box, grid = group('信噪比设置', '信噪比（Signal-to-Noise Ratio，S/N）\n按目标特征选择损失函数。望小型使用响应平方均值，信噪比越大表示均方损失越小。')
+    box, grid = group('信噪比设置', '信噪比（Signal-to-Noise Ratio，S/N）\n按优化方向选择损失函数。望小型使用响应平方均值，信噪比越大表示均方损失越小。')
     field(grid, 0, '信噪比目标', snr)
     owner.t_response_label = label()
     owner.t_response_label.setToolTip('按当前业务响应和信噪比设置显示各响应的评价类型。')

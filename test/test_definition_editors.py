@@ -46,7 +46,7 @@ class DefinitionEditorTests(unittest.TestCase):
         self.assertEqual(page.design_factors.table.cellWidget(0, 0).text(), 'b')
         table = page.design_factors.table
         self.assertEqual(table.columnCount(), 8)
-        self.assertEqual(table.horizontalHeaderItem(5).text(), '不确定性参数')
+        self.assertEqual(table.horizontalHeaderItem(5).text(), '不确定性特征')
         self.assertIs(table.cellWidget(0, 1), page.design_factors.editors[0].lower)
         self.assertIs(table.cellWidget(0, 2), page.design_factors.editors[0].upper)
         self.assertLessEqual(table.rowHeight(0), 40)
@@ -113,11 +113,11 @@ class DefinitionEditorTests(unittest.TestCase):
         editor = ResponseEditor(ResponseItem(name='Y', kind='约束', feature='望目', lower='2', upper='5'))
         self.addCleanup(editor.close)
         self.assertEqual(editor.limits.currentIndex(), 1)
-        editor.feature.setCurrentText('望小')
+        editor.feature.setCurrentIndex(editor.feature.findData('望小'))
         editor.limit.setText('6')
-        self.assertEqual(editor.limit_label.text(), '上限')
+        self.assertEqual(editor.limit_label.text(), '约束上限')
         self.assertEqual(editor.collect().robust_limit, '6')
-        editor.feature.setCurrentText('望目')
+        editor.feature.setCurrentIndex(editor.feature.findData('望目'))
         self.assertEqual((editor.collect().lower, editor.collect().upper), ('2', '5'))
         editor.lower.setText('7')
         with self.assertRaisesRegex(ValueError, '下限'):
@@ -141,7 +141,7 @@ class DefinitionEditorTests(unittest.TestCase):
         self.addCleanup(legacy.close)
         self.assertEqual((legacy.lower.text(), legacy.upper.text()), ('40.0', '60.0'))
         self.assertEqual(legacy.delta_lower.text(), '')
-        with self.assertRaisesRegex(ValueError, '偏差参数'):
+        with self.assertRaisesRegex(ValueError, '偏差下界'):
             legacy.collect()
 
     def test_nominal_range_and_input_sigma_are_independent(self):
@@ -262,7 +262,7 @@ class DefinitionEditorTests(unittest.TestCase):
         labels = lambda: [label.text() for label in editor.parameters.currentWidget().findChildren(QLabel)]
         self.assertEqual(labels(), ['下界', '上界'])
         editor.type_combo.setCurrentIndex(1)
-        self.assertEqual(labels(), ['均值', '标准差'])
+        self.assertEqual(labels(), ['均值偏移', '标准差'])
         editor.mean.setText('0.1')
         editor.stddev.setText('0.2')
         editor.distribution.setCurrentText('均匀分布')
@@ -417,10 +417,6 @@ class DefinitionEditorTests(unittest.TestCase):
                 for value, expected in zip(actual, levels):
                     self.assertAlmostEqual(value, expected)
                 self.assertTrue(all('T' in row for row in plan.rows))
-            plan = design_service.screening_plan(project, '筛选设计', 'full', seed=1,
-                                                 centers=0, replicates=1, randomize=False, top_n=2)
-            self.assertEqual({row['b'] for row in plan.rows}, {40, 60})
-            self.assertTrue(all('T' not in row for row in plan.rows))
 
     def test_previous_nominal_environment_definitions_convert_to_actual_values_on_submit(self):
         for probability, distribution in ((False, '无'), (True, '正态分布'), (True, '均匀分布')):
@@ -469,13 +465,13 @@ class DefinitionEditorTests(unittest.TestCase):
         self.assertEqual(page.save_status_label.text(), '')
         self.assertFalse(editor.objective.isChecked())
         self.assertTrue(editor.constraint.isChecked())
-        editor.feature.setCurrentText('望目')
+        editor.feature.setCurrentIndex(editor.feature.findData('望目'))
         editor.lower.setText('2')
         editor.upper.setText('5')
-        editor.feature.setCurrentText('望大')
-        self.assertEqual(editor.limit_label.text(), '下限')
+        editor.feature.setCurrentIndex(editor.feature.findData('望大'))
+        self.assertEqual(editor.limit_label.text(), '约束下限')
         editor.limit.setText('1')
-        editor.feature.setCurrentText('望目')
+        editor.feature.setCurrentIndex(editor.feature.findData('望目'))
         page.model_tabs.setCurrentIndex(2)
         self.assertEqual(project.responses[0].feature, '望小')
         page.save_btn.click()
@@ -581,6 +577,56 @@ class DefinitionEditorTests(unittest.TestCase):
             else:
                 self.assertEqual(sum(widths), table.viewport().width())
                 self.assertEqual(table.horizontalScrollBar().maximum(), 0)
+
+
+class UncertaintyRatioTests(unittest.TestCase):
+    """区间上下界与标准差可填百分数，按当前设计值/均值换算。"""
+
+    def editor(self, item):
+        editor = FactorEditor(item.source, item)
+        self.addCleanup(editor.close)
+        return editor
+
+    def test_interval_bounds_accept_percent_of_the_current_design_value(self):
+        item = factor()
+        item.param1, item.param2 = '-5%', '5%'
+        self.assertAlmostEqual(_sigma_of_factor(item, 6, {'b': 200}), 20 / 12)
+        self.assertAlmostEqual(_sigma_of_factor(item, 6, {'b': 100}), 10 / 12)
+        self.assertAlmostEqual(factor_center(item, {'b': 200}), 200)
+
+    def test_asymmetric_percent_bounds_shift_the_center_proportionally(self):
+        item = factor()
+        item.param1, item.param2 = '-5%', '10%'
+        self.assertAlmostEqual(factor_center(item, {'b': 200}), 200 + (200 * .10 - 200 * .05) / 2)
+        self.assertAlmostEqual(_sigma_of_factor(item, 1, {'b': 200}), (200 * .10 + 200 * .05) / 2)
+
+    def test_standard_deviation_can_be_a_share_of_the_current_mean(self):
+        item = factor(probability=True)
+        item.param1, item.param2 = '10', '5%'
+        self.assertAlmostEqual(_sigma_of_factor(item, 6, {'b': 100}), (100 + 10) * .05)
+
+    def test_editor_keeps_the_percent_text_and_rejects_it_without_nominal(self):
+        item = factor()
+        editor = self.editor(item)
+        editor.type_combo.setCurrentIndex(0)
+        editor.delta_lower.setText('-5%')
+        editor.delta_upper.setText('5%')
+        collected = editor.collect()
+        self.assertEqual((collected.param1, collected.param2), ('-5%', '5%'))
+        environment = FactorItem(name='T', source='环境', uncertainty='区间', param1='40', param2='60')
+        env_editor = self.editor(environment)
+        env_editor.delta_lower.setText('-5%')
+        env_editor.delta_upper.setText('5%')
+        with self.assertRaisesRegex(ValueError, '没有名义取值'):
+            env_editor.collect()
+
+    def test_standard_deviation_percent_is_stored_as_typed(self):
+        editor = self.editor(factor(probability=True))
+        editor.type_combo.setCurrentIndex(1)
+        editor.mean.setText('5')
+        editor.stddev.setText('5%')
+        collected = editor.collect()
+        self.assertEqual((collected.param1, collected.param2), ('5', '5%'))
 
 
 if __name__ == '__main__':

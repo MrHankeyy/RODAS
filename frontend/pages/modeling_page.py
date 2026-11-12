@@ -16,15 +16,13 @@ class ModelingPage(QWidget):
         task_type = project_data.task_type
         self.responses = ResponseTable(task_type)
         self.design_factors = FactorTable("设计", task_type)
-        self.environment_factors = FactorTable("环境", task_type) if task_type != "factorial" else None
-        self.sections = (self.responses, self.design_factors)
-        if self.environment_factors is not None:
-            self.sections += (self.environment_factors,)
+        self.environment_factors = FactorTable("环境", task_type)
+        self.sections = (self.responses, self.design_factors, self.environment_factors)
         self.model_tabs = ResultTabs()
         for section in self.sections:
             index = self.model_tabs.addTab(section, section.title)
             self.model_tabs.setTabToolTip(index, section.toolTip())
-        self.results_workspace = ResultsWorkspace(self.model_tabs, [("业务建模", list(range(len(self.sections))))])
+        self.results_workspace = ResultsWorkspace(self.model_tabs, [("问题参数", list(range(len(self.sections))))])
         root = QVBoxLayout(self)
         root.setContentsMargins(12, 12, 12, 12)
         root.addWidget(self.results_workspace, 1)
@@ -33,7 +31,7 @@ class ModelingPage(QWidget):
         self.save_status_label.setProperty("role", "muted")
         row.addWidget(self.save_status_label)
         row.addStretch()
-        self.save_btn = QPushButton("保存业务模型数据")
+        self.save_btn = QPushButton("保存问题定义")
         self.save_btn.setObjectName("save_model_btn")
         self.save_btn.clicked.connect(self.on_save_clicked)
         primary(self.save_btn)
@@ -79,8 +77,8 @@ class ModelingPage(QWidget):
         try:
             self.sync_to_project_data()
         except ValueError as exc:
-            Notice.warning(self, "业务建模数据校验未通过", str(exc))
+            Notice.warning(self, "问题定义校验未通过", str(exc))
             return
-        ProjectService.for_project(self.project_data).record_operation("业务模型保存")
+        ProjectService.for_project(self.project_data).record_operation("问题定义保存")
         self.model_saved.emit()
         self.save_status_label.setText("已保存")

@@ -5,6 +5,7 @@ splash screen can report progress while matplotlib / numpy / pandas load.
 """
 import sys
 
+from PyQt6.QtCore import QLibraryInfo, QTranslator
 from PyQt6.QtWidgets import QApplication
 
 
@@ -28,8 +29,17 @@ def _splash_close():
         pass
 
 
+def install_chinese_qt_text(app):
+    """让 Qt 自带的确定/取消、另存等标准按钮显示中文。"""
+    translator = QTranslator(app)
+    if translator.load('qtbase_zh_CN', QLibraryInfo.path(QLibraryInfo.LibraryPath.TranslationsPath)):
+        app.installTranslator(translator)
+    return translator
+
+
 def main():
     app = QApplication(sys.argv)
+    install_chinese_qt_text(app)
     _splash_status('正在加载分析与绘图组件…')
 
     from frontend.main_window import MainWindow

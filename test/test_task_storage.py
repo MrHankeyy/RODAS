@@ -23,7 +23,7 @@ def surrogate_project(model, **params):
     x = rng.uniform(-2, 3, (32, 2))
     p = ProjectData(factors=[FactorItem(name=n, param1='-2', param2='3') for n in ('A', 'B')],
         responses=[ResponseItem(name='Y')], design_method='代理模型建模',
-        doe_matrix=[{'Run_ID': i+1, 'A': a, 'B': b, 'Y': a*a + b + .2*a*b}
+        doe_matrix=[{'试验序号': i+1, 'A': a, 'B': b, 'Y': a*a + b + .2*a*b}
                     for i, (a, b) in enumerate(x)],
         surrogate_config={'model': model, 'model_params': params})
     ProjectService.for_project(p).publish_results(surrogate_result=model_service.train_surrogates(p))
@@ -46,7 +46,7 @@ class TaskStorageTests(unittest.TestCase):
     def test_empty_partial_data_and_literal_reserved_keys(self):
         p = ProjectData(factors=[FactorItem(name='厚度', param1='1', param2='2')],
             responses=[ResponseItem(name='位移', unit='mm')],
-            doe_matrix=[{'Run_ID': 1, '厚度': 1., '位移': ''}],
+            doe_matrix=[{'试验序号': 1, '厚度': 1., '位移': ''}],
             design_params={'type': 'array', 'items': {'type': 'predictor'}})
         restored, _ = self.round_trip(p)
         self.assertEqual(restored, p)

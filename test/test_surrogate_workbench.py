@@ -53,7 +53,7 @@ class SurrogateWorkbenchTest(unittest.TestCase):
                     warning.assert_not_called()
                 self.assertIn("计算完成", page.status_label.text())
                 self.assertEqual(page.cv_panel.snapshot["validation"]["Y"]["kind"], "holdout")
-                self.assertIn("留出集", page.cv_panel.figure.axes[0].get_title())
+                self.assertIn("测试集", page.cv_panel.figure.axes[0].get_title())
                 term = {"Kriging": "kriging", "SVR": "svr", "ANN": "bpnn"}[model]
                 self.assertEqual(page.model_panel.model_label.text(), "当前模型：" + name(term))
                 self.assertEqual(page.model_panel.model_label.toolTip(), tooltip(term))

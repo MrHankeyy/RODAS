@@ -78,7 +78,8 @@ def optimization_schemes(context, result):
         return [], -1
     candidates = result.get('front', []) if result['mode'] == 'multi' else []
     candidates = candidates or [best]
-    scoped = dict(context, sigma_limits=result.get('sigma_limits', {}))
+    scoped = dict(context, sigma_limits=result.get('sigma_limits', {}),
+                  enforce_objective_limits=result.get('enforce_objective_limits', False))
     records = [dict(id=f'P{i+1:03}', x=dict(item['x']),
                     verification=evaluate_point(scoped, item['x'], result['k_design'], result['k_constraint']))
                for i, item in enumerate(candidates)]

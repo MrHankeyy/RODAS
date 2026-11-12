@@ -2,7 +2,7 @@
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QWidget, QGroupBox, QGridLayout, QHBoxLayout, QVBoxLayout,
-    QLabel, QComboBox, QTableWidget, QHeaderView,
+    QLabel, QComboBox, QTableWidget, QHeaderView, QCheckBox,
 )
 from frontend.numeric_inputs import numeric_input
 from frontend.terminology import add_combo_item, apply, tooltip
@@ -44,8 +44,16 @@ def build_settings(owner, layout):
     row.addWidget(owner.robust_mode_combo)
     row.addStretch()
     strategy.addLayout(row)
+    owner.objective_limits_check = QCheckBox("将目标鲁棒性要求作为独立约束")
+    owner.objective_limits_check.setToolTip(
+        "对业务建模中已填写性能阈值的目标响应启用：最小化要求 μ+kσ≤上限，"
+        "最大化要求 μ−kσ≥下限，趋近目标值要求 μ±kσ 位于目标区间。"
+        "目标响应仍参与目标优化。此设置与标准差上限相互独立，适用于三种优化策略。")
+    owner.objective_limits_check.setAccessibleDescription(owner.objective_limits_check.toolTip())
+    owner.objective_limits_check.toggled.connect(owner._settings_changed)
+    strategy.addWidget(owner.objective_limits_check)
     owner.weight_spin = numeric_input(float, 0, 1, .5)
-    owner.weight_fields = field("目标损失权重 λ", owner.weight_spin, "Target Loss Weight",
+    owner.weight_fields = field("望性损失权重 λ", owner.weight_spin, "Desirability Loss Weight",
                                "将归一化目标损失与波动加权求和；波动权重为 1−λ。")
     owner.variability_weight = QLabel()
     owner.variability_weight.setToolTip(tooltip("variability_weight") + "\n波动权重等于 1−λ。")
@@ -54,9 +62,9 @@ def build_settings(owner, layout):
         lambda value: owner.variability_weight.setText(f"波动权重：{1-value:.2f}"))
     owner.variability_weight.setText("波动权重：0.50")
     strategy.addWidget(owner.weight_fields)
-    owner.sigma_limits_group = QGroupBox("响应波动上限")
+    owner.sigma_limits_group = QGroupBox("目标响应标准差上限")
     owner.sigma_limits_group.setToolTip(
-        "响应波动上限（Response Variability Limit）\n为每个目标响应设置标准差上限；"
+        "目标响应标准差上限（Objective Response Standard Deviation Limit）\n为每个目标响应设置标准差上限；"
         "满足波动限制后继续优化目标表现。标准差由输入不确定性传播和模型残差共同估计。")
     limits_layout = QVBoxLayout(owner.sigma_limits_group)
     limits_layout.setContentsMargins(4, 6, 4, 4)
@@ -109,5 +117,30 @@ def build_settings(owner, layout):
         grid.addWidget(field(*args), index // 2, index % 2)
     owner.mutation_mode_combo.setMaximumWidth(190)
     genetic.addLayout(grid)
+
+    stop_row = QWidget()
+    stop_layout = QHBoxLayout(stop_row)
+    stop_layout.setContentsMargins(0, 0, 0, 0)
+    owner.auto_stop_check = QCheckBox("自动停止")
+    owner.auto_stop_check.setToolTip(
+        "自动停止（Automatic Stop）\n"
+        "勾选后按收敛判据提前结束，不必跑满「代数」；不勾选则执行设定的固定代数。\n"
+        "判据：连续若干代最优目标值的改进都小于容差即停止；多目标用帕累托前沿超体积衡量。")
+    owner.auto_stop_check.setAccessibleDescription(owner.auto_stop_check.toolTip())
+    stop_layout.addWidget(owner.auto_stop_check)
+    stop_layout.addStretch()
+    genetic.addWidget(stop_row)
+    owner.stall_gen_spin = numeric_input(int, 5, 200, 20)
+    owner.tolerance_spin = numeric_input(float, 0.01, 10, 0.1, decimals=2)
+    stop_fields = QHBoxLayout()
+    stop_fields.setSpacing(24)
+    stop_fields.addWidget(field("停滞代数", owner.stall_gen_spin, "Stall Generations",
+                                "连续多少代没有实质改进就停止；数值越大越保守，必须小于总代数。"))
+    stop_fields.addWidget(field("相对容差（%）", owner.tolerance_spin, "Relative Tolerance",
+                                "改进量相对当前最优值的百分比小于该值即视为没有改进。"))
+    stop_fields.addStretch()
+    genetic.addLayout(stop_fields)
+    owner.auto_stop_check.toggled.connect(owner._on_auto_stop)
+    owner._on_auto_stop(False)
     owner.mutation_mode_combo.currentIndexChanged.connect(owner._update_mutation_probability)
     owner._update_mutation_probability()

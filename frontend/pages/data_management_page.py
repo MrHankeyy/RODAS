@@ -9,12 +9,13 @@ from backend.infrastructure import file_io
 from backend.domain.models import ProjectData
 from backend.services.project_service import ProjectService
 from frontend.pages.table_widgets import ExcelLikeTableWidget
-from frontend.workspace import dialog_path
+from frontend.workspace import dialog_path, table_save_path
 from frontend.theme import ResultTabs, ResultsWorkspace
 from frontend.pages.data_inspection import DataAnalysis
 from backend.services.data_service import data_overview
+from backend.domain.models import RUN_ID
 from frontend.pages.model_configuration import MODEL_TITLES, MODEL_TERM_KEYS
-from frontend.terminology import tooltip
+from frontend.terminology import apply, tooltip
 
 class DataManagementPage(QWidget):
     def __init__(self, project_data: ProjectData):
@@ -60,14 +61,14 @@ class DataManagementPage(QWidget):
         self.entry_heading.setToolTip('数据录入（Data Entry）\n支持导入或编辑响应；因子列只读。')
         ctrl_layout.addWidget(self.entry_heading)
         
-        self.load_btn = QPushButton("加载当前试验矩阵")
+        self.load_btn = QPushButton("加载当前试验数据表")
         self.load_btn.setStyleSheet("background-color: #6c757d; color: white;")
         self.load_btn.clicked.connect(self.load_doe_matrix)
         
-        self.export_btn = QPushButton("导出 CSV")
+        self.export_btn = apply(QPushButton(), "export_trial_table")
         self.export_btn.clicked.connect(self.export_to_csv)
         
-        self.import_btn = QPushButton("导入 CSV")
+        self.import_btn = apply(QPushButton(), "import_trial_table")
         self.import_btn.clicked.connect(self.import_from_csv)
         
         ctrl_layout.addStretch()
@@ -177,7 +178,7 @@ class DataManagementPage(QWidget):
                 
                 # 如果是因子列或者是ID，设为只读并标背色；
                 # 如果是响应列，允许编辑以便填入结果
-                if col_name in factors or col_name == "Run_ID" or col_name.startswith(("内表", "外表", "重复组号")):
+                if col_name in factors or col_name == RUN_ID or col_name.startswith(("内表", "外表", "重复组号")):
                     item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
                     item.setBackground(QtGui.QColor("#e9ecef"))
                 elif col_name in responses:
@@ -224,36 +225,39 @@ class DataManagementPage(QWidget):
         if not self.project_data.doe_matrix:
             Notice.warning(self, "警告", "没有可导出的数据！")
             return
-        file_path, _ = QFileDialog.getSaveFileName(
-            self, "导出CSV", dialog_path(self), "CSV Files (*.csv)")
+        file_path, selected = QFileDialog.getSaveFileName(
+            self, "导出试验数据表", dialog_path(self, "试验数据表.csv"), file_io.TABLE_FILTER)
         if not file_path:
             return
+        file_path = table_save_path(file_path, selected)
         try:
-            file_io.write_csv_records(
-                file_path, self.project_data.doe_matrix)
+            file_io.write_table_records(file_path, self.project_data.doe_matrix)
             Notice.information(
                 self, "成功",
-                "试验表导出成功！你可以将该表发给仿真脚本加载执行。")
+                f"已导出 {len(self.project_data.doe_matrix)} 行到 {Path(file_path).name}。"
+                "该表可直接用 Excel 打开，也可发给仿真脚本加载执行。")
         except Exception as exc:
             Notice.critical(self, "错误", f"导出失败: {exc}")
 
     def import_from_csv(self):
-        """导入外部算好的 CSV (如流体仿真自动生成的带结果列的文件)"""
+        """导入外部算好的表格 (如流体仿真自动生成的带结果列的文件)"""
         file_path, _ = QFileDialog.getOpenFileName(
-            self, "导入测试结果 CSV", dialog_path(self), "CSV Files (*.csv)")
+            self, "导入试验数据表", dialog_path(self), file_io.TABLE_FILTER)
         if not file_path:
             return
         try:
-            imported_data = file_io.read_csv_records(file_path)
+            imported_data = file_io.read_table_records(file_path)
+            if not imported_data:
+                raise ValueError("文件中没有可用的数据行：请确认第一行是列名，且下面至少有一行数据。")
             service = ProjectService.for_project(self.project_data)
             service.replace_dataset(imported_data)
             service.record_operation(
-                "CSV试验导入",
+                "试验数据表导入",
                 message=f"导入 {len(imported_data)} 行；来源文件 {Path(file_path).name}")
             self.load_doe_matrix()
             Notice.information(
                 self, "成功",
-                "外部实验数据导入成功并已填入表格！请点击下方保存确认接轨后端！")
+                f"已读入 {len(imported_data)} 行并填入表格！请点击下方保存确认接轨后端！")
         except ValueError as exc:
             Notice.warning(self, "格式错误", str(exc))
         except Exception as exc:

@@ -20,6 +20,25 @@ def _num(value, default=0.0):
         return default
 
 
+def ratio_value(value):
+    """'5%' / '-5%' 返回 0.05 / -0.05；非百分数返回 None。"""
+    text = str(value or "").strip()
+    if not text.endswith("%"):
+        return None
+    try:
+        return float(text[:-1]) / 100.0
+    except ValueError:
+        return None
+
+
+def delta_value(factor, value, base):
+    """偏差参数换算成数值：百分数按基准值（当前设计值或均值）换算。"""
+    ratio = ratio_value(value)
+    if ratio is None:
+        return _num(value)
+    return base * ratio
+
+
 def factor_limits(factor):
     """返回 (下限, 上限)，保证 low<=high。"""
     if factor.nominal_lower != "" and factor.nominal_upper != "":
@@ -49,8 +68,11 @@ def factor_center(factor, point=None, include_deviation=True):
     lo, hi = factor_limits(factor)
     nominal = (point or {}).get(factor.name, (lo + hi) / 2)
     if factor.nominal_lower != "":
-        offset = (_num(factor.param1) if factor.uncertainty == "概率" else
-                  (_num(factor.param1) + _num(factor.param2)) / 2)
+        if factor.uncertainty == "概率":
+            offset = _num(factor.param1)
+        else:
+            offset = (delta_value(factor, factor.param1, nominal) +
+                      delta_value(factor, factor.param2, nominal)) / 2
         return nominal + offset if include_deviation else nominal
     return nominal
 

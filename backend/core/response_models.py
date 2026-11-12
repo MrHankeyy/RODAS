@@ -80,36 +80,6 @@ def quadratic_optimum(fit_result, X_min, X_max, objective, target=None, samples=
     }
 
 
-def screening_from_responses(factors, doe_matrix, response_name):
-    """根据已填响应按 ± 编码计算主效应（中心点自动剔除）。"""
-    lows, highs = {}, {}
-    for f in factors:
-        lo, hi = factor_limits(f)
-        lows[f.name], highs[f.name] = lo, hi
-    vals_by_sign = {f.name: {"+": [], "-": []} for f in factors}
-    for row in doe_matrix:
-        try:
-            y = float(row.get(response_name, ""))
-        except (TypeError, ValueError):
-            continue
-        for f in factors:
-            try:
-                v = float(row.get(f.name))
-            except (TypeError, ValueError):
-                continue
-            mid = (lows[f.name] + highs[f.name]) / 2.0
-            if abs(v - mid) < 1e-9:
-                continue
-            vals_by_sign[f.name]["-" if v < mid else "+"].append(y)
-    effects = {}
-    for f in factors:
-        plus = vals_by_sign[f.name]["+"]
-        minus = vals_by_sign[f.name]["-"]
-        if plus and minus:
-            effects[f.name] = statistics.mean(plus) - statistics.mean(minus)
-    return effects
-
-
 def _design_terms(k):
     """返回二次模型项与名称。"""
     terms = [("const", None, None)]
@@ -297,14 +267,14 @@ def build_models(project):
     names = [f.name for f in inputs]
     if not names:
         return None, ["没有可建模的输入因子。"]
-    # 只使用矩阵中实际存在的输入列
+    # 只使用试验数据表中实际存在的输入列
     keys = set(matrix[0].keys())
     if is_rsm and any(n not in keys for n in names):
-        return None, ["试验矩阵缺少模型输入列，不能删去输入后继续拟合。"]
+        return None, ["试验数据表缺少模型输入列，不能删去输入后继续拟合。"]
     names = [n for n in names if n in keys]
     inputs = [f for f in inputs if f.name in names]
     if not names:
-        return None, ["试验矩阵中未找到输入因子列。"]
+        return None, ["试验数据表中未找到输入因子列。"]
 
     context = {"inputs": inputs, "names": names, "models": {},
                "errors": [], "_responses": project.responses,

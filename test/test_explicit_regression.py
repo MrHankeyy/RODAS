@@ -184,9 +184,9 @@ def test_surrogates_on_robust_function():
         )
         assert "error" not in result, (model, result)
         assert result["r2_test"] > 0.60, (model, result)
-        assert result["mape_test_%"] < 5.0, (model, result)
+        assert result["nmae_test_%"] < 5.0, (model, result)
         metrics[model] = {"r2_test": result["r2_test"],
-                          "mape_test_%": result["mape_test_%"]}
+                          "nmae_test_%": result["nmae_test_%"]}
     return metrics
 
 
@@ -206,7 +206,7 @@ def test_robust_optimization():
     project.doe_matrix = []
     for index, row in enumerate(rows):
         project.doe_matrix.append({
-            "Run_ID": index + 1, "X1": row["X1"], "X2": row["X2"],
+            "试验序号": index + 1, "X1": row["X1"], "X2": row["X2"],
             "Y": quadratic_objective(row["X1"], row["X2"]),
             "G": row["X1"] + row["X2"] - 3.5,
         })
@@ -321,7 +321,7 @@ def test_surrogate_drives_optimization():
         160, "最优 LHS", seed=19,
     )
     matrix = [
-            {"Run_ID": i + 1, "X1": row["X1"], "X2": row["X2"],
+            {"试验序号": i + 1, "X1": row["X1"], "X2": row["X2"],
              "Y": f_obj(row["X1"], row["X2"])}
             for i, row in enumerate(rows)
         ]

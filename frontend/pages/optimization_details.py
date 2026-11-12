@@ -11,7 +11,7 @@ from frontend.pages.result_summary import display, named
 from frontend.pages.table_widgets import ContentColumnBalancer
 from frontend.pages import optimization_plots
 
-CONSTRAINT_TOOLTIP = '约束核验（Constraint Verification）\n余量为负表示违反约束。μ±kσ是稳健带，不是预测置信区间。'
+CONSTRAINT_TOOLTIP = '约束核验（Constraint Verification）\n包含约束响应的性能阈值、已启用的目标鲁棒性要求和单独设置的标准差上限。余量为负表示违反；μ±kσ是近似稳健带，不是预测置信区间。'
 
 
 def clear_layout(layout):
@@ -206,6 +206,7 @@ class SchemeComparison(SchemeDetail):
             table = self.table('constraints', '约束核验', ['响应','核验项','计算值','允许范围','余量','判定','单位'], rows,
                                CONSTRAINT_TOOLTIP)
             for i, row in enumerate(rows):
+                table.item(i, 0).setToolTip('目标鲁棒性要求或约束响应的性能界限；标准差行单独限制波动。')
                 table.item(i, 5).setForeground(QColor('#19704b' if row[5] == '通过' else '#ba3348'))
         else:
             section(self.body, '约束核验', CONSTRAINT_TOOLTIP).addWidget(label('本次未设置响应约束或标准差上限。'))

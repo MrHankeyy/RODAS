@@ -2,8 +2,7 @@
 
 支持的结果视图：
 - 方案设计摘要与设计诊断；
-- 两水平筛选（± 对比主效应 / 方差贡献）；
-- 响应曲面（二次模型拟合、拟合优度、优选设置）；
+- 响应面（二次模型拟合、拟合优度、优选设置）；
 - 田口设计（均值响应表、信噪比表、稳健最优水平组合）；
 - 代理模型训练（Kriging / SVR / BPANN 的误差与耗时）。
 """
@@ -27,7 +26,6 @@ from backend.engines import doe as engine
 from backend.core.design_evaluation import DEFAULT_K_DESIGN, DEFAULT_K_CONSTRAINT
 from backend.engines import optimizer as oe
 from backend.engines import design_analysis as da
-from frontend.pages.design_results import DesignResultsPanel
 from frontend.pages.qt_tasks import OptimizationWorker
 from frontend.pages.optimization_controller import OptimizationController
 from frontend.pages import optimization_panels
@@ -64,28 +62,25 @@ class OptimizationPage(QWidget):
             self._oe_context = None
             self._robust_res = {}
             self.robust_results.clear()
+            self.history_panel.clear()
             self.status_label.setText(
                 "优化参数已改变；已有优化结果属于先前设置，请重新执行。")
 
     def _update_method_actions(self):
-        """按方案类型切换主动作，避免把筛选/田口误导成鲁棒优化。"""
+        """按方案类型切换主动作，避免把田口误导成鲁棒优化。"""
         if hasattr(self, "strategy_group"):
             self._update_uncertainty_tooltip()
             self._update_mutation_probability()
         method = self._method()
-        is_screening = "筛选" in method
         is_taguchi = "田口" in method
-        is_special = is_screening or is_taguchi
-        if is_screening:
-            self.run_all_btn.setText("因子筛选：计算主效应")
-        elif is_taguchi:
-            self.run_all_btn.setText("田口设计：计算信噪比")
+        is_special = is_taguchi
+        if is_taguchi:
+            self.run_all_btn.setText("执行田口分析")
         else:
-            self.run_all_btn.setText("执行鲁棒性优化设计")
-        for index in (1, 2, 3, 4, 5, 6):
+            self.run_all_btn.setText("执行鲁棒优化设计")
+        for index in (1, 2, 3, 4, 5, 6, 8):
             self.tabs.setTabVisible(index, not is_special)
-        self.tabs.setTabVisible(7, is_screening)
-        self.tabs.setTabVisible(8, is_taguchi)
+        self.tabs.setTabVisible(7, is_taguchi)
         self.stats_btn.setVisible(not is_special)
         if hasattr(self, 'robust_settings_header'):
             actions = (self.taguchi_panel.settings_header if is_taguchi and self.tabs.currentWidget() is self.taguchi_panel
@@ -95,16 +90,14 @@ class OptimizationPage(QWidget):
         if hasattr(self, "results_workspace"):
             self.results_workspace.refresh()
         self.run_all_btn.setToolTip(
-            "筛选设计只计算因子敏感度，不执行优化"
-            if is_screening else
             "田口设计根据内表×外表响应计算信噪比并推荐稳健水平"
             if is_taguchi else
-            "二次响应面模型和代理模型进入鲁棒性优化设计工作台")
+            "二次响应面模型和代理模型进入鲁棒优化设计工作台")
 
     def _run_primary_action(self):
-        """顶部主按钮：筛选/田口走专用分析，其余方案走鲁棒优化。"""
+        """顶部主按钮：田口走专用分析，其余方案走鲁棒优化。"""
         method = self._method()
-        if "筛选" in method or "田口" in method:
+        if "田口" in method:
             self.run_optimization()
         else:
             self.run_workbench()
@@ -179,6 +172,11 @@ class OptimizationPage(QWidget):
             count = len([f for f in self.project_data.factors if f.name and f.source == "设计"])
             self.mutation_spin.setValue(1.0 / max(count, 1))
 
+    def _on_auto_stop(self, enabled):
+        """收敛判据只在勾选时生效；未勾选则按固定代数跑满。"""
+        for control in (self.stall_gen_spin, self.tolerance_spin):
+            control.setEnabled(bool(enabled))
+
     def _optimizer_settings(self):
         return dict(mode=self.robust_mode_combo.currentData(), pop=self.pop_spin.value(),
                     gen=self.gen_spin.value(), weight=self.weight_spin.value(),
@@ -186,7 +184,10 @@ class OptimizationPage(QWidget):
                     seed=self.seed_spin.value(), pc=self.crossover_spin.value(),
                     pm=None if self.mutation_mode_combo.currentData() == "auto" else self.mutation_spin.value(),
                     eta_c=self.eta_c_spin.value(), eta_m=self.eta_m_spin.value(),
-                    sigma_limits=self._sigma_limits())
+                    auto_stop=self.auto_stop_check.isChecked(),
+                    stall_generations=self.stall_gen_spin.value(),
+                    tolerance=round(self.tolerance_spin.value() / 100.0, 6),
+                    sigma_limits=self._sigma_limits(), enforce_objective_limits=self.objective_limits_check.isChecked())
 
     def _build_signif_tab(self):
         return optimization_panels.build_signif_tab(self)
@@ -196,6 +197,9 @@ class OptimizationPage(QWidget):
 
     def _build_model_tab(self):
         return optimization_panels.build_model_tab(self)
+
+    def _build_history_tab(self):
+        return optimization_panels.build_history_tab(self)
 
     def _responses(self):
         return [r for r in self.project_data.responses if r.name]
@@ -230,20 +234,9 @@ class OptimizationPage(QWidget):
         self._check_inputs()
         self._update_method_actions()
         self._on_robust_mode(self.robust_mode_combo.currentText())
-        self.screening_panel.set_result(self.project_data.screening_result)
         self.taguchi_panel.set_result(self.project_data.taguchi_result)
 
-    # ------------------------------------------------------------- 筛选分析
-    def _run_screening(self):
-        service = self.project_service
-        result = da.screening(self.project_data)
-        service.publish_results(screening_result=result)
-        self.screening_panel.set_result(result)
-        service.record_operation(
-            "因子筛选", "部分完成" if result.get("errors") else "完成",
-            {"results": {"screening": result}})
-
-    # ------------------------------------------------------------- 响应曲面
+    # ------------------------------------------------------------- 响应面
     def _run_rsm(self):
         context = model_service.build_rsm_context(self.project_data)
         self._oe_context = context
@@ -281,6 +274,7 @@ class OptimizationPage(QWidget):
             self._oe_context = None
             self._robust_res = {}
             self.robust_results.clear()
+            self.history_panel.clear()
             service.clear_workbench()
         for name, response_result in result["responses"].items():
             score = response_result.get("r2_test")
@@ -302,13 +296,16 @@ class OptimizationPage(QWidget):
 
     # ============================================================ 工作台
     def _analysis_settings(self):
-        return {"mode": self.robust_mode_combo.currentData(), "k_design": DEFAULT_K_DESIGN,
+        return {"enforce_objective_limits": self.objective_limits_check.isChecked(), "mode": self.robust_mode_combo.currentData(), "k_design": DEFAULT_K_DESIGN,
                 "k_constraint": DEFAULT_K_CONSTRAINT, "weight": self.weight_spin.value(),
                 "sigma_limits": {name: editor.text() for name, editor in self.sigma_limit_inputs.items()},
                 "population": self.pop_spin.value(), "generations": self.gen_spin.value(),
                 "seed": self.seed_spin.value(), "pc": self.crossover_spin.value(),
                 "mutation_mode": self.mutation_mode_combo.currentData(), "pm": self.mutation_spin.value(),
-                "eta_c": self.eta_c_spin.value(), "eta_m": self.eta_m_spin.value()}
+                "eta_c": self.eta_c_spin.value(), "eta_m": self.eta_m_spin.value(),
+                "auto_stop": self.auto_stop_check.isChecked(),
+                "stall_generations": self.stall_gen_spin.value(),
+                "tolerance": round(self.tolerance_spin.value() / 100.0, 6)}
 
     def run_workbench(self):
         return self.controller.run_workbench()

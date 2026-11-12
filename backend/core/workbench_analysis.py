@@ -1,4 +1,4 @@
-from .design_evaluation import _constraint_limits, design_inputs, evaluate_design, robust_moments, self_is_constraint
+from .design_evaluation import _constraint_limits, design_inputs, evaluate_design, robust_moments, self_is_constraint, response_uses_limits
 from .response_models import _design_row, model_predict
 from .factors import _isfinite
 """Structured statistics for the workbench; no fitting or silent model substitution."""
@@ -61,8 +61,8 @@ def diagnostics(context, name):
         actual = np.asarray(val.get('actual', []),float)
         predicted = np.asarray(val.get('predicted', []),float)
         ids = list(range(1,len(actual)+1))
-        source = '留出验证集（序号不是原试验矩阵行号）'
-        notes.append('代理模型仅展示已有留出验证结果，不对黑盒预测器报告 OLS 系数检验、杠杆值或 Cook 距离。')
+        source = '测试集（序号不是原试验数据表行号）'
+        notes.append('代理模型仅展示已有测试集验证结果，不对黑盒预测器报告 OLS 系数检验、杠杆值或 Cook 距离。')
     else:
         names = context['names']
         data = [(i+1,r) for i,r in enumerate(context['_project'].doe_matrix)
@@ -183,7 +183,7 @@ def diagnostics(context, name):
         missing['observations'].append(observation_reasons)
     if 3<=n<=5000 and np.ptp(residual)>1e-12:
         measures['残差 Shapiro p']=float(stats.shapiro(residual).pvalue)
-        notes.append('夏皮罗检验仅作残差分布诊断，不显著不等于证明正态；试验矩阵行序不一定是实际试验时间。')
+        notes.append('夏皮罗检验仅作残差分布诊断，不显著不等于证明正态；试验数据表行序不一定是实际试验时间。')
     else:
         measures['残差 Shapiro p'] = None
         reasons['残差 Shapiro p'] = ('有效残差少于3个，无法进行夏皮罗正态性检验。' if n < 3 else
@@ -212,12 +212,12 @@ def point_analysis(context, point, kd, kc):
         nominal=model_predict(model,raw)
         lower,upper=mu-kc*sigma,mu+kc*sigma
         margin=None
-        if self_is_constraint(response):
+        if response_uses_limits(context, response):
             kind,limit=_constraint_limits(response)
             margin=limit-upper if kind=='upper' else lower-limit if kind=='lower' else min(lower-limit[0],limit[1]-upper)
         sigma_limit = context.get('sigma_limits', {}).get(response.name)
         sigma_margin = sigma_limit - sigma if sigma_limit is not None else None
-        rows.append({'标准差上限':sigma_limit, '波动约束余量':sigma_margin, '响应':response.name,'角色':response.kind,'名义预测':nominal,'鲁棒均值':mu,'传播标准差':sigma,
+        rows.append({'约束来源':('约束响应' if self_is_constraint(response) else '目标鲁棒性要求') if margin is not None else None, '标准差上限':sigma_limit, '波动约束余量':sigma_margin, '响应':response.name,'角色':response.kind,'名义预测':nominal,'鲁棒均值':mu,'传播标准差':sigma,
                      '均值−kσ':lower,'均值+kσ':upper,'约束余量':margin,
                      '判定':'违反' if any(v is not None and v < 0 for v in (margin,sigma_margin)) else '通过' if margin is not None or sigma_margin is not None else '目标'})
     return {'point':dict(point),'k_design':kd,'k_constraint':kc,'feasible':evaluation['infeas']<=1e-12,'responses':rows,

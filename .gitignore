@@ -1,6 +1,7 @@
 __pycache__/
 .venv
 .serena/
+.workbuddy/
 *.pdf
 /temp/*
 !/temp/.gitkeep

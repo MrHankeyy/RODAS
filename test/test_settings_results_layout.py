@@ -29,7 +29,7 @@ class SettingsResultsLayoutTests(unittest.TestCase):
             self.assertEqual(info[1][1].text(), '35 次')
             self.assertTrue(info[2][0].isHidden())
             self.assertEqual(page.overview.info.layout().stretch(2), 0)
-        project.design_method = '两水平筛选设计'
+        project.design_method = '田口设计'
         page._refresh_view()
         APP.processEvents()
         self.assertEqual(page.overview.settings_heading.text(), '方案分析设置')

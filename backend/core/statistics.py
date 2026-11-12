@@ -85,7 +85,7 @@ def anova_and_lof(context, project):
     lines = ["【回归显著性与失拟检验】"]
     for resp_name, m in context["models"].items():
         if "predict_fn" in m:
-            lines.append(f"◆ 响应 {resp_name}：代理模型不适用多项式回归方差分析或失拟检验；请查看留出法验证与残差。")
+            lines.append(f"◆ 响应 {resp_name}：代理模型不适用多项式回归方差分析或失拟检验；请查看测试集验证与残差。")
             continue
         n = m["n"]
         # 从残差计算
@@ -158,7 +158,7 @@ def validation_results(context):
             result.update(kind="holdout", model=m.get("model_type", "代理模型"),
                           train_samples=validation.get("train_samples"))
             if not len(actual) or actual.shape != predicted.shape or not _np.all(_np.isfinite(actual + predicted)):
-                result["message"] = "没有匹配的有限留出集观测与预测。"
+                result["message"] = "没有匹配的有限测试集观测与预测。"
                 continue
             ss_tot = float(_np.sum((actual - actual.mean()) ** 2))
             ss_res = float(_np.sum((actual - predicted) ** 2))
@@ -186,7 +186,7 @@ def validation_results(context):
             except Exception:
                 continue
         if not _np.all(_np.isfinite(preds)):
-            result["message"] = "分折后样本不足或设计矩阵秩不足，无法验证同一模型；未降阶替代。"
+            result["message"] = "划分为 K 折后样本不足或设计矩阵秩不足，无法验证同一模型；未降阶替代。"
             continue
         actual = y
         ss_tot = float(_np.sum((actual - actual.mean()) ** 2))
@@ -200,7 +200,7 @@ def cross_validation(context, results=None):
     results = validation_results(context) if results is None else results
     if not results:
         return "无模型可交叉验证。"
-    lines = ["【交叉验证与留出法验证】"]
+    lines = ["【交叉验证与测试集验证】"]
     for name, result in results.items():
         if result.get("message"):
             lines.append(f"  {name}: {result['message']}")
@@ -209,7 +209,7 @@ def cross_validation(context, results=None):
         if result["kind"] == "holdout":
             model_name = {"Kriging": "克里金模型", "SVR": "支持向量回归模型",
                           "ANN": "神经网络模型"}.get(result['model'], result['model'])
-            lines.append(f"  响应 {name}（{model_name}）：留出法验证，测试样本 {result['samples']}，"
+            lines.append(f"  响应 {name}（{model_name}）：测试集验证，测试样本数 {result['samples']}，"
                          f"测试集决定系数={r2}，均方根误差={result['rmse']:.4g}；未执行 K 折验证。")
         else:
             lines.append(f"  响应 {name}: {result['folds']} 折交叉验证均方根误差={result['rmse']:.4g}，交叉验证决定系数={r2}")
@@ -241,7 +241,7 @@ def residual_analysis(context):
             validation = m.get("validation", {})
             predicted = validation.get("predicted", [])
             residuals = [a - p for a, p in zip(validation.get("actual", []), predicted)]
-            lines.append(f"  {resp_name}：留出集残差，测试集决定系数={validation.get('r2_test', '未知')}，均方根误差={m['rmse']:.4g}")
+            lines.append(f"  {resp_name}：测试集残差，测试集决定系数={validation.get('r2_test', '未知')}，均方根误差={m['rmse']:.4g}")
             data[resp_name] = {"predicted": predicted, "residual": residuals}
             continue
         residuals = m["residual"]
@@ -277,7 +277,8 @@ def tolerance_contribution(context, k_design, point=None):
     x = _np.array(x_raw, float)
     for resp_name, m in context["models"].items():
         grad = model_grad_x(m, x)
-        sigmas = _np.array([_sigma_of_factor(f, k_design) for f in inputs])
+        sigmas = _np.array([_sigma_of_factor(f, k_design, point if f.source == "设计" else None)
+                            for f in inputs])
         hess = model_hess_diag_x(m, x)
         contrib = (grad * sigmas) ** 2 + 0.5 * (hess * sigmas**2)**2
         residual_var = float(m.get("residual_std", 0))**2
@@ -300,7 +301,7 @@ def model_extraction(context):
             model_name = {"Kriging": "克里金模型", "SVR": "支持向量回归模型",
                           "ANN": "神经网络模型"}.get(m.get('model_type'), '代理模型')
             lines.append(f"  {resp_name}：{model_name}已训练预测器；"
-                         f"输入变量：{context['names']}。鲁棒性优化设计直接调用该预测器，"
+                         f"输入变量：{context['names']}。鲁棒优化设计直接调用该预测器，"
                          "采用数值梯度和 Hessian 传播输入不确定性，无二次多项式方程。")
             continue
         inputs = context["inputs"]

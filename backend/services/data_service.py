@@ -6,9 +6,7 @@ def data_overview(project):
     method = project.design_method or ""
     meta = project.design_params.get("meta", {}) or {}
     design = project.surrogate_config.get("doe_method", "—")
-    if "筛选" in method:
-        design = meta.get("kind", "两水平筛选")
-    elif "田口" in method:
+    if "田口" in method:
         design = f"内表 {meta.get('inner_label', '—')} × 外表 {meta.get('outer_label', '—')}"
     elif any(text in method for text in ("响应面", "响应曲面")):
         design = meta.get("design", "二次响应面模型")

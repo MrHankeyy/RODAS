@@ -43,7 +43,7 @@ class SummaryTable(QTableWidget):
 
 
 class ResultOverview(QScrollArea):
-    """One view shared by screening, Taguchi, RSM and every surrogate model."""
+    """One view shared by Taguchi, RSM and every surrogate model."""
     data_requested = pyqtSignal()
 
     def __init__(self, parent=None):
@@ -119,8 +119,8 @@ class ResultOverview(QScrollArea):
             old.hide()
             old.deleteLater()
         self.result_tables = []
-        modeled = bool(project.design_method) and not any(key in project.design_method for key in ('筛选', '田口'))
-        classic = project.task_type in ('taguchi', 'factorial') or any(key in project.design_method for key in ('筛选', '田口'))
+        modeled = bool(project.design_method) and '田口' not in project.design_method
+        classic = project.task_type == 'taguchi' or '田口' in project.design_method
         self.settings_heading.setText('方案分析设置' if classic else '模型构建设置')
         self.settings_heading.setToolTip(data['next_step'])
         self.info.setTitle('方案信息' if classic else '')

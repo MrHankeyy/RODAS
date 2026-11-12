@@ -63,7 +63,7 @@ class ConfigurationWorkflowTests(unittest.TestCase):
                             self.assertEqual(table.verticalScrollBar().maximum(), 0)
                         else:
                             self.assertGreater(table.verticalScrollBar().maximum(), 0)
-                        button = page.results_workspace.buttons[2]
+                        button = page.results_workspace.buttons[1]
                         self.assertGreaterEqual(button.width(), button.sizeHint().width())
             page.close()
 
@@ -88,7 +88,7 @@ class ConfigurationWorkflowTests(unittest.TestCase):
         p = project()
         page = ConfigurationPage(p)
         self.addCleanup(page.close)
-        page.dynamic_params_widget.setCurrentIndex(2)
+        page.dynamic_params_widget.setCurrentIndex(1)
         editor = page.model_editors['RSM']
         self.assertIs(page.preview_group.parentWidget(), editor)
         self.assertEqual([editor.layout().itemAt(i).widget().title() for i in range(editor.layout().count())],
@@ -103,7 +103,7 @@ class ConfigurationWorkflowTests(unittest.TestCase):
         QTest.qWait(220)
         self.assertEqual(page.preview_label.text(), '预计试验次数：38 次')
         self.assertEqual(asdict(p), before)
-        for category, content in ((0, page.screening_widget), (1, page.t_scale_zone), (2, editor)) * 2:
+        for category, content in ((0, page.t_scale_zone), (1, editor)) * 2:
             page.dynamic_params_widget.setCurrentIndex(category)
             page._refresh_preview()
             self.assertIs(page.preview_group.parentWidget(), content)
@@ -120,7 +120,7 @@ class ConfigurationWorkflowTests(unittest.TestCase):
     def test_invalid_preview_is_framed_and_recovers_after_fixing_the_range(self):
         page = ConfigurationPage(project())
         self.addCleanup(page.close)
-        page.dynamic_params_widget.setCurrentIndex(2)
+        page.dynamic_params_widget.setCurrentIndex(1)
         editor = page.model_editors['RSM']
         editor.bounds_table.item(0, 2).setText('-1')
         page._refresh_preview()
@@ -188,8 +188,8 @@ class ConfigurationWorkflowTests(unittest.TestCase):
     def test_keyboard_entry_drafts_and_generated_config_restore(self):
         p = project()
         page = ConfigurationPage(p)
-        self.assertEqual(page.dynamic_params_widget.count(), 3)
-        page.dynamic_params_widget.setCurrentIndex(2)
+        self.assertEqual(page.dynamic_params_widget.count(), 2)
+        page.dynamic_params_widget.setCurrentIndex(1)
         page.model_combo.setCurrentIndex(3)
         editor = page.model_editors["ANN"]
         editor.sample_count_spin.lineEdit().selectAll()
@@ -258,19 +258,6 @@ class ConfigurationWorkflowTests(unittest.TestCase):
         cfg.update(sample_count=6, model_params={"trend": "二次趋势"})
         with self.assertRaisesRegex(ValueError, "趋势项"):
             design_service.model_plan(project(), method("Kriging"), cfg)
-
-    def test_classical_settings_restore_and_clear_old_surrogate_configuration(self):
-        p = project()
-        p.surrogate_config = config("SVR", "Latin Hypercube (LHS)")
-        plan = design_service.screening_plan(p, "两水平筛选设计", "full", 32, 4, 2, False, 2)
-        design_service.commit_plan(p, plan)
-        page = ConfigurationPage(p)
-        self.assertEqual(page.f_center_spin.value(), 4)
-        self.assertEqual(page.f_repeat_spin.value(), 2)
-        self.assertEqual(page.f_seed_spin.value(), 32)
-        self.assertEqual(page.f_order_combo.currentText(), "保持相同")
-        self.assertFalse(p.surrogate_config)
-        page.close()
 
     def test_problem_refresh_updates_default_ranges_and_preserves_custom_ranges(self):
         p = project()
