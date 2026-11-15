@@ -11,7 +11,7 @@ V1.0 使用两个顶层生产代码包，目录名直接表达技术职责：
 - `frontend/`：PyQt6 窗口、页面、主题和通知适配；页面位于 `frontend/pages/`。
 - `main.py`：唯一的桌面程序启动入口。
 
-`frontend` 调用 `backend`；`backend` 不导入 `frontend`。测试与开发材料单独归档，恢复验证的方法见根目录 README。
+`frontend` 调用 `backend`；`backend` 不导入 `frontend`。
 
 ## 项目数据写入规则
 
@@ -38,7 +38,7 @@ V1.0 使用两个顶层生产代码包，目录名直接表达技术职责：
 - `qt_tasks.py`：Qt 后台任务适配；
 - `table_widgets.py`：可复用表格控件。
 
-## 导入与验证
+## 包路径
 
-生产代码和长期测试统一使用 `backend.*` 与 `frontend.*` 包路径。算法实现保留在
+生产代码统一使用 `backend.*` 与 `frontend.*` 包路径。算法实现保留在
 `backend.core`，界面通过 `backend.engines` 和 `backend.services` 调用计算与业务流程。

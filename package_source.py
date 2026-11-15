@@ -23,8 +23,7 @@ DOCS = [
     "docs/ARCHITECTURE.md",
     "docs/bugs/BUG-002.md",
     "docs/优化工作台分析功能说明.md",
-    "docs/报告模块需求映射与使用说明.md",
-    "docs/整理与验证说明.md",
+    "docs/分析报告使用说明.md",
 ]
 
 

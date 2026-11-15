@@ -70,22 +70,7 @@ QPushButton#welcomeTaskChoice:hover, QPushButton#welcomeTaskChoice:focus { backg
 
 
 def brand_icon():
-    artwork = QPixmap(str(ASSETS_PATH / "branding" / "rod-brand.png"))
-    return QIcon(artwork.copy(90, 135, 475, 410))
-
-
-def brand_wordmark():
-    """组合原 R 图形与 ROD 字样，保留原图的配色与字形。"""
-    artwork = QPixmap(str(ASSETS_PATH / "branding" / "rod-brand.png"))
-    pixmap = QPixmap(1440, 410)
-    pixmap.fill(Qt.GlobalColor.transparent)
-    painter = QPainter(pixmap)
-    painter.drawPixmap(0, 0, artwork.copy(90, 135, 475, 410))
-    # D 的右缘与 A 的左下角横向交叠，分段读取以保留完整字形。
-    painter.drawPixmap(530, 78, artwork.copy(590, 200, 895, 230))
-    painter.drawPixmap(530, 308, artwork.copy(590, 430, 880, 25))
-    painter.end()
-    return pixmap
+    return QIcon(str(ASSETS_PATH / "branding" / "brand-icon.png"))
 
 
 class ResponseSurface(QWidget):
@@ -263,7 +248,7 @@ class WelcomeIdentity(QWidget):
         super().__init__()
         self.setMinimumWidth(0)
         self.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Expanding)
-        self.artwork = brand_wordmark()
+        self.artwork = QPixmap(str(ASSETS_PATH / "branding" / "brand-wordmark.png"))
         self.column = QVBoxLayout(self)
         self.column.setContentsMargins(0, 0, 0, 0)
         self.column.addStretch()
