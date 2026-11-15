@@ -1,8 +1,18 @@
 """Shared desktop design system and analysis navigation."""
-from PyQt6.QtCore import Qt, QSize
+
+from PyQt6.QtCore import QSize, Qt
 from PyQt6.QtGui import QFont
-from PyQt6.QtWidgets import (QApplication, QWidget, QHBoxLayout, QVBoxLayout,
-                            QGroupBox, QScrollArea, QTableWidget, QAbstractItemView, QPushButton, QTabWidget)
+from PyQt6.QtWidgets import (
+    QAbstractItemView,
+    QGroupBox,
+    QHBoxLayout,
+    QPushButton,
+    QScrollArea,
+    QTableWidget,
+    QTabWidget,
+    QVBoxLayout,
+    QWidget,
+)
 
 STYLE = """QWidget { color:#26364a; font-size:13px; }
 QMainWindow, QDialog { background:#eef1f5; }
@@ -81,31 +91,35 @@ QToolTip { background:#253a50; color:white; border:0; padding:6px; }
 
 
 def install_theme(app):
-    if app.property('rodasThemeInstalled'):
+    if app.property("applicationThemeInstalled"):
         return
     from pathlib import Path
-    if app.style().objectName().lower() != 'fusion':
-        app.setStyle('Fusion')
-    app.setFont(QFont('Microsoft YaHei', 10))
-    icons = (Path(__file__).resolve().parents[1] / 'assets' / 'ui').as_posix()
-    app.setStyleSheet(STYLE + f'''
+
+    if app.style().objectName().lower() != "fusion":
+        app.setStyle("Fusion")
+    app.setFont(QFont("Microsoft YaHei", 10))
+    icons = (Path(__file__).resolve().parents[1] / "assets" / "ui").as_posix()
+    app.setStyleSheet(
+        STYLE
+        + f'''
     QComboBox::down-arrow {{ image:url("{icons}/chevron-down.svg"); width:10px; height:10px; }}
     QSpinBox::up-button, QDoubleSpinBox::up-button {{ subcontrol-origin:border; subcontrol-position:top right; width:18px; border-left:1px solid #e2e7ed; }}
     QSpinBox::down-button, QDoubleSpinBox::down-button {{ subcontrol-origin:border; subcontrol-position:bottom right; width:18px; border-left:1px solid #e2e7ed; }}
     QSpinBox::up-arrow, QDoubleSpinBox::up-arrow {{ image:url("{icons}/chevron-up.svg"); width:8px; height:8px; }}
     QSpinBox::down-arrow, QDoubleSpinBox::down-arrow {{ image:url("{icons}/chevron-down.svg"); width:8px; height:8px; }}
-    ''')
-    app.setProperty('rodasThemeInstalled', True)
+    '''
+    )
+    app.setProperty("applicationThemeInstalled", True)
 
 
 def primary(button):
-    button.setStyleSheet('')
-    button.setProperty('role', 'primary')
+    button.setStyleSheet("")
+    button.setProperty("role", "primary")
 
 
 def content_zone():
     zone = QWidget()
-    zone.setObjectName('contentZone')
+    zone.setObjectName("contentZone")
     layout = QVBoxLayout(zone)
     layout.setContentsMargins(16, 16, 16, 16)
     layout.setSpacing(14)
@@ -123,7 +137,8 @@ def polish_tables(root):
 
 class ResultsWorkspace(QWidget):
     """Expose a grouped result navigator for the analysis pages."""
-    GROUPS = [('设计分析', [0, 1, 7, 8]), ('模型与数据', [2, 3, 4]), ('优化结果', [5, 6, 9])]
+
+    GROUPS = [("设计分析", [0, 1, 7, 8]), ("模型与数据", [2, 3, 4]), ("优化结果", [5, 6, 9])]
 
     def __init__(self, tabs, groups=None):
         super().__init__()
@@ -133,7 +148,7 @@ class ResultsWorkspace(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
         self.navigation = QScrollArea()
-        self.navigation.setObjectName('resultNavigation')
+        self.navigation.setObjectName("resultNavigation")
         self.navigation.setWidgetResizable(True)
         self.navigation.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.navigation.setFixedWidth(196)
@@ -147,7 +162,7 @@ class ResultsWorkspace(QWidget):
         self.buttons = {}
         self.groups = {}
         content = QWidget()
-        content.setObjectName('resultNavigationContent')
+        content.setObjectName("resultNavigationContent")
         column = QVBoxLayout(content)
         column.setContentsMargins(8, 6, 8, 10)
         column.setSpacing(8)
@@ -156,7 +171,7 @@ class ResultsWorkspace(QWidget):
             if not visible:
                 continue
             group = QGroupBox(title)
-            group.setObjectName('resultNavigationGroup')
+            group.setObjectName("resultNavigationGroup")
             group_layout = QVBoxLayout(group)
             group_layout.setContentsMargins(5, 14, 5, 5)
             group_layout.setSpacing(2)
@@ -165,7 +180,7 @@ class ResultsWorkspace(QWidget):
                 button = QPushButton(self.tabs.tabText(index))
                 button.setToolTip(self.tabs.tabToolTip(index))
                 button.setAccessibleDescription(self.tabs.tabToolTip(index))
-                button.setObjectName('resultNavigationButton')
+                button.setObjectName("resultNavigationButton")
                 button.setCheckable(True)
                 button.setCursor(Qt.CursorShape.PointingHandCursor)
                 button.clicked.connect(lambda checked=False, i=index: self._activate(i))
@@ -192,10 +207,11 @@ class ResultsWorkspace(QWidget):
 
 class ResultTabs(QTabWidget):
     """Hidden analysis pages must not impose their text height on the active page."""
+
     def minimumSizeHint(self):
         widget = self.currentWidget()
         size = widget.minimumSizeHint() if widget else QSize(640, 340)
-        return QSize(max(640, size.width()+2), max(340, size.height()+2))
+        return QSize(max(640, size.width() + 2), max(340, size.height() + 2))
 
     def sizeHint(self):
         return QSize(960, 380)

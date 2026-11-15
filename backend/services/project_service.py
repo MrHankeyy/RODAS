@@ -1,20 +1,29 @@
-"""The single write boundary for project inputs and published results."""
+"""项目输入提交、结果发布与失效管理。"""
+
+import json
+import math
 from copy import deepcopy
 from dataclasses import asdict
-from backend.domain.models import RUN_ID, factor_definition
-import json
 
-RESULT_FIELDS = ('taguchi_result', 'rsm_result',
-                 'surrogate_result', 'workbench_result')
-INPUT_FIELDS = ('task_type', 'responses', 'factors', 'design_method', 'design_params',
-                'doe_matrix', 'surrogate_config')
+from backend.domain.models import RUN_ID, factor_definition
+
+RESULT_FIELDS = ("taguchi_result", "rsm_result", "surrogate_result", "workbench_result")
+INPUT_FIELDS = (
+    "task_type",
+    "responses",
+    "factors",
+    "design_method",
+    "design_params",
+    "doe_matrix",
+    "surrogate_config",
+)
 _operation_sink = None
 
 
 def _run_id_key(row):
     for key in row:
         text = key.strip()
-        if text == RUN_ID or text.replace(' ', '_').replace('-', '_').lower() == 'run_id':
+        if text == RUN_ID or text.replace(" ", "_").replace("-", "_").lower() == "run_id":
             return key
     return None
 
@@ -27,7 +36,7 @@ def with_run_ids(rows):
     for index, row in enumerate(rows, 1):
         source = _run_id_key(row)
         others = {key: value for key, value in row.items() if key != source}
-        value = '' if source is None else str(row.get(source, '')).strip()
+        value = "" if source is None else str(row.get(source, "")).strip()
         numbered.append({RUN_ID: value or str(index), **others})
     return numbered
 
@@ -39,11 +48,19 @@ def set_operation_sink(callback):
 
 
 def _input_signature(project):
-    return json.dumps({"factors": [factor_definition(f) for f in project.factors],
-                       "responses": [asdict(r) for r in project.responses],
-                       "method": project.design_method, "params": project.design_params,
-                       "matrix": project.doe_matrix, "surrogate": project.surrogate_config},
-                      sort_keys=True, ensure_ascii=False, default=str)
+    return json.dumps(
+        {
+            "factors": [factor_definition(f) for f in project.factors],
+            "responses": [asdict(r) for r in project.responses],
+            "method": project.design_method,
+            "params": project.design_params,
+            "matrix": project.doe_matrix,
+            "surrogate": project.surrogate_config,
+        },
+        sort_keys=True,
+        ensure_ascii=False,
+        default=str,
+    )
 
 
 class ProjectService:
@@ -54,13 +71,14 @@ class ProjectService:
 
     @classmethod
     def for_project(cls, project):
-        if not hasattr(project, '_project_service'):
+        if not hasattr(project, "_project_service"):
             project._project_service = cls(project)
         return project._project_service
 
     def input_snapshot(self):
         """Copy inputs only; no predictors, UI objects or live service references."""
         from backend.domain.models import ProjectData
+
         return ProjectData(**{key: deepcopy(getattr(self._project, key)) for key in INPUT_FIELDS})
 
     def input_signature(self):
@@ -93,7 +111,7 @@ class ProjectService:
     def commit_design(self, method, params, matrix, initial_results=None, surrogate_config=None):
         values = dict(design_method=method, design_params=params, doe_matrix=matrix)
         if surrogate_config is not None:
-            values['surrogate_config'] = surrogate_config
+            values["surrogate_config"] = surrogate_config
         self._commit_inputs(**values)
         self._invalidate()
         self.publish_results(**(initial_results or {}))
@@ -102,15 +120,18 @@ class ProjectService:
         self._check_source(expected_signature)
         response_names = {r.name for r in self._project.responses if r.name}
         if len(rows) != len(self._project.doe_matrix):
-            raise ValueError('试验行数已改变，请重新载入试验数据表。')
+            raise ValueError("试验行数已改变，请重新载入试验数据表。")
         pending = deepcopy(self._project.doe_matrix)
         for index, row in enumerate(rows):
             for name in response_names:
-                value = row.get(name, '')
+                value = row.get(name, "")
                 try:
-                    pending[index][name] = float(value) if str(value).strip() else ''
-                except (TypeError, ValueError):
-                    raise ValueError(f'第 {index + 1} 行 {name} 列填入的必须是数字！')
+                    parsed = float(value) if str(value).strip() else ""
+                    if parsed != "" and not math.isfinite(parsed):
+                        raise ValueError("响应必须是有限数字")
+                    pending[index][name] = parsed
+                except TypeError, ValueError:
+                    raise ValueError(f"第 {index + 1} 行 {name} 列填入的必须是数字（且为有限值）！")
         return self._commit_inputs(doe_matrix=pending)
 
     def replace_dataset(self, rows):
@@ -121,12 +142,12 @@ class ProjectService:
 
     def _check_source(self, expected_signature):
         if expected_signature is not None and self.input_signature() != expected_signature:
-            raise ValueError('计算期间输入已改变，本次结果已丢弃，请重新运行。')
+            raise ValueError("计算期间输入已改变，本次结果已丢弃，请重新运行。")
 
     def publish_results(self, expected_signature=None, **results):
         unknown = set(results) - set(RESULT_FIELDS)
         if unknown:
-            raise ValueError('不支持的结果字段：' + ', '.join(sorted(unknown)))
+            raise ValueError("不支持的结果字段：" + ", ".join(sorted(unknown)))
         self._check_source(expected_signature)
         self.ensure_current()
         prepared = {key: deepcopy(value) for key, value in results.items()}
@@ -141,7 +162,13 @@ class ProjectService:
         self.ensure_current()
         self._project.workbench_result.update(deepcopy(values))
 
-    def record_operation(self, stage, status='完成', payload=None, message=''):
+    def record_operation(self, stage, status="完成", payload=None, message=""):
         if _operation_sink is not None:
-            level = '错误' if status == '失败' else '提醒' if status in ('未通过', '部分完成') else '成功'
-            _operation_sink(level, stage, status + ('：' + message if message else ''))
+            level = (
+                "错误"
+                if status == "失败"
+                else "提醒"
+                if status in ("未通过", "部分完成")
+                else "成功"
+            )
+            _operation_sink(level, stage, status + ("：" + message if message else ""))

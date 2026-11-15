@@ -1,26 +1,18 @@
-"""Extracted response models algorithms; preserve v0.1 calculations."""
+"""二次响应模型拟合、预测与导数计算。"""
+
 from __future__ import annotations
-import itertools
+
 import math
-import random
-import statistics
-import time
-try:
-    import numpy as _np
-    HAS_NUMPY = True
-except Exception:
-    _np = None
-    HAS_NUMPY = False
+
+import numpy as np
+
 from . import factors as de
-from .factors import factor_limits
 
 
 def _design_matrix(X):
     """二次模型设计阵：1 + 线性 + 平方 + 两两交互。"""
-    if not HAS_NUMPY:
-        raise RuntimeError("需要 numpy 支持回归计算")
     n, k = X.shape
-    cols = [_np.ones(n)]
+    cols = [np.ones(n)]
     labels = ["常数项"]
     for j in range(k):
         cols.append(X[:, j])
@@ -31,53 +23,7 @@ def _design_matrix(X):
         for j in range(i + 1, k):
             cols.append(X[:, i] * X[:, j])
             labels.append(f"x{i + 1}·x{j + 1}")
-    return _np.column_stack(cols), labels
-
-
-def fit_response_surface(X, y):
-    """最小二乘拟合二次响应面，返回系数、拟合优度与预测值。"""
-    A, labels = _design_matrix(X)
-    n, p = A.shape
-    if _np.linalg.matrix_rank(A) < p:
-        raise ValueError("试验数据不能识别完整二次模型")
-    coef, *_ = _np.linalg.lstsq(A, y, rcond=None)
-    y_hat = A @ coef
-    ss_tot = float(_np.sum((y - y.mean()) ** 2)) or 1e-12
-    ss_res = float(_np.sum((y - y_hat) ** 2))
-    r2 = max(0.0, 1.0 - ss_res / ss_tot)
-    adj_r2 = 1.0 - (1.0 - r2) * (n - 1) / max(n - p, 1)
-    rmse = math.sqrt(ss_res / max(n, 1))
-    return {
-        "coefficients": list(zip(labels, [round(float(c), 6) for c in coef])),
-        "r2": round(r2, 6),
-        "adj_r2": round(adj_r2, 6),
-        "rmse": round(rmse, 6),
-        "df_model": p - 1,
-        "df_residual": n - p,
-        "predicted": [float(v) for v in y_hat],
-    }
-
-
-def quadratic_optimum(fit_result, X_min, X_max, objective, target=None, samples=8000):
-    """在可行域内随机采样搜索二次模型的优选点。objective: max/min/target。"""
-    if not HAS_NUMPY:
-        return None
-    rng = _np.random.default_rng(2026)
-    k = len(X_min)
-    X = rng.uniform(0, 1, size=(samples, k)) * (_np.array(X_max) - _np.array(X_min)) + _np.array(X_min)
-    A, _ = _design_matrix(X)
-    pred = A @ _np.array([c for _, c in fit_result["coefficients"]])
-    if objective == "max":
-        idx = int(_np.argmax(pred))
-    elif objective == "min":
-        idx = int(_np.argmin(pred))
-    else:
-        t = float(target)
-        idx = int(_np.argmin(_np.abs(pred - t)))
-    return {
-        "x": [round(float(v), 6) for v in X[idx]],
-        "predicted": round(float(pred[idx]), 6),
-    }
+    return np.column_stack(cols), labels
 
 
 def _design_terms(k):
@@ -107,12 +53,12 @@ def _design_row(z, terms):
             row.append(z[i] ** 2)
         else:
             row.append(z[i] * z[j])
-    return _np.array(row)
+    return np.array(row)
 
 
 def _quad_hess_diag(terms, coef, z):
     """二次模型对角二阶导（对 z）。"""
-    out = _np.zeros(len(z))
+    out = np.zeros(len(z))
     for (kind, i, _j), c in zip(terms, coef):
         if kind == "quad":
             out[i] += 2.0 * c
@@ -121,7 +67,7 @@ def _quad_hess_diag(terms, coef, z):
 
 def _quad_grad(terms, coef, z):
     """二次模型梯度（对 z）。"""
-    g = _np.zeros(len(z))
+    g = np.zeros(len(z))
     for (kind, i, j), c in zip(terms, coef):
         if kind == "linear":
             g[i] += c
@@ -135,10 +81,8 @@ def _quad_grad(terms, coef, z):
 
 def _fit_model(X, y, full_quadratic=False):
     """拟合 X(输入，原始值) -> y，转为编码 z∈[-1,1] 的二次模型。返回模型 dict。"""
-    if not HAS_NUMPY:
-        raise RuntimeError("需要 numpy")
-    X = _np.asarray(X, float)
-    y = _np.asarray(y, float)
+    X = np.asarray(X, float)
+    y = np.asarray(y, float)
     n, k = X.shape
     lo = X.min(axis=0)
     hi = X.max(axis=0)
@@ -147,7 +91,7 @@ def _fit_model(X, y, full_quadratic=False):
     center = (lo + hi) / 2.0
     Z = (X - center) / span
     # 两水平数据（±1）中 x² 与常数共线，仅当因子有≥3个不同值才保留平方项
-    distinct = [_np.unique(X[:, j]).size for j in range(k)]
+    distinct = [np.unique(X[:, j]).size for j in range(k)]
     terms = [("const", None, None)]
     names = ["常数"]
     for i in range(k):
@@ -160,7 +104,7 @@ def _fit_model(X, y, full_quadratic=False):
         for j in range(i + 1, k):
             terms.append(("cross", i, j))
             names.append(f"x{i + 1}·x{j + 1}")
-    A = _np.column_stack([_design_row(z, terms) for z in Z]).T
+    A = np.column_stack([_design_row(z, terms) for z in Z]).T
     nterms = len(terms)
     if n < nterms and not full_quadratic:
         # 点数不足时降为线性模型
@@ -169,13 +113,15 @@ def _fit_model(X, y, full_quadratic=False):
         names = [names[i] for i in keep]
         A = A[:, keep]
         nterms = len(keep)
-    rank = int(_np.linalg.matrix_rank(A))
+    rank = int(np.linalg.matrix_rank(A))
     if rank < nterms:
-        raise ValueError(f"模型矩阵秩不足（{rank}/{nterms}）；无法独立估计全部系数，请补充有效设计点。")
-    coef, *_ = _np.linalg.lstsq(A, y, rcond=None)
+        raise ValueError(
+            f"模型矩阵秩不足（{rank}/{nterms}）；无法独立估计全部系数，请补充有效设计点。"
+        )
+    coef, *_ = np.linalg.lstsq(A, y, rcond=None)
     y_hat = A @ coef
-    ss_tot = float(_np.sum((y - y.mean()) ** 2)) or 1e-12
-    ss_res = float(_np.sum((y - y_hat) ** 2))
+    ss_tot = float(np.sum((y - y.mean()) ** 2)) or 1e-12
+    ss_res = float(np.sum((y - y_hat) ** 2))
     df_model = nterms - 1
     df_resid = n - nterms
     r2 = max(0.0, 1.0 - ss_res / ss_tot)
@@ -184,22 +130,31 @@ def _fit_model(X, y, full_quadratic=False):
     residual = y - y_hat
     resid_std = math.sqrt(ss_res / max(df_resid, 1)) if df_resid > 0 else rmse
     return {
-        "terms": terms, "names": names, "coef": coef,
+        "terms": terms,
+        "names": names,
+        "coef": coef,
         "full_quadratic": full_quadratic,
-        "center": center, "half": span, "lo": lo, "hi": hi,
-        "r2": round(r2, 6), "adj_r2": round(adj_r2, 6), "rmse": round(rmse, 6),
-        "df_model": df_model, "df_residual": df_resid,
-        "residual_std": resid_std, "residual": list(float(v) for v in residual),
-        "predicted": list(float(v) for v in y_hat), "n": n, "k": k,
+        "center": center,
+        "half": span,
+        "lo": lo,
+        "hi": hi,
+        "r2": round(r2, 6),
+        "adj_r2": round(adj_r2, 6),
+        "rmse": round(rmse, 6),
+        "df_model": df_model,
+        "df_residual": df_resid,
+        "residual_std": resid_std,
+        "residual": list(float(v) for v in residual),
+        "predicted": list(float(v) for v in y_hat),
+        "n": n,
+        "k": k,
     }
 
 
 def model_predict(model, x_raw):
-    if not HAS_NUMPY:
-        return None
     if "predict_fn" in model:
-        return float(model["predict_fn"](_np.asarray(x_raw, float)))
-    z = (_np.asarray(x_raw, float) - model["center"]) / model["half"]
+        return float(model["predict_fn"](np.asarray(x_raw, float)))
+    z = (np.asarray(x_raw, float) - model["center"]) / model["half"]
     row = _design_row(z, model["terms"])
     return float(row @ model["coef"])
 
@@ -207,35 +162,39 @@ def model_predict(model, x_raw):
 def model_grad_x(model, x_raw):
     """梯度 wrt 原始单位 x。"""
     if "grad_fn" in model:
-        return _np.asarray(model["grad_fn"](_np.asarray(x_raw, float)), float)
+        return np.asarray(model["grad_fn"](np.asarray(x_raw, float)), float)
     if "predict_fn" in model:
-        x = _np.asarray(x_raw, float)
+        x = np.asarray(x_raw, float)
         step = float(model.get("finite_difference_step", 1e-4))
-        grad = _np.zeros(len(x))
+        grad = np.zeros(len(x))
         for i in range(len(x)):
-            delta = _np.zeros(len(x)); delta[i] = step
-            grad[i] = (model["predict_fn"](x + delta)
-                       - model["predict_fn"](x - delta)) / (2.0 * step)
+            delta = np.zeros(len(x))
+            delta[i] = step
+            grad[i] = (model["predict_fn"](x + delta) - model["predict_fn"](x - delta)) / (
+                2.0 * step
+            )
         return grad
-    z = (_np.asarray(x_raw, float) - model["center"]) / model["half"]
+    z = (np.asarray(x_raw, float) - model["center"]) / model["half"]
     gz = _quad_grad(model["terms"], model["coef"], z)
     return gz / model["half"]
 
 
 def model_hess_diag_x(model, x_raw):
     if "hess_diag_fn" in model:
-        return _np.asarray(model["hess_diag_fn"](_np.asarray(x_raw, float)), float)
+        return np.asarray(model["hess_diag_fn"](np.asarray(x_raw, float)), float)
     if "predict_fn" in model:
-        x = _np.asarray(x_raw, float)
+        x = np.asarray(x_raw, float)
         step = float(model.get("finite_difference_step", 1e-4))
         center = model["predict_fn"](x)
-        hess = _np.zeros(len(x))
+        hess = np.zeros(len(x))
         for i in range(len(x)):
-            delta = _np.zeros(len(x)); delta[i] = step
-            hess[i] = (model["predict_fn"](x + delta)
-                       - 2.0 * center + model["predict_fn"](x - delta)) / step ** 2
+            delta = np.zeros(len(x))
+            delta[i] = step
+            hess[i] = (
+                model["predict_fn"](x + delta) - 2.0 * center + model["predict_fn"](x - delta)
+            ) / step**2
         return hess
-    z = (_np.asarray(x_raw, float) - model["center"]) / model["half"]
+    z = (np.asarray(x_raw, float) - model["center"]) / model["half"]
     hz = _quad_hess_diag(model["terms"], model["coef"], z)
     # 对 z 的二阶导转换：∂²f/∂x² = (1/h²)·∂²f/∂z²
     return hz / (model["half"] ** 2)
@@ -263,7 +222,11 @@ def build_models(project):
     if not matrix:
         return None, ["尚无试验设计数据，请先在【方案配置】生成方案。"]
     is_rsm = any(text in project.design_method for text in ("响应面", "响应曲面"))
-    inputs = de.model_factors(project) if is_rsm else [f for f in project.factors if f.name and not f.is_fixed]
+    inputs = (
+        de.model_factors(project)
+        if is_rsm
+        else [f for f in project.factors if f.name and not f.is_fixed]
+    )
     names = [f.name for f in inputs]
     if not names:
         return None, ["没有可建模的输入因子。"]
@@ -276,9 +239,14 @@ def build_models(project):
     if not names:
         return None, ["试验数据表中未找到输入因子列。"]
 
-    context = {"inputs": inputs, "names": names, "models": {},
-               "errors": [], "_responses": project.responses,
-               "_project": project}
+    context = {
+        "inputs": inputs,
+        "names": names,
+        "models": {},
+        "errors": [],
+        "_responses": project.responses,
+        "_project": project,
+    }
     for resp in project.responses:
         if not resp.name:
             continue
@@ -286,11 +254,11 @@ def build_models(project):
         for row in matrix:
             try:
                 _ = [float(row[n]) for n in names]
-            except (KeyError, TypeError, ValueError):
+            except KeyError, TypeError, ValueError:
                 continue
             try:
                 yv = float(row.get(resp.name))
-            except (TypeError, ValueError):
+            except TypeError, ValueError:
                 continue
             if not all(math.isfinite(v) for v in _ + [yv]):
                 continue
@@ -300,7 +268,9 @@ def build_models(project):
             context["errors"].append(f"响应 {resp.name} 有效样本 {len(y)} < 3，跳过建模。")
             continue
         if is_rsm and len(y) != len(matrix):
-            context["errors"].append(f"响应 {resp.name} 存在缺失/非有限数据，请补齐后拟合完整二次模型。")
+            context["errors"].append(
+                f"响应 {resp.name} 存在缺失/非有限数据，请补齐后拟合完整二次模型。"
+            )
             continue
         try:
             context["models"][resp.name] = _fit_model(X, y, full_quadratic=is_rsm)

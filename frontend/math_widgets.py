@@ -1,15 +1,23 @@
 """Qt adapters for the shared offline math renderer."""
-from PyQt6.QtCore import Qt, QSize
-from PyQt6.QtGui import QTextDocument
-from PyQt6.QtWidgets import QLabel, QComboBox, QStyledItemDelegate, QStyle, QStyleOptionViewItem, QTextEdit
 
-from backend.reporting.math_format import Math, PATTERN, rich_text
+from PyQt6.QtCore import QSize, Qt
+from PyQt6.QtGui import QTextDocument
+from PyQt6.QtWidgets import (
+    QComboBox,
+    QLabel,
+    QStyle,
+    QStyledItemDelegate,
+    QStyleOptionViewItem,
+    QTextEdit,
+)
+
+from backend.reporting.math_format import PATTERN, Math, rich_text
 
 MATH_ROLE = int(Qt.ItemDataRole.UserRole) + 21
 
 
 class MathLabel(QLabel):
-    def __init__(self, text='', parent=None):
+    def __init__(self, text="", parent=None):
         super().__init__(parent)
         self.setText(text)
 
@@ -17,7 +25,7 @@ class MathLabel(QLabel):
         mathematical = isinstance(text, Math) or PATTERN.search(str(text))
         self.setTextFormat(Qt.TextFormat.RichText if mathematical else Qt.TextFormat.PlainText)
         super().setText(rich_text(text) if mathematical else str(text))
-        self.setToolTip(str(text) if mathematical else '')
+        self.setToolTip(str(text) if mathematical else "")
 
     def setHtml(self, content):
         self.setTextFormat(Qt.TextFormat.RichText)
@@ -40,13 +48,14 @@ def decorate_combo(combo):
 
 
 def install_delegate(widget):
-    if not hasattr(widget, '_math_delegate'):
+    if not hasattr(widget, "_math_delegate"):
         widget._math_delegate = MathDelegate(widget)
         widget.setItemDelegate(widget._math_delegate)
 
 
 class MathDelegate(QStyledItemDelegate):
     """Render formulas while preserving the item's plain data for copy/export."""
+
     def document(self, option, index):
         document = QTextDocument()
         document.setDocumentMargin(2)
@@ -59,12 +68,17 @@ class MathDelegate(QStyledItemDelegate):
             return super().paint(painter, option, index)
         opt = QStyleOptionViewItem(option)
         self.initStyleOption(opt, index)
-        opt.text = ''
-        opt.widget.style().drawControl(QStyle.ControlElement.CE_ItemViewItem, opt, painter, opt.widget)
+        opt.text = ""
+        opt.widget.style().drawControl(
+            QStyle.ControlElement.CE_ItemViewItem, opt, painter, opt.widget
+        )
         document = self.document(option, index)
         painter.save()
         painter.setClipRect(option.rect)
-        painter.translate(option.rect.x() + 4, option.rect.y() + max(0, (option.rect.height() - document.size().height()) / 2))
+        painter.translate(
+            option.rect.x() + 4,
+            option.rect.y() + max(0, (option.rect.height() - document.size().height()) / 2),
+        )
         document.drawContents(painter)
         painter.restore()
 

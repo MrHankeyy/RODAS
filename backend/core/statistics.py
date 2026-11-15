@@ -1,18 +1,14 @@
-"""Extracted statistics algorithms; preserve v0.1 calculations."""
+"""拟合检验、交叉验证、残差与方差贡献分析。"""
+
 from __future__ import annotations
-import itertools
+
 import math
-import random
 import statistics
-import time
-try:
-    import numpy as _np
-    HAS_NUMPY = True
-except Exception:
-    _np = None
-    HAS_NUMPY = False
+
+import numpy as np
+
 from . import factors as de
-from .design_evaluation import _sigma_of_factor, design_inputs
+from .design_evaluation import _sigma_of_factor
 from .factors import _isfinite
 from .response_models import _fit_model, model_grad_x, model_hess_diag_x, model_predict
 
@@ -65,8 +61,9 @@ def _betai(a, b, x):
         return 0.0
     if x >= 1.0:
         return 1.0
-    bt = math.exp(_gammaln(a + b) - _gammaln(a) - _gammaln(b)
-                  + a * math.log(x) + b * math.log(1.0 - x))
+    bt = math.exp(
+        _gammaln(a + b) - _gammaln(a) - _gammaln(b) + a * math.log(x) + b * math.log(1.0 - x)
+    )
     if x < (a + 1.0) / (a + b + 2.0):
         return bt * _betacf(a, b, x) / a
     return 1.0 - bt * _betacf(b, a, 1.0 - x) / b
@@ -85,11 +82,17 @@ def anova_and_lof(context, project):
     lines = ["【回归显著性与失拟检验】"]
     for resp_name, m in context["models"].items():
         if "predict_fn" in m:
-            lines.append(f"◆ 响应 {resp_name}：代理模型不适用多项式回归方差分析或失拟检验；请查看测试集验证与残差。")
+            lines.append(
+                f"◆ 响应 {resp_name}：代理模型不适用多项式回归方差分析或失拟检验；请查看测试集验证与残差。"
+            )
             continue
         n = m["n"]
         # 从残差计算
-        y = [float(row[resp_name]) for row in matrix if row.get(resp_name) not in (None, "") and all(_isfinite(row[c]) for c in names)]
+        y = [
+            float(row[resp_name])
+            for row in matrix
+            if row.get(resp_name) not in (None, "") and all(_isfinite(row[c]) for c in names)
+        ]
         if len(y) != n:
             continue
         y_mean = statistics.mean(y)
@@ -103,10 +106,14 @@ def anova_and_lof(context, project):
         fstat = ms_reg / ms_res if ms_res > 0 else 0.0
         p = _f_pvalue(fstat, df_reg, df_res)
         lines.append(f"◆ 响应 {resp_name}")
-        lines.append(f"  回归：F={fstat:.4g}，df=({df_reg},{df_res})，p={p:.4g}，"
-                     f"决定系数={m['r2']}，调整决定系数={m['adj_r2']}，均方根误差={m['rmse']}")
+        lines.append(
+            f"  回归：F={fstat:.4g}，df=({df_reg},{df_res})，p={p:.4g}，"
+            f"决定系数={m['r2']}，调整决定系数={m['adj_r2']}，均方根误差={m['rmse']}"
+        )
         if df_res <= 0 or ms_res <= 1e-24:
-            lines[-1] = f"  回归：决定系数={m['r2']}，均方根误差={m['rmse']}；残差自由度不足或误差为零，F/p 不可估计。"
+            lines[-1] = (
+                f"  回归：决定系数={m['r2']}，均方根误差={m['rmse']}；残差自由度不足或误差为零，F/p 不可估计。"
+            )
         # 失拟：从重复设计点估计纯误差
         pure_ss, pure_df = 0, 0
         point_groups = {}
@@ -114,7 +121,7 @@ def anova_and_lof(context, project):
             try:
                 pt = tuple(row.get(c) for c in names)
                 yv = float(row.get(resp_name))
-            except (TypeError, ValueError):
+            except TypeError, ValueError:
                 continue
             if not all(_isfinite(v) for v in pt):
                 continue
@@ -134,10 +141,18 @@ def anova_and_lof(context, project):
                 continue
             lof_f = ms_lof / ms_pe
             lof_p = _f_pvalue(lof_f, lof_df, pure_df)
-            lines.append(f"  失拟检验：失拟平方和={lof_ss:.4g}，纯误差平方和={pure_ss:.4g}，"
-                         f"F_Lof={lof_f:.4g}，p={lof_p:.4g}，df=({lof_df},{pure_df})")
-            lines.append("  判定：" + ("未检出显著失拟，不等于证明模型充分。" if lof_p > 0.05
-                                      else "模型存在失拟，建议改进模型结构或补点。"))
+            lines.append(
+                f"  失拟检验：失拟平方和={lof_ss:.4g}，纯误差平方和={pure_ss:.4g}，"
+                f"F_Lof={lof_f:.4g}，p={lof_p:.4g}，df=({lof_df},{pure_df})"
+            )
+            lines.append(
+                "  判定："
+                + (
+                    "未检出显著失拟，不等于证明模型充分。"
+                    if lof_p > 0.05
+                    else "模型存在失拟，建议改进模型结构或补点。"
+                )
+            )
         else:
             lines.append("  失拟检验：无重复点或中心点，无法估计纯误差，已跳过。")
         lines.append("")
@@ -146,24 +161,34 @@ def anova_and_lof(context, project):
 
 def validation_results(context):
     """Compute validation once; keep numeric results separate from report text."""
-    if not context or not context["models"] or not HAS_NUMPY:
+    if not context or not context["models"]:
         return {}
     results = {}
     for resp_name, m in context["models"].items():
         result = results[resp_name] = {"r2": None, "rmse": None, "samples": 0}
         if "predict_fn" in m:
             validation = m.get("validation", {})
-            actual = _np.asarray(validation.get("actual", []), dtype=float)
-            predicted = _np.asarray(validation.get("predicted", []), dtype=float)
-            result.update(kind="holdout", model=m.get("model_type", "代理模型"),
-                          train_samples=validation.get("train_samples"))
-            if not len(actual) or actual.shape != predicted.shape or not _np.all(_np.isfinite(actual + predicted)):
+            actual = np.asarray(validation.get("actual", []), dtype=float)
+            predicted = np.asarray(validation.get("predicted", []), dtype=float)
+            result.update(
+                kind="holdout",
+                model=m.get("model_type", "代理模型"),
+                train_samples=validation.get("train_samples"),
+            )
+            if (
+                not len(actual)
+                or actual.shape != predicted.shape
+                or not np.all(np.isfinite(actual + predicted))
+            ):
                 result["message"] = "没有匹配的有限测试集观测与预测。"
                 continue
-            ss_tot = float(_np.sum((actual - actual.mean()) ** 2))
-            ss_res = float(_np.sum((actual - predicted) ** 2))
-            result.update(samples=len(actual), r2=1-ss_res/ss_tot if ss_tot > 0 else None,
-                          rmse=math.sqrt(ss_res/len(actual)))
+            ss_tot = float(np.sum((actual - actual.mean()) ** 2))
+            ss_res = float(np.sum((actual - predicted) ** 2))
+            result.update(
+                samples=len(actual),
+                r2=1 - ss_res / ss_tot if ss_tot > 0 else None,
+                rmse=math.sqrt(ss_res / len(actual)),
+            )
             continue
         X, y = _matrix_xy(context, resp_name)
         result.update(kind="kfold", folds=min(5, len(y)))
@@ -171,28 +196,35 @@ def validation_results(context):
             result["message"] = "样本不足，无法执行交叉验证。"
             continue
         kfold = min(5, len(y))
-        rng = _np.random.default_rng(123)
+        rng = np.random.default_rng(123)
         idx = rng.permutation(len(y))
-        splits = _np.array_split(idx, kfold)
-        preds = _np.full(len(y), _np.nan)
+        splits = np.array_split(idx, kfold)
+        preds = np.full(len(y), np.nan)
         for test_idx in splits:
-            train_idx = _np.setdiff1d(_np.arange(len(y)), test_idx)
+            train_idx = np.setdiff1d(np.arange(len(y)), test_idx)
             if len(train_idx) < 3:
                 continue
             try:
-                m_fold = _fit_model(X[train_idx], y[train_idx], full_quadratic=m.get("full_quadratic", False))
+                m_fold = _fit_model(
+                    X[train_idx], y[train_idx], full_quadratic=m.get("full_quadratic", False)
+                )
                 for i in test_idx:
                     preds[i] = model_predict(m_fold, X[i])
             except Exception:
                 continue
-        if not _np.all(_np.isfinite(preds)):
-            result["message"] = "划分为 K 折后样本不足或设计矩阵秩不足，无法验证同一模型；未降阶替代。"
+        if not np.all(np.isfinite(preds)):
+            result["message"] = (
+                "划分为 K 折后样本不足或设计矩阵秩不足，无法验证同一模型；未降阶替代。"
+            )
             continue
         actual = y
-        ss_tot = float(_np.sum((actual - actual.mean()) ** 2))
-        ss_res = float(_np.sum((actual - preds) ** 2))
-        result.update(samples=len(y), r2=1-ss_res/ss_tot if ss_tot > 0 else None,
-                      rmse=math.sqrt(ss_res/len(y)))
+        ss_tot = float(np.sum((actual - actual.mean()) ** 2))
+        ss_res = float(np.sum((actual - preds) ** 2))
+        result.update(
+            samples=len(y),
+            r2=1 - ss_res / ss_tot if ss_tot > 0 else None,
+            rmse=math.sqrt(ss_res / len(y)),
+        )
     return results
 
 
@@ -205,14 +237,21 @@ def cross_validation(context, results=None):
         if result.get("message"):
             lines.append(f"  {name}: {result['message']}")
             continue
-        r2 = f"{result['r2']:.4g}" if result['r2'] is not None else "不可估计（响应为常数）"
+        r2 = f"{result['r2']:.4g}" if result["r2"] is not None else "不可估计（响应为常数）"
         if result["kind"] == "holdout":
-            model_name = {"Kriging": "克里金模型", "SVR": "支持向量回归模型",
-                          "ANN": "神经网络模型"}.get(result['model'], result['model'])
-            lines.append(f"  响应 {name}（{model_name}）：测试集验证，测试样本数 {result['samples']}，"
-                         f"测试集决定系数={r2}，均方根误差={result['rmse']:.4g}；未执行 K 折验证。")
+            model_name = {
+                "Kriging": "克里金模型",
+                "SVR": "支持向量回归模型",
+                "ANN": "神经网络模型",
+            }.get(result["model"], result["model"])
+            lines.append(
+                f"  响应 {name}（{model_name}）：测试集验证，测试样本数 {result['samples']}，"
+                f"测试集决定系数={r2}，均方根误差={result['rmse']:.4g}；未执行 K 折验证。"
+            )
         else:
-            lines.append(f"  响应 {name}: {result['folds']} 折交叉验证均方根误差={result['rmse']:.4g}，交叉验证决定系数={r2}")
+            lines.append(
+                f"  响应 {name}: {result['folds']} 折交叉验证均方根误差={result['rmse']:.4g}，交叉验证决定系数={r2}"
+            )
     return "\n".join(lines)
 
 
@@ -220,15 +259,15 @@ def _matrix_xy(context, resp_name):
     project = context["_project"]
     names = context["names"]
     X, y = [], []
-    for row in (project.doe_matrix or []):
+    for row in project.doe_matrix or []:
         try:
             xv = [float(row[c]) for c in names]
             yv = float(row[resp_name])
-        except (KeyError, TypeError, ValueError):
+        except KeyError, TypeError, ValueError:
             continue
         X.append(xv)
         y.append(yv)
-    return _np.array(X, float), _np.array(y, float)
+    return np.array(X, float), np.array(y, float)
 
 
 def residual_analysis(context):
@@ -241,7 +280,9 @@ def residual_analysis(context):
             validation = m.get("validation", {})
             predicted = validation.get("predicted", [])
             residuals = [a - p for a, p in zip(validation.get("actual", []), predicted)]
-            lines.append(f"  {resp_name}：测试集残差，测试集决定系数={validation.get('r2_test', '未知')}，均方根误差={m['rmse']:.4g}")
+            lines.append(
+                f"  {resp_name}：测试集残差，测试集决定系数={validation.get('r2_test', '未知')}，均方根误差={m['rmse']:.4g}"
+            )
             data[resp_name] = {"predicted": predicted, "residual": residuals}
             continue
         residuals = m["residual"]
@@ -249,12 +290,20 @@ def residual_analysis(context):
         mean_r = statistics.mean(residuals) if n else 0.0
         std_r = statistics.pstdev(residuals) if n else 0.0
         std_res = [0.0 if std_r == 0 else (r - mean_r) / std_r for r in residuals]
-        lines.append(f"  {resp_name}: 决定系数={m['r2']}, 调整决定系数={m['adj_r2']}, "
-                     f"均方根误差={m['rmse']}, 残差均值={mean_r:.4g}, 残差标准差={std_r:.4g}")
-        lines.append(f"    标准化残差区间 [{min(std_res):.3g}, {max(std_res):.3g}]，"
-                     f"|z|>2 的占比 {sum(1 for z in std_res if abs(z) > 2) / max(n, 1) * 100:.1f}%")
-        data[resp_name] = {"predicted": m["predicted"], "residual": residuals,
-                           "std_residual": std_res, "r2": m["r2"]}
+        lines.append(
+            f"  {resp_name}: 决定系数={m['r2']}, 调整决定系数={m['adj_r2']}, "
+            f"均方根误差={m['rmse']}, 残差均值={mean_r:.4g}, 残差标准差={std_r:.4g}"
+        )
+        lines.append(
+            f"    标准化残差区间 [{min(std_res):.3g}, {max(std_res):.3g}]，"
+            f"|z|>2 的占比 {sum(1 for z in std_res if abs(z) > 2) / max(n, 1) * 100:.1f}%"
+        )
+        data[resp_name] = {
+            "predicted": m["predicted"],
+            "residual": residuals,
+            "std_residual": std_res,
+            "r2": m["r2"],
+        }
     return "\n".join(lines), data
 
 
@@ -263,7 +312,11 @@ def tolerance_contribution(context, k_design, point=None):
         return "无模型可做局部方差贡献分析。", {}
     inputs = context["inputs"]
     names = context["names"]
-    lines = ["【局部方差贡献分析（独立输入，对角二阶近似）】", f"参考点：{point or '设计区间中心'}", "包含一阶及对角曲率项，与当前优化器近似一致；不含混合二阶项，不代表全局重要性。"]
+    lines = [
+        "【局部方差贡献分析（独立输入，对角二阶近似）】",
+        f"参考点：{point or '设计区间中心'}",
+        "包含一阶及对角曲率项，与当前优化器近似一致；不含混合二阶项，不代表全局重要性。",
+    ]
     detail = {}
     # 参考点：各设计因子取中心
     x_nom = {}
@@ -274,22 +327,29 @@ def tolerance_contribution(context, k_design, point=None):
         if f.source == "设计":
             x_nom[f.name] = (point or {}).get(f.name, (lo + hi) / 2.0)
         x_raw.append(val)
-    x = _np.array(x_raw, float)
+    x = np.array(x_raw, float)
     for resp_name, m in context["models"].items():
         grad = model_grad_x(m, x)
-        sigmas = _np.array([_sigma_of_factor(f, k_design, point if f.source == "设计" else None)
-                            for f in inputs])
+        sigmas = np.array(
+            [_sigma_of_factor(f, k_design, point if f.source == "设计" else None) for f in inputs]
+        )
         hess = model_hess_diag_x(m, x)
-        contrib = (grad * sigmas) ** 2 + 0.5 * (hess * sigmas**2)**2
-        residual_var = float(m.get("residual_std", 0))**2
+        contrib = (grad * sigmas) ** 2 + 0.5 * (hess * sigmas**2) ** 2
+        residual_var = float(m.get("residual_std", 0)) ** 2
         total = float(contrib.sum()) + residual_var
-        rows = sorted(list(zip(names, contrib.tolist())) + [("模型残差", residual_var)], key=lambda kv: -kv[1])
+        rows = sorted(
+            list(zip(names, contrib.tolist())) + [("模型残差", residual_var)], key=lambda kv: -kv[1]
+        )
         lines.append(f"  ◆ 响应 {resp_name}（总方差 {total:.5g}）")
         for name, c in rows:
-            lines.append(f"      {name}: 贡献 {c:.5g}（{(c / total * 100 if total > 0 else 0):.2f}%）")
-        detail[resp_name] = [{"name": name, "variance": c, "share": (c / total * 100 if total > 0 else 0)} for name, c in rows]
+            lines.append(
+                f"      {name}: 贡献 {c:.5g}（{(c / total * 100 if total > 0 else 0):.2f}%）"
+            )
+        detail[resp_name] = [
+            {"name": name, "variance": c, "share": (c / total * 100 if total > 0 else 0)}
+            for name, c in rows
+        ]
     return "\n".join(lines), detail
-
 
 
 def model_extraction(context):
@@ -298,13 +358,17 @@ def model_extraction(context):
     lines = ["【模型提取（拟合方程）】"]
     for resp_name, m in context["models"].items():
         if "predict_fn" in m:
-            model_name = {"Kriging": "克里金模型", "SVR": "支持向量回归模型",
-                          "ANN": "神经网络模型"}.get(m.get('model_type'), '代理模型')
-            lines.append(f"  {resp_name}：{model_name}已训练预测器；"
-                         f"输入变量：{context['names']}。鲁棒优化设计直接调用该预测器，"
-                         "采用数值梯度和 Hessian 传播输入不确定性，无二次多项式方程。")
+            model_name = {
+                "Kriging": "克里金模型",
+                "SVR": "支持向量回归模型",
+                "ANN": "神经网络模型",
+            }.get(m.get("model_type"), "代理模型")
+            lines.append(
+                f"  {resp_name}：{model_name}已训练预测器；"
+                f"输入变量：{context['names']}。鲁棒优化设计直接调用该预测器，"
+                "采用数值梯度和 Hessian 传播输入不确定性，无二次多项式方程。"
+            )
             continue
-        inputs = context["inputs"]
         names = context["names"]
         # 用实际的因子名替换 x_i 命名
         term_names = []
@@ -329,7 +393,11 @@ def model_extraction(context):
             mag = abs(float(c))
             body = f"{mag:.5g}" if term == "常数" else f"{mag:.5g}·{term}"
             s.append((body if i == 0 and c >= 0 else sign + body))
-        lines.append("    以下符号均为编码变量：" + str(dict(zip(names, zip(m["center"].tolist(), m["half"].tolist())))) + "；编码值=(实际值−中心)/半跨度。")
+        lines.append(
+            "    以下符号均为编码变量："
+            + str(dict(zip(names, zip(m["center"].tolist(), m["half"].tolist()))))
+            + "；编码值=(实际值−中心)/半跨度。"
+        )
         lines.append(f"  {resp_name}: y = " + "".join(s).strip())
         lines.append(f"    输入变量：{names}；决定系数={m['r2']}，调整决定系数={m['adj_r2']}")
     return "\n".join(lines)

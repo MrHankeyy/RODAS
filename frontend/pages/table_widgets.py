@@ -1,7 +1,8 @@
 """Reusable table widgets shared by workflow pages."""
+
 from PyQt6 import QtGui
-from PyQt6.QtCore import Qt, QEvent, QTimer, QObject
-from PyQt6.QtWidgets import QApplication, QTableWidget, QTableWidgetItem, QHeaderView
+from PyQt6.QtCore import QEvent, QObject, Qt, QTimer
+from PyQt6.QtWidgets import QApplication, QHeaderView, QTableWidget, QTableWidgetItem
 
 
 class BalancedColumnsTable(QTableWidget):
@@ -17,7 +18,11 @@ class BalancedColumnsTable(QTableWidget):
         self._fit_columns()
 
     def eventFilter(self, watched, event):
-        if watched is self.viewport() and event.type() == QEvent.Type.Resize and not self._resize_pending:
+        if (
+            watched is self.viewport()
+            and event.type() == QEvent.Type.Resize
+            and not self._resize_pending
+        ):
             self._resize_pending = True
             QTimer.singleShot(0, self._fit_columns)
         return super().eventFilter(watched, event)
@@ -27,7 +32,9 @@ class BalancedColumnsTable(QTableWidget):
         self.horizontalHeader().setMinimumSectionSize(min(self.minimum_widths))
         widths = list(self.minimum_widths)
         if self.flexible_columns:
-            extra, remainder = divmod(max(0, self.viewport().width() - sum(widths)), len(self.flexible_columns))
+            extra, remainder = divmod(
+                max(0, self.viewport().width() - sum(widths)), len(self.flexible_columns)
+            )
             for rank, column in enumerate(self.flexible_columns):
                 widths[column] += extra + (rank < remainder)
         for column, width in enumerate(widths):
@@ -61,8 +68,10 @@ class ContentColumnBalancer(QObject):
         self.pending = False
         if not self.minimum_widths:
             return
-        extra, remainder = divmod(max(0, self.table.viewport().width() - sum(self.minimum_widths)),
-                                 len(self.minimum_widths))
+        extra, remainder = divmod(
+            max(0, self.table.viewport().width() - sum(self.minimum_widths)),
+            len(self.minimum_widths),
+        )
         for column, minimum in enumerate(self.minimum_widths):
             self.table.setColumnWidth(column, minimum + extra + (column < remainder))
 
@@ -75,8 +84,7 @@ class ExcelLikeTableWidget(QTableWidget):
             self.copy_to_clipboard()
         elif event.matches(QtGui.QKeySequence.StandardKey.Paste):
             self.paste_from_clipboard()
-        elif event.key() in (
-                Qt.Key.Key_Delete, Qt.Key.Key_Backspace):
+        elif event.key() in (Qt.Key.Key_Delete, Qt.Key.Key_Backspace):
             self.delete_selected()
         else:
             super().keyPressEvent(event)
@@ -91,10 +99,12 @@ class ExcelLikeTableWidget(QTableWidget):
         right = max(item.rightColumn() for item in selected_ranges)
         lines = []
         for row in range(top, bottom + 1):
-            lines.append("\t".join(
-                self.item(row, column).text()
-                if self.item(row, column) else ""
-                for column in range(left, right + 1)))
+            lines.append(
+                "\t".join(
+                    self.item(row, column).text() if self.item(row, column) else ""
+                    for column in range(left, right + 1)
+                )
+            )
         QApplication.clipboard().setText("\n".join(lines) + "\n")
 
     def paste_from_clipboard(self):
@@ -111,11 +121,9 @@ class ExcelLikeTableWidget(QTableWidget):
             for column_offset, value in enumerate(row.split("\t")):
                 target_row = start_row + row_offset
                 target_column = start_column + column_offset
-                if (target_row < self.rowCount()
-                        and target_column < self.columnCount()):
+                if target_row < self.rowCount() and target_column < self.columnCount():
                     item = self.item(target_row, target_column)
-                    if item and (
-                            item.flags() & Qt.ItemFlag.ItemIsEditable):
+                    if item and (item.flags() & Qt.ItemFlag.ItemIsEditable):
                         item.setText(value.strip())
 
     def delete_selected(self):
@@ -126,8 +134,9 @@ class ExcelLikeTableWidget(QTableWidget):
 
 def fill_records(table, rows, *, statistic_columns=(), missing_reasons=None):
     """Fill a read-only result table with mathematical display support."""
-    from frontend.math_widgets import install_delegate, decorate_item
+    from frontend.math_widgets import decorate_item, install_delegate
     from frontend.terminology import apply_header_tooltips, statistic_name, statistic_tooltip
+
     install_delegate(table)
     headers = list(dict.fromkeys(key for row in rows for key in row))
     table.setColumnCount(len(headers))
@@ -137,14 +146,21 @@ def fill_records(table, rows, *, statistic_columns=(), missing_reasons=None):
     for i, row in enumerate(rows):
         for j, key in enumerate(headers):
             value = row.get(key)
-            text = "—" if value is None else f"{value:.6g}" if isinstance(value, float) else str(value)
+            text = (
+                "—" if value is None else f"{value:.6g}" if isinstance(value, float) else str(value)
+            )
             if key in statistic_columns:
                 text = statistic_name(text)
             item = QTableWidgetItem(text)
             if key in statistic_columns:
                 item.setToolTip(statistic_tooltip(text))
             if value is None:
-                item.setToolTip(missing_reasons[i].get(key, '当前结果未提供该项数值。')
-                                if missing_reasons else '当前结果未提供该项数值。')
-            table.setItem(i, j, decorate_item(item, value if key not in statistic_columns else text))
+                item.setToolTip(
+                    missing_reasons[i].get(key, "当前结果未提供该项数值。")
+                    if missing_reasons
+                    else "当前结果未提供该项数值。"
+                )
+            table.setItem(
+                i, j, decorate_item(item, value if key not in statistic_columns else text)
+            )
     table.resizeRowsToContents()

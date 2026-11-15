@@ -1,4 +1,5 @@
-"""Method-independent inspection of saved observations; never fits a model."""
+"""已保存试验数据的完整性检查与描述统计。"""
+
 import math
 
 
@@ -20,7 +21,7 @@ def data_overview(project):
             value = row.get(response.name)
             try:
                 valid = math.isfinite(float(value))
-            except (ValueError, TypeError, OverflowError):
+            except ValueError, TypeError, OverflowError:
                 valid = False
             if valid:
                 count += 1
@@ -28,7 +29,13 @@ def data_overview(project):
                 reason = "缺失" if value is None or not str(value).strip() else "非有限数值或非数字"
                 issues.append({"数据行": index, "响应": response.name, "问题": reason})
         readiness.append((response.name, count, total))
-    return dict(information=[("当前方法", method or "未选择"), ("试验次数", f"{total} 次"),
-                             ("设计 / 采样方式", design)],
-                readiness=readiness, issues=issues,
-                ready=bool(total and readiness) and all(n == total for _, n, _ in readiness))
+    return dict(
+        information=[
+            ("当前方法", method or "未选择"),
+            ("试验次数", f"{total} 次"),
+            ("设计 / 采样方式", design),
+        ],
+        readiness=readiness,
+        issues=issues,
+        ready=bool(total and readiness) and all(n == total for _, n, _ in readiness),
+    )

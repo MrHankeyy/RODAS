@@ -1,1 +1,1 @@
-"""RAMS calculation and business backend."""
+"""不确定性量化、鲁棒优化与业务处理。"""

@@ -1,9 +1,12 @@
 """Native, application-wide task menus and the task-file lifecycle."""
+
 from pathlib import Path
+
 from PyQt6.QtGui import QAction, QKeySequence
 from PyQt6.QtWidgets import QFileDialog, QMessageBox
 
-from backend.domain.models import ProjectData, TASK_TYPES
+from backend.domain.application import APPLICATION_NAME, TASK_SUFFIX
+from backend.domain.models import TASK_TYPES, ProjectData
 from backend.services import task_storage
 from frontend.notifications import Notice
 
@@ -14,16 +17,16 @@ def ask_save_choice(parent, title, text):
     box.setWindowTitle(title)
     box.setIcon(QMessageBox.Icon.Question)
     box.setText(text)
-    save = box.addButton('保存', QMessageBox.ButtonRole.AcceptRole)
-    discard = box.addButton('不保存', QMessageBox.ButtonRole.DestructiveRole)
-    cancel = box.addButton('取消', QMessageBox.ButtonRole.RejectRole)
+    save = box.addButton("保存", QMessageBox.ButtonRole.AcceptRole)
+    discard = box.addButton("不保存", QMessageBox.ButtonRole.DestructiveRole)
+    cancel = box.addButton("取消", QMessageBox.ButtonRole.RejectRole)
     box.setDefaultButton(cancel)
     box.setEscapeButton(cancel)
     box.exec()
     clicked = box.clickedButton()
     if clicked is save:
-        return 'save'
-    return 'discard' if clicked is discard else 'cancel'
+        return "save"
+    return "discard" if clicked is discard else "cancel"
 
 
 class TaskActions:
@@ -33,34 +36,35 @@ class TaskActions:
         self.saved_fingerprint = task_storage.fingerprint(window.project_data)
         bar = window.menuBar()
         bar.setNativeMenuBar(False)
-        menu = bar.addMenu('文件')
+        menu = bar.addMenu("文件")
         self.actions = {}
         for title, shortcut, slot in (
-                ('保存', QKeySequence.StandardKey.Save, self.save),
-                ('另存为', QKeySequence.StandardKey.SaveAs, self.save_as),
-                ('读取', QKeySequence.StandardKey.Open, self.open)):
+            ("保存", QKeySequence.StandardKey.Save, self.save),
+            ("另存为", QKeySequence.StandardKey.SaveAs, self.save_as),
+            ("读取", QKeySequence.StandardKey.Open, self.open),
+        ):
             action = QAction(title, window)
             action.setShortcut(QKeySequence(shortcut))
             action.triggered.connect(slot)
             menu.addAction(action)
             self.actions[title] = action
-        bar.addAction('设置工作目录', window.choose_working_directory)
+        bar.addAction("设置工作目录", window.choose_working_directory)
         self.bind_welcome()
 
     def bind_welcome(self):
-        for title, slot in (('读取已有任务', self.open),):
+        for title, slot in (("读取已有任务", self.open),):
             button = self.window.welcome_page.action_buttons[title]
-            button.setToolTip('')
+            button.setToolTip("")
             button.setAccessibleDescription(title)
             button.clicked.connect(slot)
-        cover = self.window.welcome_page.action_buttons['新建任务']
-        cover.setToolTip('悬停或点击，选择任务主线')
-        cover.setAccessibleDescription('选择基于代理模型的鲁棒优化设计或田口设计')
+        cover = self.window.welcome_page.action_buttons["新建任务"]
+        cover.setToolTip("悬停或点击，选择任务主线")
+        cover.setAccessibleDescription("选择基于代理模型的鲁棒优化设计或田口设计")
         self.window.welcome_page.new_task_card.task_requested.connect(self.new)
 
     def busy(self):
-        if getattr(self.window.page_OPT, '_worker', None) is not None:
-            Notice.warning(self.window, '计算进行中', '请等待计算结束后保存或切换任务。')
+        if getattr(self.window.page_OPT, "_worker", None) is not None:
+            Notice.warning(self.window, "计算进行中", "请等待计算结束后保存或切换任务。")
             return True
         return False
 
@@ -69,21 +73,27 @@ class TaskActions:
             return False
         path = self.path
         if save_as or path is None:
-            default = str(path) if path else self.window.workspace.file_path('未命名任务.rodas')
-            path, _ = QFileDialog.getSaveFileName(self.window, '保存任务', default, 'RODAS 任务 (*.rodas)')
+            default = (
+                str(path) if path else self.window.workspace.file_path("未命名任务" + TASK_SUFFIX)
+            )
+            path, _ = QFileDialog.getSaveFileName(
+                self.window, "保存任务", default, "设计任务 (*" + TASK_SUFFIX + ")"
+            )
             if not path:
                 return False
-            if not path.lower().endswith('.rodas'):
-                path += '.rodas'
+            if not path.endswith(TASK_SUFFIX):
+                path += TASK_SUFFIX
         try:
             digest = task_storage.save_task(self.window.project_data, path)
         except Exception as exc:
-            Notice.warning(self.window, '任务保存失败', str(exc))
+            Notice.warning(self.window, "任务保存失败", str(exc))
             return False
         self.path = Path(path).resolve()
         self.saved_fingerprint = digest
         self._title()
-        Notice.information(self.window, '任务已保存', f'{self.path}\n仅保存已提交数据，不包含输入草稿。')
+        Notice.information(
+            self.window, "任务已保存", f"{self.path}\n仅保存已提交数据，不包含输入草稿。"
+        )
         return True
 
     def save_as(self, *_args):
@@ -98,23 +108,30 @@ class TaskActions:
             dirty = True
         if not force and not dirty:
             return True
-        choice = ask_save_choice(self.window, '保存任务',
-            '是否保存当前任务？\n仅保存已提交数据；尚未提交的输入不会写入任务文件。')
-        if choice == 'save':
+        choice = ask_save_choice(
+            self.window,
+            "保存任务",
+            "是否保存当前任务？\n仅保存已提交数据；尚未提交的输入不会写入任务文件。",
+        )
+        if choice == "save":
             return self.save()
-        return choice == 'discard'
+        return choice == "discard"
 
     def open(self, *_args):
         if self.busy():
             return False
-        path, _ = QFileDialog.getOpenFileName(self.window, '读取任务', self.window.workspace.directory,
-                                             'RODAS 任务 (*.rodas)')
+        path, _ = QFileDialog.getOpenFileName(
+            self.window,
+            "读取任务",
+            self.window.workspace.directory,
+            "设计任务 (*" + TASK_SUFFIX + ");;所有文件 (*)",
+        )
         if not path:
             return False
         try:
             project = task_storage.load_task(path)
         except ValueError as exc:
-            Notice.warning(self.window, '任务读取失败', str(exc))
+            Notice.warning(self.window, "任务读取失败", str(exc))
             return False
         if not self.confirm_leave():
             return False
@@ -124,12 +141,12 @@ class TaskActions:
                 project = task_storage.load_task(path)
             self._replace(project, target)
         except Exception as exc:
-            Notice.warning(self.window, '任务读取失败', str(exc))
+            Notice.warning(self.window, "任务读取失败", str(exc))
             return False
-        Notice.information(self.window, '任务已读取', str(self.path))
+        Notice.information(self.window, "任务已读取", str(self.path))
         return True
 
-    def new(self, task_type='robust'):
+    def new(self, task_type="robust"):
         if self.confirm_leave():
             self._replace(ProjectData(task_type=task_type), None)
             self.window.switch_page(0)
@@ -139,8 +156,17 @@ class TaskActions:
     def _replace(self, project, path):
         window = self.window
         old = window.stacked_widget
-        attributes = ('project_data', 'stacked_widget', 'page_MOD', 'page_CFG', 'page_DM',
-                      'page_OPT', 'page_REP', 'welcome_page', 'welcome_index')
+        attributes = (
+            "project_data",
+            "stacked_widget",
+            "page_MOD",
+            "page_CFG",
+            "page_DM",
+            "page_OPT",
+            "page_REP",
+            "welcome_page",
+            "welcome_index",
+        )
         previous = {name: getattr(window, name) for name in attributes}
         try:
             window.project_data = project
@@ -164,8 +190,7 @@ class TaskActions:
         self._title()
 
     def _title(self):
-        from frontend.pages.welcome_page import CHINESE_NAME
-        label = (self.path.name + ' · ') if self.path else ''
+        label = (self.path.stem + " · ") if self.path else ""
         kind = TASK_TYPES.get(self.window.project_data.task_type)
-        label += (kind + ' · ') if kind else ''
-        self.window.setWindowTitle(label + 'RODAS · ' + CHINESE_NAME)
+        label += (kind + " · ") if kind else ""
+        self.window.setWindowTitle(label + APPLICATION_NAME)

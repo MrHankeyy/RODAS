@@ -1,22 +1,14 @@
-"""Extracted factors algorithms; preserve v0.1 calculations."""
+"""因子范围、中心值与不确定性参数换算。"""
+
 from __future__ import annotations
-import itertools
+
 import math
-import random
-import statistics
-import time
-try:
-    import numpy as _np
-    HAS_NUMPY = True
-except Exception:
-    _np = None
-    HAS_NUMPY = False
 
 
 def _num(value, default=0.0):
     try:
         return float(value)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return default
 
 
@@ -63,16 +55,21 @@ def factor_limits(factor):
 def factor_center(factor, point=None, include_deviation=True):
     """Keep nominal search values distinct from the center of additive deviations."""
     if factor.source == "环境" and not factor.nominal_lower:
-        return (_num(factor.param1) if factor.uncertainty == "概率" else
-                (_num(factor.param1) + _num(factor.param2)) / 2)
+        return (
+            _num(factor.param1)
+            if factor.uncertainty == "概率"
+            else (_num(factor.param1) + _num(factor.param2)) / 2
+        )
     lo, hi = factor_limits(factor)
     nominal = (point or {}).get(factor.name, (lo + hi) / 2)
     if factor.nominal_lower != "":
         if factor.uncertainty == "概率":
             offset = _num(factor.param1)
         else:
-            offset = (delta_value(factor, factor.param1, nominal) +
-                      delta_value(factor, factor.param2, nominal)) / 2
+            offset = (
+                delta_value(factor, factor.param1, nominal)
+                + delta_value(factor, factor.param2, nominal)
+            ) / 2
         return nominal + offset if include_deviation else nominal
     return nominal
 
@@ -108,5 +105,5 @@ def _round_row(row):
 def _isfinite(x):
     try:
         return math.isfinite(float(x))
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return False

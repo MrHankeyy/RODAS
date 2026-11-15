@@ -1,10 +1,12 @@
-"""Explicit business-definition submission with shared compact tables."""
+"""响应、设计变量与不确定性参数的定义和提交。"""
+
 from PyQt6.QtCore import pyqtSignal
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton
+from PyQt6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
+
 from backend.services.project_service import ProjectService
 from frontend.notifications import Notice
 from frontend.pages.definition_editors import FactorTable, ResponseTable
-from frontend.theme import ResultTabs, ResultsWorkspace, primary
+from frontend.theme import ResultsWorkspace, ResultTabs, primary
 
 
 class ModelingPage(QWidget):
@@ -22,7 +24,9 @@ class ModelingPage(QWidget):
         for section in self.sections:
             index = self.model_tabs.addTab(section, section.title)
             self.model_tabs.setTabToolTip(index, section.toolTip())
-        self.results_workspace = ResultsWorkspace(self.model_tabs, [("问题参数", list(range(len(self.sections))))])
+        self.results_workspace = ResultsWorkspace(
+            self.model_tabs, [("问题参数", list(range(len(self.sections))))]
+        )
         root = QVBoxLayout(self)
         root.setContentsMargins(12, 12, 12, 12)
         root.addWidget(self.results_workspace, 1)
@@ -71,7 +75,9 @@ class ModelingPage(QWidget):
         names = [item.name for item in responses + factors]
         if len(set(names)) != len(names):
             raise ValueError("响应与因子的名称不能重复。")
-        return ProjectService.for_project(self.project_data).update_definition(factors=factors, responses=responses)
+        return ProjectService.for_project(self.project_data).update_definition(
+            factors=factors, responses=responses
+        )
 
     def on_save_clicked(self):
         try:

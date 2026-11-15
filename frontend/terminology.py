@@ -1,10 +1,14 @@
 """Central user-facing terminology and tooltip formatting."""
-from PyQt6.QtCore import Qt
 
+from PyQt6.QtCore import Qt
 
 # key: (Chinese display name, English full name, optional abbreviation)
 TERMS = {
-    "task_robust": ("基于代理模型的鲁棒优化设计", "Surrogate-Based Robust Design Optimization", "SBRDO"),
+    "task_robust": (
+        "基于代理模型的鲁棒优化设计",
+        "Surrogate-Based Robust Design Optimization",
+        "SBRDO",
+    ),
     "taguchi_design": ("田口设计", "Taguchi Design", ""),
     "quadratic_response_surface": ("二次响应面模型", "Quadratic Response Surface Model", ""),
     "kriging": ("克里金模型", "Kriging Model", ""),
@@ -26,7 +30,11 @@ TERMS = {
     "hyperbolic_tangent": ("双曲正切函数", "Hyperbolic Tangent Function", "tanh"),
     "relu": ("修正线性单元", "Rectified Linear Unit", "ReLU"),
     "lhs": ("拉丁超立方采样", "Latin Hypercube Sampling", "LHS"),
-    "maximin_lhs": ("最大最小距离优化拉丁超立方采样", "Maximin Latin Hypercube Sampling", "Maximin LHS"),
+    "maximin_lhs": (
+        "最大最小距离优化拉丁超立方采样",
+        "Maximin Latin Hypercube Sampling",
+        "Maximin LHS",
+    ),
     "sobol": ("索博尔序列", "Sobol Sequence", ""),
     "uniform_grid": ("均匀网格采样", "Uniform Grid Sampling", ""),
     "low_dimensional_combination": ("低维组合采样", "Low-Dimensional Combination Sampling", ""),
@@ -52,7 +60,11 @@ TERMS = {
     "desirability_loss_weight": ("望性损失权重", "Desirability Loss Weight", ""),
     "variability_weight": ("波动权重", "Variability Weight", ""),
     "constraint_margin_multiplier": ("约束裕量系数", "Constraint Margin Multiplier", ""),
-    "interval_std_factor": ("区间标准差换算系数", "Interval-to-Standard-Deviation Conversion Factor", ""),
+    "interval_std_factor": (
+        "区间标准差换算系数",
+        "Interval-to-Standard-Deviation Conversion Factor",
+        "",
+    ),
     "response_limit": ("阈值设置", "Response Limit Settings", ""),
     "objective_robustness_limit": ("目标鲁棒性阈值", "Objective Robustness Limit", ""),
     "constraint_limit": ("约束阈值", "Constraint Limit", ""),
@@ -77,8 +89,16 @@ STATISTICS = {
     "模型类型": ("Model Type", "", "当前已训练模型的类型"),
     "训练样本数": ("Training Sample Size", "", "参与当前模型训练的数据条数"),
     "测试样本数": ("Test-Set Sample Size", "", "参与测试集验证的数据条数"),
-    "交叉验证决定系数": ("Cross-Validated Coefficient of Determination", "CV R²", "基于K折预测计算的决定系数"),
-    "交叉验证均方根误差": ("Cross-Validated Root Mean Squared Error", "CV RMSE", "K折预测的误差大小，单位同响应"),
+    "交叉验证决定系数": (
+        "Cross-Validated Coefficient of Determination",
+        "CV R²",
+        "基于K折预测计算的决定系数",
+    ),
+    "交叉验证均方根误差": (
+        "Cross-Validated Root Mean Squared Error",
+        "CV RMSE",
+        "K折预测的误差大小，单位同响应",
+    ),
     "编码项": ("Coded Model Term", "", "系数对应的编码变量模型项"),
     "估计值": ("Coefficient Estimate", "", "当前模型项的系数估计"),
     "标准误": ("Standard Error", "SE", "系数估计的标准误差"),
@@ -101,11 +121,27 @@ STATISTICS = {
     "四分位距": ("Interquartile Range", "IQR", "第三与第一四分位数之差"),
     "偏度": ("Skewness", "", "衡量分布不对称，正值表示右偏"),
     "超额峰度": ("Excess Kurtosis", "", "衡量尾部厚重程度，正态分布为零"),
-    "拟合决定系数": ("In-Sample Coefficient of Determination", "R²", "衡量模型对拟合数据的解释程度"),
-    "调整决定系数": ("Adjusted Coefficient of Determination", "Adjusted R²", "考虑参数数量后的决定系数"),
+    "拟合决定系数": (
+        "In-Sample Coefficient of Determination",
+        "R²",
+        "衡量模型对拟合数据的解释程度",
+    ),
+    "调整决定系数": (
+        "Adjusted Coefficient of Determination",
+        "Adjusted R²",
+        "考虑参数数量后的决定系数",
+    ),
     "拟合均方根误差": ("In-Sample Root Mean Squared Error", "RMSE", "拟合误差大小，单位同响应"),
-    "测试集决定系数": ("Test-Set Coefficient of Determination", "R²", "衡量模型对测试数据的解释程度"),
-    "归一化平均绝对误差": ("Normalized Mean Absolute Error", "NMAE", "按实测绝对值均值归一化的误差"),
+    "测试集决定系数": (
+        "Test-Set Coefficient of Determination",
+        "R²",
+        "衡量模型对测试数据的解释程度",
+    ),
+    "归一化平均绝对误差": (
+        "Normalized Mean Absolute Error",
+        "NMAE",
+        "按实测绝对值均值归一化的误差",
+    ),
     "因子": ("Factor", "", "对响应影响进行分析的输入变量"),
     "主效应": ("Main Effect", "", "高水平与低水平的平均响应之差"),
     "主效应平方占比": ("Squared Main-Effect Share", "", "各主效应平方占总和的比例"),
@@ -122,7 +158,11 @@ STATISTICS = {
     "平均绝对误差": ("Mean Absolute Error", "MAE", "预测值与实测值的绝对误差均值"),
     "最大绝对误差": ("Maximum Absolute Error", "", "所有预测中最大的绝对误差"),
     "残差均值": ("Mean Residual", "", "实测值减预测值所得差值的均值"),
-    "残差样本标准差": ("Sample Standard Deviation of Residuals", "", "衡量残差围绕其均值的离散程度"),
+    "残差样本标准差": (
+        "Sample Standard Deviation of Residuals",
+        "",
+        "衡量残差围绕其均值的离散程度",
+    ),
     "参数数量": ("Number of Parameters", "", "模型估计的系数数量，含常数项"),
     "残差自由度": ("Residual Degrees of Freedom", "", "样本数减去模型参数数量"),
     "设计矩阵条件数": ("Condition Number of the Design Matrix", "", "衡量矩阵对数值扰动的敏感程度"),
@@ -136,19 +176,39 @@ STATISTICS = {
     "失拟自由度": ("Lack-of-Fit Degrees of Freedom", "", "残差自由度减去纯误差自由度"),
     "失拟检验统计量": ("Lack-of-Fit F-statistic", "F", "比较模型失拟与重复试验误差"),
     "失拟检验概率值": ("Lack-of-Fit p-value", "p", "越小越提示模型形式可能不合适"),
-    "留一预测残差平方和": ("Leave-One-Out Prediction Residual Sum of Squares", "LOO PRESS", "逐点留出预测误差的平方和"),
-    "留一预测均方根误差": ("Leave-One-Out Root Mean Squared Error", "LOO RMSE", "留一交叉验证的预测误差，单位同响应"),
-    "留一预测决定系数": ("Leave-One-Out Predicted Coefficient of Determination", "LOO R²", "衡量留一交叉验证中的预测解释程度"),
+    "留一预测残差平方和": (
+        "Leave-One-Out Prediction Residual Sum of Squares",
+        "LOO PRESS",
+        "逐点留出预测误差的平方和",
+    ),
+    "留一预测均方根误差": (
+        "Leave-One-Out Root Mean Squared Error",
+        "LOO RMSE",
+        "留一交叉验证的预测误差，单位同响应",
+    ),
+    "留一预测决定系数": (
+        "Leave-One-Out Predicted Coefficient of Determination",
+        "LOO R²",
+        "衡量留一交叉验证中的预测解释程度",
+    ),
     "残差正态性检验概率值": ("Shapiro–Wilk Test p-value", "p", "越小越提示残差偏离正态分布"),
 }
 
 STATISTIC_ALIASES = {
-    "t": "系数检验统计量", "未校正 p": "未校正概率值",
-    "R²": "决定系数", "RMSE": "均方根误差", "MAE": "平均绝对误差",
-    "参数数": "参数数量", "回归 F": "回归检验统计量", "回归 p": "回归检验概率值",
-    "失拟 F": "失拟检验统计量", "失拟 p": "失拟检验概率值",
-    "LOO PRESS": "留一预测残差平方和", "LOO RMSE": "留一预测均方根误差",
-    "预测 R² (LOO)": "留一预测决定系数", "残差 Shapiro p": "残差正态性检验概率值",
+    "t": "系数检验统计量",
+    "未校正 p": "未校正概率值",
+    "R²": "决定系数",
+    "RMSE": "均方根误差",
+    "MAE": "平均绝对误差",
+    "参数数": "参数数量",
+    "回归 F": "回归检验统计量",
+    "回归 p": "回归检验概率值",
+    "失拟 F": "失拟检验统计量",
+    "失拟 p": "失拟检验概率值",
+    "LOO PRESS": "留一预测残差平方和",
+    "LOO RMSE": "留一预测均方根误差",
+    "预测 R² (LOO)": "留一预测决定系数",
+    "残差 Shapiro p": "残差正态性检验概率值",
 }
 
 
@@ -157,7 +217,7 @@ def statistic_name(text):
 
 
 def statistic_tooltip(text):
-    chinese = statistic_name(text).split('（')[0]
+    chinese = statistic_name(text).split("（")[0]
     term = STATISTICS.get(chinese)
     if term is None:
         return ""
@@ -188,9 +248,9 @@ def tooltip(key):
         "optimization_history": "逐代记录每代最优目标值、可行解数与累计评估次数；图中虚线为优化停止的一代。",
         "holdout_validation": "由留出法（Hold-out）划分出的独立测试集，未参与训练，仅用于评估预测精度。",
         "export_trial_table": "把当前试验设计（DOE）数据表连同已录入的响应导出为表格文件，可选 CSV 或 Excel（.xlsx/.xls）。\n"
-                              "CSV 指逗号分隔值（Comma-Separated Values）纯文本表格，便于仿真脚本读取；Excel 便于人工查看。",
+        "CSV 指逗号分隔值（Comma-Separated Values）纯文本表格，便于仿真脚本读取；Excel 便于人工查看。",
         "import_trial_table": "从 CSV 或 Excel 文件读取试验设计（DOE）数据表，第一行按列名解析，可含仿真或试验得到的响应列。\n"
-                              "不要求文件带试验序号列，缺失时按行序自动编号；导入会替换当前表格内容，需再点击「保存响应数据」写入项目。",
+        "不要求文件带试验序号列，缺失时按行序自动编号；导入会替换当前表格内容，需再点击「保存响应数据」写入项目。",
     }.get(key, "")
     return f"{chinese}（{english}{suffix}）" + ("\n" + explanation if explanation else "")
 
@@ -219,11 +279,6 @@ def _sync_combo_tooltip(combo):
     text = combo.itemData(combo.currentIndex(), Qt.ItemDataRole.ToolTipRole) or ""
     combo.setToolTip(text)
     combo.setAccessibleDescription(text)
-
-
-def set_tab(tabs, index, key):
-    tabs.setTabText(index, name(key))
-    tabs.setTabToolTip(index, tooltip(key))
 
 
 HEADER_TERMS = {

@@ -1,4 +1,4 @@
-# RAMS V1.0 结构说明
+# 基于不确定性量化的复杂工程结构鲁棒优化设计平台 · 结构说明
 
 V1.0 使用两个顶层生产代码包，目录名直接表达技术职责：
 
@@ -6,13 +6,12 @@ V1.0 使用两个顶层生产代码包，目录名直接表达技术职责：
 - `backend/domain/`：因子、响应和 `ProjectData` 等领域数据结构。
 - `backend/services/`：业务流程。负责生成方案、准备模型、组织统计分析，以及统一修改 `ProjectData`。
 - `backend/engines/`：面向业务层和界面的稳定算法门面。
-- `backend/infrastructure/`：CSV／Excel、JSON、HTML 与 PDF 等文件读写适配。
+- `backend/infrastructure/`：Excel／CSV、JSON、HTML 与 PDF 等文件读写适配。
 - `backend/reporting/`：报告内容构建与渲染。
 - `frontend/`：PyQt6 窗口、页面、主题和通知适配；页面位于 `frontend/pages/`。
 - `main.py`：唯一的桌面程序启动入口。
 
-`frontend` 可以调用 `backend`；`backend` 不导入 `frontend`。长期测试位于 `test/`，
-一次性调试脚本位于 `temp/`，生成结果位于 `output/`。当前不创建 `poc/`。
+`frontend` 调用 `backend`；`backend` 不导入 `frontend`。测试与开发材料单独归档，恢复验证的方法见根目录 README。
 
 ## 项目数据写入规则
 
@@ -36,7 +35,6 @@ V1.0 使用两个顶层生产代码包，目录名直接表达技术职责：
 - `optimization_controller.py`：页面流程协调；
 - `optimization_panels.py`：优化页签和控件；
 - `optimization_plots.py`：绘图；
-- `result_text.py`：结果文本格式化；
 - `qt_tasks.py`：Qt 后台任务适配；
 - `table_widgets.py`：可复用表格控件。
 

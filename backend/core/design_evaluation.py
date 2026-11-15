@@ -1,20 +1,14 @@
-"""Extracted design evaluation algorithms; preserve v0.1 calculations."""
+"""响应矩估计、目标评价与性能约束核验。"""
+
 from __future__ import annotations
-import itertools
+
 import math
-import random
-import statistics
-import time
-try:
-    import numpy as _np
-    HAS_NUMPY = True
-except Exception:
-    _np = None
-    HAS_NUMPY = False
+
+import numpy as np
+
 from . import factors as de
 from .factors import _isfinite
 from .response_models import model_grad_x, model_hess_diag_x, model_predict
-
 
 # width/(2k) equals the standard deviation of a uniform interval at k=√3.
 DEFAULT_K_DESIGN = math.sqrt(3.0)
@@ -30,7 +24,7 @@ def _sigma_of_factor(f, k_design, point=None):
             return abs(de.factor_center(f, point) * ratio)
         try:
             return max(0.0, float(f.param2)) ** 0.5
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             return (hi - lo) / 6.0
     if f.source == "环境" or f.nominal_lower != "":
         # Existing moment approximation: actual environmental width or design deviation width.
@@ -45,21 +39,20 @@ def _sigma_of_factor(f, k_design, point=None):
 def robust_moments(model, x_design, context, k_design, include_residual=True):
     """在设计点 x_design(设计因子名->值) 处计算任一响应的均值 μ 与标准差 σ。"""
     inputs = context["inputs"]
-    names = context["names"]
     x = [de.factor_center(f, x_design if f.source == "设计" else None) for f in inputs]
-    x = _np.array(x, float)
+    x = np.array(x, float)
     mu = model_predict(model, x)
     grad = model_grad_x(model, x)
     hess = model_hess_diag_x(model, x)
     sigma = []
     for f, idx in zip(inputs, range(len(inputs))):
         sigma.append(_sigma_of_factor(f, k_design, x_design))
-    sigma = _np.array(sigma, float)
+    sigma = np.array(sigma, float)
     # 一阶 + 二阶矩修正
-    curvature = 0.5 * float(_np.sum((hess * sigma ** 2)))
+    curvature = 0.5 * float(np.sum((hess * sigma**2)))
     mu_mean = mu + curvature
-    var1 = float(_np.sum((grad * sigma) ** 2))
-    var2 = float(_np.sum(0.5 * ((hess * sigma ** 2) ** 2)))
+    var1 = float(np.sum((grad * sigma) ** 2))
+    var2 = float(np.sum(0.5 * ((hess * sigma**2) ** 2)))
     var_res = model["residual_std"] ** 2 if include_residual else 0.0
     sigma_out = math.sqrt(var1 + var2 + var_res)
     return mu_mean, sigma_out
@@ -70,11 +63,11 @@ def _response_ref(resp):
     if resp.feature == "望目":
         try:
             return float(resp.lower), float(resp.upper)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             return None, None
     try:
         return float(resp.robust_limit)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return None
 
 
@@ -135,30 +128,39 @@ def response_uses_limits(context, response):
     """Keep the optimization role separate from optional performance constraints."""
     if self_is_constraint(response):
         return True
-    if not context.get('enforce_objective_limits', False):
+    if not context.get("enforce_objective_limits", False):
         return False
-    values = (response.lower, response.upper) if response.feature == '望目' else (response.robust_limit,)
+    values = (
+        (response.lower, response.upper) if response.feature == "望目" else (response.robust_limit,)
+    )
     return any(str(value).strip() for value in values)
 
 
 def validate_response_limits(response):
     kind, limit = _constraint_limits(response)
-    values = limit if kind == 'both' else (limit,)
+    values = limit if kind == "both" else (limit,)
     if any(value is None or not math.isfinite(value) for value in values):
-        raise ValueError(f'{response.name}：性能阈值必须为有限数字。')
-    if kind == 'both' and values[0] >= values[1]:
-        raise ValueError(f'{response.name}：性能阈值下限必须小于上限。')
+        raise ValueError(f"{response.name}：性能阈值必须为有限数字。")
+    if kind == "both" and values[0] >= values[1]:
+        raise ValueError(f"{response.name}：性能阈值下限必须小于上限。")
 
 
-def evaluate_design(context, x_design, k_design, weight_r, use_constraints=False,
-                    k_constraint=DEFAULT_K_CONSTRAINT, resp_stds=None):
+def evaluate_design(
+    context,
+    x_design,
+    k_design,
+    weight_r,
+    use_constraints=False,
+    k_constraint=DEFAULT_K_CONSTRAINT,
+    resp_stds=None,
+):
     """设计点评估。返回 dict{obj, mean_perf, std_norm, infeas, details}。"""
     models = context["models"]
     resp_objs, resp_cons, details = [], [], []
     data_min, data_max = {}, {}
     for name, m in models.items():
-        data_min[name] = float(_np.min(m["predicted"])) if m["predicted"] else 0.0
-        data_max[name] = float(_np.max(m["predicted"])) if m["predicted"] else 1.0
+        data_min[name] = float(np.min(m["predicted"])) if m["predicted"] else 0.0
+        data_max[name] = float(np.max(m["predicted"])) if m["predicted"] else 1.0
     std_sum, perf_sum, wsum = 0.0, 0.0, 0.0
     infeas = 0.0
     sigma_limits = context.get("sigma_limits", {})
@@ -170,7 +172,9 @@ def evaluate_design(context, x_design, k_design, weight_r, use_constraints=False
         if resp.name in sigma_limits:
             bound = sigma_limits[resp.name]
             infeas += max(0.0, sigma - bound) / max(abs(bound), 1e-12)
-            details.append({"name": resp.name, "sigma": sigma, "sigma_limit": bound, "margin": bound - sigma})
+            details.append(
+                {"name": resp.name, "sigma": sigma, "sigma_limit": bound, "margin": bound - sigma}
+            )
         d = _desirability(resp, mu, data_min[resp.name], data_max[resp.name])
         scale = _response_scale(m)
         std_n = sigma / max(scale, 1e-12)
@@ -180,8 +184,7 @@ def evaluate_design(context, x_design, k_design, weight_r, use_constraints=False
             if use_constraints:
                 validate_response_limits(resp)
             kind, lim = _constraint_limits(resp)
-            if use_constraints and (lim is None or
-                                    (kind == "both" and None in lim)):
+            if use_constraints and (lim is None or (kind == "both" and None in lim)):
                 raise ValueError(f"约束响应 {resp.name} 未设置有效的约束界限。")
             if kind == "upper" and lim is not None:
                 infeas_in = max(0.0, mu + k_constraint * sigma - lim)
@@ -196,8 +199,9 @@ def evaluate_design(context, x_design, k_design, weight_r, use_constraints=False
                     infeas_in += max(0.0, (mu + k_constraint * sigma) - hi)
             else:
                 infeas_in = 0.0
-            limit_scale = abs(lim if isinstance(lim, (int, float))
-                              else ((lim[1] or 0.0) if lim else 0.0))
+            limit_scale = abs(
+                lim if isinstance(lim, (int, float)) else ((lim[1] or 0.0) if lim else 0.0)
+            )
             if use_constraints:
                 infeas += infeas_in / max(limit_scale, 1.0)
             if is_cons:
@@ -210,7 +214,11 @@ def evaluate_design(context, x_design, k_design, weight_r, use_constraints=False
     if not resp_objs:
         # 全为约束时，用第一个响应的 σ 作为目标并保持可行
         perf_sum = 1.0
-        std_sum = sum(c["sigma"] / max(_response_scale(models[c["name"]]), 1e-12) for c in resp_cons) if resp_cons else 0.0
+        std_sum = (
+            sum(c["sigma"] / max(_response_scale(models[c["name"]]), 1e-12) for c in resp_cons)
+            if resp_cons
+            else 0.0
+        )
         wsum = len(resp_cons) or 1
     mean_perf = perf_sum / max(wsum, 1)
     std_norm = std_sum / max(wsum, 1)
@@ -218,9 +226,16 @@ def evaluate_design(context, x_design, k_design, weight_r, use_constraints=False
     obj = [1.0 - mean_perf, std_norm]
     if infeas > 0:
         obj = [v + 100.0 * infeas for v in obj]
-    return {"obj": obj, "mean_perf": mean_perf, "std_norm": std_norm,
-            "infeas": infeas, "objectives": resp_objs, "constraints": resp_cons,
-            "details": details, "x": dict(x_design)}
+    return {
+        "obj": obj,
+        "mean_perf": mean_perf,
+        "std_norm": std_norm,
+        "infeas": infeas,
+        "objectives": resp_objs,
+        "constraints": resp_cons,
+        "details": details,
+        "x": dict(x_design),
+    }
 
 
 def project_responses(context):

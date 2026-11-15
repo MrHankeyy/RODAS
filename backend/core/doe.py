@@ -1,26 +1,20 @@
-"""Extracted doe algorithms; preserve v0.1 calculations."""
+"""响应面试验与田口正交试验的构造。"""
+
 from __future__ import annotations
+
 import itertools
 import math
 import random
-import statistics
-import time
-try:
-    import numpy as _np
-    HAS_NUMPY = True
-except Exception:
-    _np = None
-    HAS_NUMPY = False
-from . import factors as de
-from .factors import factor_limits
+
+import numpy as np
+
+from .factors import _round_row, to_actual
+from .response_models import _design_matrix
 
 _PB_CORES = {
     12: "+ + - + + + - - - + -".replace(" ", ""),
     20: "+ + - - + + + + - + - + - - - - + + -".replace(" ", ""),
 }
-
-from .factors import _round_row, to_actual
-from .response_models import _design_matrix
 
 
 def _gf_oa_columns(prime: int, dim: int):
@@ -43,14 +37,17 @@ def _gf_oa_columns(prime: int, dim: int):
 def _oa_levels(label: str):
     """返回标准 L 表的 (标签, 水平数, 行数, 列级别矩阵)。"""
     mapping = {
-        "L4": (2, 2), "L8": (2, 3), "L16": (2, 4),
-        "L9": (3, 2), "L27": (3, 3),
+        "L4": (2, 2),
+        "L8": (2, 3),
+        "L16": (2, 4),
+        "L9": (3, 2),
+        "L27": (3, 3),
     }
     if label not in mapping:
         raise ValueError(f"不支持的正交表：{label}")
     prime, dim = mapping[label]
     col_count, columns = _gf_oa_columns(prime, dim)
-    runs = prime ** dim
+    runs = prime**dim
     matrix = [[columns[c][r] for c in range(col_count)] for r in range(runs)]
     return label, prime, runs, matrix
 
@@ -67,7 +64,7 @@ def _pb_matrix(n: int):
 
 def ccd_runs(k: int, alpha: float, centers: int):
     rows = []
-    cube = int(2 ** k)
+    cube = int(2**k)
     for i in range(cube):  # 立方点 ±1
         row = [1 if (i >> j) & 1 else -1 for j in range(k)]
         rows.append(row)
@@ -96,13 +93,19 @@ def bbd_runs(k: int, centers: int):
 
 
 def rotatable_alpha(k: int):
-    return round((2 ** k) ** 0.25, 6)
+    return round((2**k) ** 0.25, 6)
 
 
-def build_response_surface(factors, rsm_type: str, alpha_mode: str,
-                           custom_alpha: float, centers: int,
-                           replicates: int = 1, seed: int = 0,
-                           randomize: bool = True):
+def build_response_surface(
+    factors,
+    rsm_type: str,
+    alpha_mode: str,
+    custom_alpha: float,
+    centers: int,
+    replicates: int = 1,
+    seed: int = 0,
+    randomize: bool = True,
+):
     """构造 CCD 或 BBD。rsm_type: 'CCD'/'BBD'。"""
     if centers < 0 or replicates < 1:
         raise ValueError("中心点数不能为负，重复次数至少为 1")
@@ -136,7 +139,7 @@ def build_response_surface(factors, rsm_type: str, alpha_mode: str,
         coded = ccd_runs(k, alpha, centers)
         design_label = f"中心复合设计（k={k}, α={alpha}）"
 
-    if _np.linalg.matrix_rank(_design_matrix(_np.asarray(coded, float))[0]) < (k + 1) * (k + 2) // 2:
+    if np.linalg.matrix_rank(_design_matrix(np.asarray(coded, float))[0]) < (k + 1) * (k + 2) // 2:
         raise ValueError("当前点型无法识别完整二次模型；请增加中心点或调整中心复合设计轴值。")
     rows = []
     for _ in range(max(1, replicates)):
@@ -150,7 +153,7 @@ def build_response_surface(factors, rsm_type: str, alpha_mode: str,
         rng = random.Random(seed)
         rng.shuffle(rows)
 
-    cube_count = (2 ** k) if rsm_type == "CCD" else (2 * k * (k - 1))
+    cube_count = (2**k) if rsm_type == "CCD" else (2 * k * (k - 1))
     meta = {
         "design": design_label,
         "alpha": alpha if rsm_type == "CCD" else None,
@@ -160,7 +163,9 @@ def build_response_surface(factors, rsm_type: str, alpha_mode: str,
         "replicates": replicates,
         "total_runs": len(rows),
         "active_factors": [f[0] for f in factors],
-        "bounds_note": "中心复合设计的 α>1 轴点超出所填设计上下限；这些水平对应编码 ±1，不是硬边界。" if rsm_type == "CCD" and alpha > 1 else "所有设计点位于所填设计上下限内。",
+        "bounds_note": "中心复合设计的 α>1 轴点超出所填设计上下限；这些水平对应编码 ±1，不是硬边界。"
+        if rsm_type == "CCD" and alpha > 1
+        else "所有设计点位于所填设计上下限内。",
     }
     return rows, meta
 
@@ -192,8 +197,16 @@ def _levels_of_factor(lo, hi, n_levels):
     return [lo, (lo + hi) / 2.0, hi]
 
 
-def build_taguchi(control_factors, noise_factors, inner_label, outer_label,
-                  levels: int, seed: int = 0, replicates: int = 1, randomize: bool = True):
+def build_taguchi(
+    control_factors,
+    noise_factors,
+    inner_label,
+    outer_label,
+    levels: int,
+    seed: int = 0,
+    replicates: int = 1,
+    randomize: bool = True,
+):
     """田口设计：内表(控制因子) × 外表(噪声因子) 叉积。返回行与分组信息。"""
     fixed = {f[0]: f[3] for f in control_factors + noise_factors if f[3] is not None}
     control_factors = [f for f in control_factors if f[3] is None]
