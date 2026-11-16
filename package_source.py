@@ -8,7 +8,6 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 FILES = [
     "main.py",
-    "README.md",
     "requirements.txt",
     "requirements.lock.txt",
     "requirements-build.txt",
@@ -18,17 +17,10 @@ FILES = [
     "ruff.toml",
 ]
 DIRECTORIES = ["backend", "frontend", "assets", "packaging"]
-DOCS = [
-    "docs/README.md",
-    "docs/ARCHITECTURE.md",
-    "docs/bugs/BUG-002.md",
-    "docs/优化工作台分析功能说明.md",
-    "docs/分析报告使用说明.md",
-]
 
 
 def main():
-    paths = [ROOT / name for name in FILES + DOCS]
+    paths = [ROOT / name for name in FILES]
     for directory in DIRECTORIES:
         paths.extend(
             p
