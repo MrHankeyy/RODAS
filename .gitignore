@@ -9,3 +9,5 @@ __pycache__/
 !/output/.gitkeep
 /build/
 /dist/
+*.egg-info/
+.ruff_cache/

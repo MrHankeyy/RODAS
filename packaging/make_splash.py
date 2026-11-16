@@ -7,13 +7,17 @@ Usage (from the project root):
     ..\RODAS-build-env\Scripts\python.exe packaging\make_splash.py
 """
 import math
+import sys
 from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+from backend.domain.application import APPLICATION_NAME, APPLICATION_VERSION
+
 OUT = ROOT / 'packaging' / 'RODAS-splash.png'
-LOGO = ROOT / 'assets' / 'branding' / 'rodas-logo.png'
+LOGO = ROOT / 'assets' / 'branding' / 'brand-wordmark.png'
 
 W, H = 720, 340          # final png size (Splash max_img_size is 760x480)
 S = 2                    # supersampling factor for smooth lines/text
@@ -87,18 +91,18 @@ def main():
     d.rectangle((180 * S, 0, W * S, 3 * S), fill='#E8EEF3')
 
     # Welcome line.
-    d.text((40 * S, 34 * S), '欢迎使用 RODAS   /   V1.0',
+    d.text((40 * S, 34 * S), f'欢迎使用 ROD   /   V{APPLICATION_VERSION}',
            font=font('msyh.ttc', 12), fill=FAINT)
 
-    # Approved brand artwork, cropped exactly like WelcomePage.brand_pixmap().
-    artwork = Image.open(LOGO).convert('RGBA').crop((90, 135, 2080, 565))
+    # Use the complete wordmark; the current asset is already cropped.
+    artwork = Image.open(LOGO).convert('RGBA')
     logo_w = 360
     logo_h = round(logo_w * artwork.height / artwork.width)
     artwork = artwork.resize((logo_w * S, logo_h * S), Image.LANCZOS)
     img.paste(artwork, (40 * S, 60 * S), artwork)
 
     # Chinese title + tagline.
-    d.text((40 * S, 160 * S), '基于不确定性量化的复杂工程结构鲁棒优化设计平台',
+    d.text((40 * S, 160 * S), APPLICATION_NAME,
            font=font('msyhbd.ttc', 16), fill=NAVY)
     d.text((40 * S, 198 * S), '从试验与数据出发，探索更稳健的结构设计。',
            font=font('msyh.ttc', 12), fill=MUTED)
@@ -112,7 +116,7 @@ def main():
     # The left half of the status row is intentionally left blank: the live
     # status text is drawn at runtime by pyi_splash.update_text() with
     # text_pos=(40, 298) in RODAS.spec. The right half carries the version.
-    version = 'RODAS  ·  V1.0'
+    version = f'ROD  ·  V{APPLICATION_VERSION}'
     vf = font('segoeui.ttf', 11)
     tw = d.textlength(version, font=vf)
     d.text((680 * S - tw, 278 * S), version, font=vf, fill=FAINT)
@@ -124,6 +128,13 @@ def main():
     img = img.resize((W, H), Image.LANCZOS)
     img.save(OUT, format='PNG', optimize=True)
     print(f'{OUT}  {img.size[0]}x{img.size[1]}  {OUT.stat().st_size} bytes')
+
+    icon = Image.open(ROOT / 'assets' / 'branding' / 'brand-icon.png').convert('RGBA')
+    icon.thumbnail((256, 256), Image.LANCZOS)
+    square = Image.new('RGBA', (256, 256), (255, 255, 255, 0))
+    square.alpha_composite(icon, ((256 - icon.width) // 2, (256 - icon.height) // 2))
+    square.save(ROOT / 'packaging' / 'RODAS.ico', format='ICO',
+                sizes=[(16, 16), (24, 24), (32, 32), (48, 48), (128, 128), (256, 256)])
 
 
 if __name__ == '__main__':

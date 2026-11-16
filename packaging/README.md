@@ -45,7 +45,7 @@ dist/
 | 项 | 说明 |
 |---|---|
 | 素材 | `packaging/RODAS-splash.png`，720×340，复刻欢迎页元素（R Logo + RODAS 字标、中文主标题、副标语、右侧线框响应曲面、版本号、进度槽） |
-| 生成脚本 | `packaging/make_splash.py`，从 `assets/branding/rodas-logo.png` 取图，Pillow 绘制，响应曲面数学定义与 `welcome_page.py` 一致 |
+| 生成脚本 | `packaging/make_splash.py`，从 `assets/branding/brand-wordmark.png` 取图，Pillow 绘制，响应曲面数学定义与 `welcome_page.py` 一致 |
 | 重新生成 | `..\RODAS-build-env\Scripts\python.exe packaging\make_splash.py`（改品牌图或版本号后执行） |
 | 打包接入 | `RODAS.spec` 的 `Splash(...)`。onedir 模式必须把 **splash 传给 `EXE`**、**`splash.binaries` 传给 `COLLECT`** |
 | 生命周期 | bootloader 启动即显示 → `main.py` 分阶段 `pyi_splash.update_text()` 更新底部状态文字 → 主窗口 `showMaximized()` 后 `processEvents()` 再 `pyi_splash.close()` 自动关闭 |
@@ -74,7 +74,7 @@ dist/
 
 ## 其它打包约定
 
-- `assets` 中的 Logo 与 SVG 资源显式收集；可执行程序图标沿用项目现有 `icon.png`。
+- `assets` 中的 Logo 与 SVG 资源显式收集；可执行程序图标由 `assets/branding/brand-icon.png` 生成到 `packaging/RODAS.ico`。
 - 绘图固定为 QtAgg，并使用 PyQt6；显式收集 QtSvg，排除其他 Qt 绑定。其余科学计算依赖由 PyInstaller 及随附 hooks 分析收集。
 - 本地工作区的 `../demos/demo_*` 中 CSV、任务文件及 Markdown 说明会收集到 `_internal/demos/`；不收集虚拟环境、Git 记录、测试、临时脚本或已有输出目录。
 - 打开任务仍使用软件内的「文件→读取任务」。当前启动入口尚未增加任务文件参数处理，文件关联将在后续安装阶段单独处理。
@@ -106,8 +106,14 @@ powershell -ExecutionPolicy Bypass -File .\packaging\build_installer.ps1 -IsccPa
 - **版本号是写死的**，不在源码里：`RODAS.iss` 的 `#define MyAppVersion "1.0"`（决定安装包元数据与输出文件名）、`build_installer.ps1` 末尾的产物检查路径、`make_splash.py` 里启动画面上的版本字样（已统一为 V1.0，改后需重新生成 PNG 并重跑 PyInstaller——splash 图嵌在 exe 里）。发新版本时这三处要手动同步。
 - **中文安装界面**：`[Languages]` 使用 `packaging/ChineseSimplified.isl`（Inno Setup 6.3+ 官方语言文件，UTF-8 无 BOM，与 6.7.3 内置语言文件编码惯例一致；6.7.3 发行版的 `Languages/` 目录仍不自带，故随仓库携带）。`RODAS.iss` 本身必须保存为 **UTF-8 BOM**，中文文案才能被 ISCC 正确读取。
 - **命名口径（2026-11-16 更新）**：中文名称统一为「基于不确定性量化的复杂工程结构鲁棒优化设计平台」，覆盖安装向导、快捷方式、卸载项、主窗口标题、欢迎页大标题（`frontend/pages/welcome_page.py` 的 `CHINESE_NAME`，标题字号自适应、无需手调）与启动画面主标题（字号 16）；**安装目录与安装包文件名用英文 `RODAS`**（`{commonpf64}\RODAS`、`RODAS-Setup-V1.0.exe`）；启动画面版本字样为 `RODAS · V1.0`。
-- `RODAS.iss` 把整个 `dist/RODAS` 安装到 `{commonpf64}\RODAS`（`x64compatible`，需管理员权限），创建开始菜单项、可选桌面快捷方式、卸载项，卸载信息自动登记到「应用和功能」。`AppId` 与旧版 0.2 相同，覆盖安装/升级走同一卸载项。`RODAS.ico` 由 `icon.png` 通过 Pillow 生成 16–256 六种尺寸。
+- `RODAS.iss` 把整个 `dist/RODAS` 安装到 `{commonpf64}\RODAS`（`x64compatible`，需管理员权限），创建开始菜单项、可选桌面快捷方式、卸载项，卸载信息自动登记到「应用和功能」。`AppId` 与旧版 0.2 相同，覆盖安装/升级走同一卸载项。`RODAS.ico` 由 `brand-icon.png` 通过 Pillow 生成 16–256 六种尺寸。
 - `build_installer.ps1` 按以下顺序定位 `ISCC.exe`：`-IsccPath` 参数 → 环境变量 `RODAS_ISCC` → PATH → 注册表卸载项的 `InstallLocation`（覆盖自定义安装路径）→ 常见默认路径（含 Inno Setup 7）。找不到时明确报错，不会静默跳过。`-Rebuild` 时若 `RODAS-splash.png` 缺失会自动调用 `make_splash.py` 重新生成。
 - ~~脚本内界面文案暂用英文~~ 已改为全中文界面（2026-11-12）：`[Languages]` 指向随仓库的 `ChineseSimplified.isl`，`.iss` 为 UTF-8 BOM。
 - `.rodas` 文件关联段落已写在 `RODAS.iss` 末尾（默认注释）。启用前必须先让 `main.py` 支持从 `sys.argv[1]` 读取任务文件路径，否则双击任务文件只会打开空界面。
 - 程序导出文件均通过 `QFileDialog` 由用户选择路径，不写安装目录，因此装到 `Program Files` 不会遇到写权限问题。
+
+## 合并后的构建入口
+
+`build.ps1` 与 `软件打包.spec` 使用同一份 `packaging/RODAS.spec`，统一输出 `dist/RODAS/RODAS.exe`。`packaging/build_installer.ps1 -Rebuild` 进一步生成安装包。构建前重新生成启动图片和图标，安装包脚本从 `backend/domain/application.py` 读取中文名称和版本，保留原 AppId。源代码提交包包含 `packaging/`，可在解压后继续构建安装包。
+
+云端依赖清单已更新，重建前需在所选构建环境安装当前 `requirements.txt`（或锁定环境对应的 `requirements.lock.txt`）。

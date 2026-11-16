@@ -1,7 +1,8 @@
 """Shared numeric editors: commit typed values on Enter or focus loss."""
+
 from PyQt6.QtCore import QLocale
 from PyQt6.QtGui import QDoubleValidator
-from PyQt6.QtWidgets import QAbstractSpinBox, QDoubleSpinBox, QSpinBox, QLineEdit
+from PyQt6.QtWidgets import QAbstractSpinBox, QDoubleSpinBox, QLineEdit, QSpinBox
 
 
 class DecimalInput(QDoubleSpinBox):

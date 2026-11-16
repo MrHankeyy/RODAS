@@ -1,5 +1,6 @@
-"""Qt adapters for running long calculations off the UI thread."""
-from PyQt6.QtCore import pyqtSignal, QThread
+"""后台优化线程及进度、结果信号。"""
+
+from PyQt6.QtCore import QThread, pyqtSignal
 
 from backend.engines import optimizer as optimizer
 
@@ -17,7 +18,8 @@ class OptimizationWorker(QThread):
     def run(self):
         try:
             result = optimizer.robust_optimize(
-                self.context, **self.settings, progress=self.progress.emit)
+                self.context, **self.settings, progress=self.progress.emit
+            )
             self.result_ready.emit(result)
         except Exception as exc:
             self.failed.emit(str(exc))

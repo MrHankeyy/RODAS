@@ -1,16 +1,31 @@
-from PyQt6.QtWidgets import (QWidget, QPushButton, QVBoxLayout, QHBoxLayout,
-    QStackedWidget, QLabel, QTextEdit, QComboBox, QSplitter, QMainWindow,
-    QApplication, QScrollArea, QFileDialog, QStatusBar)
 from PyQt6.QtCore import Qt
-from frontend.pages.modeling_page import ModelingPage
+from PyQt6.QtWidgets import (
+    QApplication,
+    QComboBox,
+    QFileDialog,
+    QHBoxLayout,
+    QLabel,
+    QMainWindow,
+    QPushButton,
+    QScrollArea,
+    QSplitter,
+    QStackedWidget,
+    QStatusBar,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
+)
+
+from backend.domain.application import APPLICATION_NAME
+from backend.domain.models import ProjectData
+from frontend.pages.analysis_page import AnalysisPage
 from frontend.pages.configuration_page import ConfigurationPage
 from frontend.pages.data_management_page import DataManagementPage
+from frontend.pages.modeling_page import ModelingPage
 from frontend.pages.optimization_page import OptimizationPage
-from frontend.pages.analysis_page import AnalysisPage
-from backend.domain.models import ProjectData
+from frontend.pages.welcome_page import WelcomePage, brand_icon
 from frontend.theme import install_theme, polish_tables
-from frontend.pages.welcome_page import WelcomePage, CHINESE_NAME, brand_icon
-from frontend.workspace import Workspace, DirectoryButton
+from frontend.workspace import DirectoryButton, Workspace
 
 
 class MainWindow(QMainWindow):
@@ -22,19 +37,26 @@ class MainWindow(QMainWindow):
         ("分析报告", "预览本次计算结果，填写编制信息并导出报告。"),
     ]
 
-    PAGE_HEADINGS = ('定义优化设计问题', '配置试验与模型', '管理试验数据', '分析与优化', '编制结果报告')
+    PAGE_HEADINGS = (
+        "定义优化设计问题",
+        "配置试验与模型",
+        "管理试验数据",
+        "分析与优化",
+        "编制结果报告",
+    )
 
     def __init__(self, workspace=None):
         super().__init__()
         self.project_data = ProjectData()
         self.workspace = workspace if workspace is not None else Workspace(parent=self)
-        self.setWindowTitle('RODAS · ' + CHINESE_NAME)
+        self.setWindowTitle(APPLICATION_NAME)
         self.resize(1440, 940)
         self.setMinimumSize(1050, 700)
         self.setWindowIcon(brand_icon())
         install_theme(QApplication.instance())
         self._build_ui()
         from frontend.task_actions import TaskActions
+
         self.task_actions = TaskActions(self)
         self.show_welcome()
 
@@ -80,12 +102,12 @@ class MainWindow(QMainWindow):
         layout = QHBoxLayout(widget)
         layout.setContentsMargins(22, 0, 16, 0)
         layout.setSpacing(0)
-        self.brand_button = QPushButton('开始')
-        self.brand_button.setObjectName('brand')
+        self.brand_button = QPushButton("开始")
+        self.brand_button.setObjectName("brand")
         self.brand_button.setIcon(brand_icon())
         self.brand_button.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.brand_button.setToolTip('返回开始界面（Alt+0）')
-        self.brand_button.setShortcut('Alt+0')
+        self.brand_button.setToolTip("返回开始界面（Alt+0）")
+        self.brand_button.setShortcut("Alt+0")
         self.brand_button.clicked.connect(self.show_welcome)
         layout.addWidget(self.brand_button)
         self.btns_switch = []
@@ -94,12 +116,22 @@ class MainWindow(QMainWindow):
             button.setProperty("workflow", True)
             button.setProperty("active", i == 0)
             button.setCursor(Qt.CursorShape.PointingHandCursor)
-            button.setToolTip(f"{title}（Alt+{i+1}）\n{self.PAGE_INFO[i][1]}")
-            button.setShortcut(f"Alt+{i+1}")
-            button.clicked.connect(lambda checked=False, index=i: self.on_switch_module(self.PAGE_INFO[index][0], index))
+            button.setToolTip(f"{title}（Alt+{i + 1}）\n{self.PAGE_INFO[i][1]}")
+            button.setShortcut(f"Alt+{i + 1}")
+            button.clicked.connect(
+                lambda checked=False, index=i: self.on_switch_module(
+                    self.PAGE_INFO[index][0], index
+                )
+            )
             self.btns_switch.append(button)
             layout.addWidget(button, 1)
-        self.btn_switch_MOD, self.btn_switch_CFG, self.btn_switch_DM, self.btn_switch_OPT, self.btn_switch_REP = self.btns_switch
+        (
+            self.btn_switch_MOD,
+            self.btn_switch_CFG,
+            self.btn_switch_DM,
+            self.btn_switch_OPT,
+            self.btn_switch_REP,
+        ) = self.btns_switch
         return widget
 
     def _build_main_workspace(self):
@@ -119,7 +151,7 @@ class MainWindow(QMainWindow):
             scroll.setWidgetResizable(True)
             scroll.setWidget(page)
             self.stacked_widget.addWidget(scroll)
-        # Keep existing module indices 0..4 stable for navigation and integrations.
+        # 开始页放在功能页之后，功能导航使用固定的 0～4 索引。
         self.welcome_page = WelcomePage()
         self.welcome_page.directory_requested.connect(self.choose_working_directory)
         self.welcome_index = self.stacked_widget.addWidget(self.welcome_page)
@@ -136,23 +168,23 @@ class MainWindow(QMainWindow):
         self.directory_button.update_directory(self.workspace.directory)
 
     def choose_working_directory(self):
-        directory = QFileDialog.getExistingDirectory(
-            self, '设置工作目录', self.workspace.directory)
+        directory = QFileDialog.getExistingDirectory(self, "设置工作目录", self.workspace.directory)
         if not directory:
             return
         try:
             self.workspace.set_directory(directory)
         except (OSError, ValueError) as exc:
             from PyQt6.QtWidgets import QMessageBox
-            QMessageBox.warning(self, '工作目录设置失败', str(exc))
+
+            QMessageBox.warning(self, "工作目录设置失败", str(exc))
 
     def _refresh_navigation(self, active_index):
         for index, button in enumerate(self.btns_switch):
-            button.setProperty('active', index == active_index)
+            button.setProperty("active", index == active_index)
             button.style().unpolish(button)
             button.style().polish(button)
             button.update()
-        self.brand_button.setProperty('active', active_index is None)
+        self.brand_button.setProperty("active", active_index is None)
         self.brand_button.style().unpolish(self.brand_button)
         self.brand_button.style().polish(self.brand_button)
         self.brand_button.update()
@@ -165,6 +197,7 @@ class MainWindow(QMainWindow):
 
     def _build_message_panel(self):
         from frontend.notifications import bus
+
         widget = QWidget()
         layout = QVBoxLayout(widget)
         layout.setContentsMargins(16, 6, 16, 8)
@@ -197,17 +230,22 @@ class MainWindow(QMainWindow):
         clear.clicked.connect(self._clear_messages)
         self.message_filter.currentTextChanged.connect(self._render_messages)
         bus.posted.connect(self._post_message)
-        self._post_message("进度", "工作区已就绪", "定义问题 → 配置试验 → 回填响应 → 分析优化 → 导出结果")
+        self._post_message(
+            "进度", "工作区已就绪", "定义问题 → 配置试验 → 回填响应 → 分析优化 → 导出结果"
+        )
         return widget
 
     def _toggle_messages(self, collapsed):
         self.message_view.setVisible(not collapsed)
         self.fold_messages.setText("展开" if collapsed else "收起")
         sizes = self.workspace_splitter.sizes()
-        self.workspace_splitter.setSizes([sum(sizes) - (45 if collapsed else 100), 45 if collapsed else 100])
+        self.workspace_splitter.setSizes(
+            [sum(sizes) - (45 if collapsed else 100), 45 if collapsed else 100]
+        )
 
     def _post_message(self, level, title, message):
         from datetime import datetime
+
         self._messages.append((datetime.now().strftime("%H:%M:%S"), level, title, message))
         self._messages = self._messages[-500:]
         self._render_messages()
@@ -218,23 +256,27 @@ class MainWindow(QMainWindow):
 
     def _render_messages(self, *_args):
         from html import escape
+
         selected = self.message_filter.currentText()
         self.message_count.setText(f"{len(self._messages)} 条消息")
-        colors = {"成功":"#168064", "进度":"#2563eb", "提醒":"#ad6800", "错误":"#c73545"}
-        self.message_view.setHtml("<br>".join(
-            f'<span style="color:{colors[level]}">{time} · {level} · {escape(title)}</span>　{escape(message).replace(chr(10), "<br>")}'
-            for time, level, title, message in self._messages if selected == "全部" or level == selected))
-        self.message_view.verticalScrollBar().setValue(self.message_view.verticalScrollBar().maximum())
-
-    def on_test_click(self, name):
-        print(f"已点击：{name}")
+        colors = {"成功": "#168064", "进度": "#2563eb", "提醒": "#ad6800", "错误": "#c73545"}
+        self.message_view.setHtml(
+            "<br>".join(
+                f'<span style="color:{colors[level]}">{time} · {level} · {escape(title)}</span>　{escape(message).replace(chr(10), "<br>")}'
+                for time, level, title, message in self._messages
+                if selected == "全部" or level == selected
+            )
+        )
+        self.message_view.verticalScrollBar().setValue(
+            self.message_view.verticalScrollBar().maximum()
+        )
 
     def on_switch_module(self, module_name, index):
         self.switch_page(index)
 
     def switch_page(self, index: int):
         if not 0 <= index < len(self.PAGE_INFO):
-            raise ValueError('未知的功能模块索引。')
+            raise ValueError("未知的功能模块索引。")
         self.stacked_widget.setCurrentIndex(index)
         self.module_heading.show()
         self.message_panel.show()
@@ -247,6 +289,7 @@ class MainWindow(QMainWindow):
     def closeEvent(self, event):
         if getattr(self.page_OPT, "_worker", None) is not None:
             from frontend.notifications import Notice
+
             Notice.warning(self, "计算进行中", "请等待当前计算结束后关闭窗口。")
             event.ignore()
             return

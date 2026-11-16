@@ -7,9 +7,13 @@
 ;
 ; 软件本体不做改动：exe 仍为 RODAS.exe，窗口标题、启动画面维持原样。
 
+#ifndef MyAppName
 #define MyAppName "基于不确定性量化的复杂工程结构鲁棒优化设计平台"
+#endif
+#ifndef MyAppVersion
 #define MyAppVersion "1.0"
-#define MyAppPublisher "基于不确定性量化的复杂工程结构鲁棒优化设计平台"
+#endif
+#define MyAppPublisher MyAppName
 #define MyAppExeName "RODAS.exe"
 
 [Setup]

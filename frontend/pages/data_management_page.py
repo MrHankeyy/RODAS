@@ -1,21 +1,31 @@
 from pathlib import Path
-from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-    QPushButton, QTableWidgetItem, QGroupBox, QFileDialog, QFrame
-)
+
 from PyQt6 import QtGui
-from PyQt6.QtCore import Qt, QSignalBlocker
+from PyQt6.QtCore import QSignalBlocker, Qt
+from PyQt6.QtWidgets import (
+    QFileDialog,
+    QFrame,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QTableWidgetItem,
+    QVBoxLayout,
+    QWidget,
+)
+
+from backend.domain.models import RUN_ID, ProjectData
 from backend.infrastructure import file_io
-from backend.domain.models import ProjectData
-from backend.services.project_service import ProjectService
-from frontend.pages.table_widgets import ExcelLikeTableWidget
-from frontend.workspace import dialog_path, table_save_path
-from frontend.theme import ResultTabs, ResultsWorkspace
-from frontend.pages.data_inspection import DataAnalysis
 from backend.services.data_service import data_overview
-from backend.domain.models import RUN_ID
-from frontend.pages.model_configuration import MODEL_TITLES, MODEL_TERM_KEYS
+from backend.services.project_service import ProjectService
+from frontend.notifications import Notice
+from frontend.pages.data_inspection import DataAnalysis
+from frontend.pages.model_configuration import MODEL_TERM_KEYS, MODEL_TITLES
+from frontend.pages.table_widgets import ExcelLikeTableWidget
 from frontend.terminology import apply, tooltip
+from frontend.theme import ResultsWorkspace, ResultTabs
+from frontend.workspace import dialog_path, table_save_path
+
 
 class DataManagementPage(QWidget):
     def __init__(self, project_data: ProjectData):
@@ -52,25 +62,25 @@ class DataManagementPage(QWidget):
         trial = QWidget()
         main_layout = QVBoxLayout(trial)
         main_layout.setSpacing(10)
-        main_layout.setContentsMargins(16,12,16,12)
+        main_layout.setContentsMargins(16, 12, 16, 12)
 
         # ========= 顶部控制栏 =========
         ctrl_layout = QHBoxLayout()
-        self.entry_heading = QLabel('数据录入')
-        self.entry_heading.setProperty('role', 'heading')
-        self.entry_heading.setToolTip('数据录入（Data Entry）\n支持导入或编辑响应；因子列只读。')
+        self.entry_heading = QLabel("数据录入")
+        self.entry_heading.setProperty("role", "heading")
+        self.entry_heading.setToolTip("数据录入（Data Entry）\n支持导入或编辑响应；因子列只读。")
         ctrl_layout.addWidget(self.entry_heading)
-        
+
         self.load_btn = QPushButton("加载当前试验数据表")
         self.load_btn.setStyleSheet("background-color: #6c757d; color: white;")
         self.load_btn.clicked.connect(self.load_doe_matrix)
-        
+
         self.export_btn = apply(QPushButton(), "export_trial_table")
         self.export_btn.clicked.connect(self.export_to_csv)
-        
+
         self.import_btn = apply(QPushButton(), "import_trial_table")
         self.import_btn.clicked.connect(self.import_from_csv)
-        
+
         ctrl_layout.addStretch()
         ctrl_layout.addWidget(self.load_btn)
         ctrl_layout.addWidget(self.export_btn)
@@ -80,23 +90,23 @@ class DataManagementPage(QWidget):
         # ========= 数据表格区 =========
         table_group = QGroupBox()
         table_layout = QVBoxLayout()
-        
+
         self.table = ExcelLikeTableWidget()
         self.table.setToolTip("因子列只读，响应列可编辑")
         self.table.itemChanged.connect(self._mark_dirty)
         table_layout.addWidget(self.table)
-        
+
         table_group.setLayout(table_layout)
         main_layout.addWidget(table_group, 1)
 
         # ========= 底部按钮区 =========
         btn_layout = QHBoxLayout()
-        
+
         self.save_btn = QPushButton("保存响应数据")
         self.save_btn.setMinimumWidth(200)
         self.save_btn.setStyleSheet("font-weight: bold; background-color: #2b78e4; color: white;")
         self.save_btn.clicked.connect(self.save_results)
-        
+
         btn_layout.addStretch()
         btn_layout.addWidget(self.save_btn)
         main_layout.addLayout(btn_layout)
@@ -109,6 +119,7 @@ class DataManagementPage(QWidget):
         root.addWidget(self.results_workspace, 1)
         self.tabs.currentChanged.connect(self._refresh_views)
         from frontend.theme import primary
+
         self.load_btn.setStyleSheet("")
         primary(self.save_btn)
         self._refresh_views()
@@ -152,18 +163,23 @@ class DataManagementPage(QWidget):
     def load_doe_matrix(self):
         matrix = self.project_data.doe_matrix
         if not matrix:
-            Notice.warning(self, "无数据", "后端中未找到试验点列，请先进入【方案配置】生成试验方案！")
+            Notice.warning(
+                self, "无数据", "后端中未找到试验点列，请先进入【方案配置】生成试验方案！"
+            )
             return
-            
-        
+
         # Include response columns even when an imported row is missing them.
-        columns = list(dict.fromkeys([key for row in matrix for key in row]
-                                    + [r.name for r in self.project_data.responses if r.name]))
+        columns = list(
+            dict.fromkeys(
+                [key for row in matrix for key in row]
+                + [r.name for r in self.project_data.responses if r.name]
+            )
+        )
         blocker = QSignalBlocker(self.table)
         self.table.setColumnCount(len(columns))
         self.table.setRowCount(len(matrix))
         self.table.setHorizontalHeaderLabels(columns)
-        
+
         factors = [f.name for f in self.project_data.factors if f.name]
         responses = [r.name for r in self.project_data.responses if r.name]
 
@@ -174,18 +190,24 @@ class DataManagementPage(QWidget):
                 item = QTableWidgetItem(text)
                 item.setToolTip(text)
                 if isinstance(val, (int, float)):
-                    item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-                
+                    item.setTextAlignment(
+                        Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+                    )
+
                 # 如果是因子列或者是ID，设为只读并标背色；
                 # 如果是响应列，允许编辑以便填入结果
-                if col_name in factors or col_name == RUN_ID or col_name.startswith(("内表", "外表", "重复组号")):
+                if (
+                    col_name in factors
+                    or col_name == RUN_ID
+                    or col_name.startswith(("内表", "外表", "重复组号"))
+                ):
                     item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
                     item.setBackground(QtGui.QColor("#e9ecef"))
                 elif col_name in responses:
                     item.setBackground(QtGui.QColor("#ffffff"))
 
                 self.table.setItem(r_idx, c_idx, item)
-                
+
         self.table.resizeColumnsToContents()
         for column in range(self.table.columnCount()):
             self.table.setColumnWidth(column, max(110, min(240, self.table.columnWidth(column))))
@@ -198,8 +220,9 @@ class DataManagementPage(QWidget):
         """Validate and atomically publish response values through ProjectService."""
         if self.table.rowCount() == 0:
             return
-        columns = [self.table.horizontalHeaderItem(i).text()
-                   for i in range(self.table.columnCount())]
+        columns = [
+            self.table.horizontalHeaderItem(i).text() for i in range(self.table.columnCount())
+        ]
         rows = []
         for row_index in range(self.table.rowCount()):
             row = {}
@@ -213,54 +236,59 @@ class DataManagementPage(QWidget):
         except ValueError as exc:
             Notice.warning(self, "转换错误", str(exc))
             return
-        service.record_operation(
-            "试验响应保存", message="响应已保存到当前项目内存，可开始分析。")
+        service.record_operation("试验响应保存", message="响应已保存到当前项目内存，可开始分析。")
         self._dirty = False
         self._loaded_signature = service.input_signature()
         self._refresh_views()
-        Notice.information(
-            self, "成功", "实验数据保存成功，已同步至后端底座，可进入下一阶段！")
+        Notice.information(self, "成功", "实验数据保存成功，已同步至后端底座，可进入下一阶段！")
 
     def export_to_csv(self):
         if not self.project_data.doe_matrix:
             Notice.warning(self, "警告", "没有可导出的数据！")
             return
         file_path, selected = QFileDialog.getSaveFileName(
-            self, "导出试验数据表", dialog_path(self, "试验数据表.csv"), file_io.TABLE_FILTER)
+            self, "导出试验数据表", dialog_path(self, "试验数据表.csv"), file_io.TABLE_FILTER
+        )
         if not file_path:
             return
         file_path = table_save_path(file_path, selected)
         try:
             file_io.write_table_records(file_path, self.project_data.doe_matrix)
             Notice.information(
-                self, "成功",
+                self,
+                "成功",
                 f"已导出 {len(self.project_data.doe_matrix)} 行到 {Path(file_path).name}。"
-                "该表可直接用 Excel 打开，也可发给仿真脚本加载执行。")
+                "该表可直接用 Excel 打开，也可发给仿真脚本加载执行。",
+            )
         except Exception as exc:
             Notice.critical(self, "错误", f"导出失败: {exc}")
 
     def import_from_csv(self):
         """导入外部算好的表格 (如流体仿真自动生成的带结果列的文件)"""
         file_path, _ = QFileDialog.getOpenFileName(
-            self, "导入试验数据表", dialog_path(self), file_io.TABLE_FILTER)
+            self, "导入试验数据表", dialog_path(self), file_io.TABLE_FILTER
+        )
         if not file_path:
             return
         try:
             imported_data = file_io.read_table_records(file_path)
             if not imported_data:
-                raise ValueError("文件中没有可用的数据行：请确认第一行是列名，且下面至少有一行数据。")
+                raise ValueError(
+                    "文件中没有可用的数据行：请确认第一行是列名，且下面至少有一行数据。"
+                )
             service = ProjectService.for_project(self.project_data)
             service.replace_dataset(imported_data)
             service.record_operation(
                 "试验数据表导入",
-                message=f"导入 {len(imported_data)} 行；来源文件 {Path(file_path).name}")
+                message=f"导入 {len(imported_data)} 行；来源文件 {Path(file_path).name}",
+            )
             self.load_doe_matrix()
             Notice.information(
-                self, "成功",
-                f"已读入 {len(imported_data)} 行并填入表格！请点击下方保存确认接轨后端！")
+                self,
+                "成功",
+                f"已读入 {len(imported_data)} 行并填入表格！请点击下方保存确认接轨后端！",
+            )
         except ValueError as exc:
             Notice.warning(self, "格式错误", str(exc))
         except Exception as exc:
             Notice.critical(self, "错误", f"导入失败: {exc}")
-
-from frontend.notifications import Notice

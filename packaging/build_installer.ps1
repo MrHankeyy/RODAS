@@ -20,6 +20,13 @@ param(
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $py = Join-Path (Split-Path -Parent $root) 'RODAS-build-env\Scripts\python.exe'
+if (-not (Test-Path -LiteralPath $py)) {
+    $py = Join-Path $root '.venv\Scripts\python.exe'
+}
+if (-not (Test-Path -LiteralPath $py)) { throw "Build Python not found: $py" }
+$metadata = & $py -c "import json,sys; sys.path.insert(0,sys.argv[1]); from backend.domain.application import APPLICATION_NAME, APPLICATION_VERSION; print(json.dumps(dict(name=APPLICATION_NAME, version=APPLICATION_VERSION)))" $root
+if ($LASTEXITCODE -ne 0) { throw 'Cannot read application metadata.' }
+$application = $metadata | ConvertFrom-Json
 
 function Invoke-Native {
     # Run a native command; fold its stderr into plain text lines so that
@@ -39,11 +46,9 @@ function Invoke-Native {
 if ($Rebuild) {
     if (-not (Test-Path $py)) { throw "Build Python not found: $py" }
 
-    # Regenerate the splash artwork if it is missing (e.g. fresh checkout).
-    $splashPng = Join-Path $PSScriptRoot 'RODAS-splash.png'
-    if (-not (Test-Path $splashPng)) {
-        [void](Invoke-Native { & $py (Join-Path $PSScriptRoot 'make_splash.py') })
-    }
+    # Refresh the splash and icon using current assets, title and version.
+    $rc = Invoke-Native { & $py (Join-Path $PSScriptRoot 'make_splash.py') }
+    if ($rc -ne 0) { throw "Brand asset generation failed (exit $rc)" }
 
     $env:PATH = ($env:PATH -split ';' | Where-Object { $_ -notlike '*Anaconda*' }) -join ';'
     Push-Location $root
@@ -109,10 +114,10 @@ if (-not $iscc) {
 Write-Host "ISCC: $iscc"
 
 $iss = Join-Path $PSScriptRoot 'RODAS.iss'
-$rc = Invoke-Native { & $iscc $iss }
+$rc = Invoke-Native { & $iscc "/DMyAppName=$($application.name)" "/DMyAppVersion=$($application.version)" $iss }
 if ($rc -ne 0) { throw "ISCC compile failed (exit $rc)" }
 
-$out = Join-Path $root 'dist\RODAS-Setup-V1.0.exe'
+$out = Join-Path $root "dist\RODAS-Setup-V$($application.version).exe"
 if (Test-Path $out) {
     $size = [math]::Round((Get-Item $out).Length / 1MB, 1)
     Write-Host "Installer ready: $out ($size MB)"

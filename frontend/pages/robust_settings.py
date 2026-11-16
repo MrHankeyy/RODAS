@@ -1,9 +1,19 @@
 """Grouped robust-optimization settings; explanations live in hover text."""
+
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
-    QWidget, QGroupBox, QGridLayout, QHBoxLayout, QVBoxLayout,
-    QLabel, QComboBox, QTableWidget, QHeaderView, QCheckBox,
+    QCheckBox,
+    QComboBox,
+    QGridLayout,
+    QGroupBox,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QTableWidget,
+    QVBoxLayout,
+    QWidget,
 )
+
 from frontend.numeric_inputs import numeric_input
 from frontend.terminology import add_combo_item, apply, tooltip
 
@@ -37,9 +47,11 @@ def build_settings(owner, layout):
     row = QHBoxLayout()
     row.addWidget(apply(QLabel(), "robust_strategy"))
     owner.robust_mode_combo = QComboBox()
-    for term, value in (("multiobjective_nsga2", "multi"),
-                        ("constrained_optimization", "constraint"),
-                        ("weighted_single_objective", "weighted")):
+    for term, value in (
+        ("multiobjective_nsga2", "multi"),
+        ("constrained_optimization", "constraint"),
+        ("weighted_single_objective", "weighted"),
+    ):
         add_combo_item(owner.robust_mode_combo, term, value)
     row.addWidget(owner.robust_mode_combo)
     row.addStretch()
@@ -48,24 +60,31 @@ def build_settings(owner, layout):
     owner.objective_limits_check.setToolTip(
         "对业务建模中已填写性能阈值的目标响应启用：最小化要求 μ+kσ≤上限，"
         "最大化要求 μ−kσ≥下限，趋近目标值要求 μ±kσ 位于目标区间。"
-        "目标响应仍参与目标优化。此设置与标准差上限相互独立，适用于三种优化策略。")
+        "目标响应仍参与目标优化。此设置与标准差上限相互独立，适用于三种优化策略。"
+    )
     owner.objective_limits_check.setAccessibleDescription(owner.objective_limits_check.toolTip())
     owner.objective_limits_check.toggled.connect(owner._settings_changed)
     strategy.addWidget(owner.objective_limits_check)
-    owner.weight_spin = numeric_input(float, 0, 1, .5)
-    owner.weight_fields = field("望性损失权重 λ", owner.weight_spin, "Desirability Loss Weight",
-                               "将归一化目标损失与波动加权求和；波动权重为 1−λ。")
+    owner.weight_spin = numeric_input(float, 0, 1, 0.5)
+    owner.weight_fields = field(
+        "望性损失权重 λ",
+        owner.weight_spin,
+        "Desirability Loss Weight",
+        "将归一化目标损失与波动加权求和；波动权重为 1−λ。",
+    )
     owner.variability_weight = QLabel()
     owner.variability_weight.setToolTip(tooltip("variability_weight") + "\n波动权重等于 1−λ。")
     owner.weight_fields.layout().insertWidget(2, owner.variability_weight)
     owner.weight_spin.valueChanged.connect(
-        lambda value: owner.variability_weight.setText(f"波动权重：{1-value:.2f}"))
+        lambda value: owner.variability_weight.setText(f"波动权重：{1 - value:.2f}")
+    )
     owner.variability_weight.setText("波动权重：0.50")
     strategy.addWidget(owner.weight_fields)
     owner.sigma_limits_group = QGroupBox("目标响应标准差上限")
     owner.sigma_limits_group.setToolTip(
         "目标响应标准差上限（Objective Response Standard Deviation Limit）\n为每个目标响应设置标准差上限；"
-        "满足波动限制后继续优化目标表现。标准差由输入不确定性传播和模型残差共同估计。")
+        "满足波动限制后继续优化目标表现。标准差由输入不确定性传播和模型残差共同估计。"
+    )
     limits_layout = QVBoxLayout(owner.sigma_limits_group)
     limits_layout.setContentsMargins(4, 6, 4, 4)
     owner.sigma_limits_table = QTableWidget(0, 3)
@@ -79,7 +98,8 @@ def build_settings(owner, layout):
     owner.sigma_limits_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
     owner.sigma_limits_table.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
     owner.sigma_limits_table.horizontalHeaderItem(1).setToolTip(
-        "标准差上限（Standard Deviation Limit）\n填写大于零的数值，单位同响应；此值限制波动程度。")
+        "标准差上限（Standard Deviation Limit）\n填写大于零的数值，单位同响应；此值限制波动程度。"
+    )
     owner.sigma_limit_inputs = {}
     owner.sigma_limits_group.layout().addWidget(owner.sigma_limits_table)
     strategy.addWidget(owner.sigma_limits_group)
@@ -89,26 +109,52 @@ def build_settings(owner, layout):
     owner.genetic_group, genetic = group("遗传算法设置")
     owner.genetic_group.setToolTip(
         "遗传算法设置（Genetic Algorithm Settings，GA）\n采用非支配排序遗传算法（NSGA-II）、"
-        "二元锦标赛选择、模拟二进制交叉和多项式变异。")
+        "二元锦标赛选择、模拟二进制交叉和多项式变异。"
+    )
     owner.pop_spin = numeric_input(int, 20, 300, 80)
     owner.gen_spin = numeric_input(int, 30, 1000, 160)
     owner.seed_spin = numeric_input(int, 0, 2147483647, 7)
-    owner.crossover_spin = numeric_input(float, 0, 1, .5, decimals=3)
+    owner.crossover_spin = numeric_input(float, 0, 1, 0.5, decimals=3)
     owner.mutation_mode_combo = QComboBox()
     owner.mutation_mode_combo.addItem("自动（1/设计变量数）", "auto")
     owner.mutation_mode_combo.addItem("手动设置", "manual")
-    owner.mutation_spin = numeric_input(float, 0, 1, .5, decimals=6)
-    owner.eta_c_spin = numeric_input(float, .01, 1000, 15)
-    owner.eta_m_spin = numeric_input(float, .01, 1000, 20)
+    owner.mutation_spin = numeric_input(float, 0, 1, 0.5, decimals=6)
+    owner.eta_c_spin = numeric_input(float, 0.01, 1000, 15)
+    owner.eta_m_spin = numeric_input(float, 0.01, 1000, 20)
     fields = [
         ("种群数", owner.pop_spin, "Population Size", "每一代保留的候选方案数量。"),
         ("代数", owner.gen_spin, "Number of Generations", "遗传算法执行的迭代代数。"),
         ("随机种子", owner.seed_spin, "Random Seed", "相同输入与参数使用相同种子可复现计算。"),
-        ("逐变量交叉概率", owner.crossover_spin, "Per-Variable Crossover Probability", "每对父代中，各设计变量参与模拟二进制交叉的概率。"),
-        ("变异概率设置", owner.mutation_mode_combo, "Mutation Probability Setting", "自动时，每个变量的变异概率为 1÷参与优化的设计变量数；也可手动指定。"),
-        ("逐变量变异概率", owner.mutation_spin, "Per-Variable Mutation Probability", "每个设计变量发生多项式变异的概率；自动时显示当前计算值。"),
-        ("交叉分布指数", owner.eta_c_spin, "Crossover Distribution Index", "控制交叉产生的后代分散程度，数值越大通常越靠近父代。"),
-        ("变异分布指数", owner.eta_m_spin, "Mutation Distribution Index", "控制变异幅度，数值越大通常越偏向小幅变异。"),
+        (
+            "逐变量交叉概率",
+            owner.crossover_spin,
+            "Per-Variable Crossover Probability",
+            "每对父代中，各设计变量参与模拟二进制交叉的概率。",
+        ),
+        (
+            "变异概率设置",
+            owner.mutation_mode_combo,
+            "Mutation Probability Setting",
+            "自动时，每个变量的变异概率为 1÷参与优化的设计变量数；也可手动指定。",
+        ),
+        (
+            "逐变量变异概率",
+            owner.mutation_spin,
+            "Per-Variable Mutation Probability",
+            "每个设计变量发生多项式变异的概率；自动时显示当前计算值。",
+        ),
+        (
+            "交叉分布指数",
+            owner.eta_c_spin,
+            "Crossover Distribution Index",
+            "控制交叉产生的后代分散程度，数值越大通常越靠近父代。",
+        ),
+        (
+            "变异分布指数",
+            owner.eta_m_spin,
+            "Mutation Distribution Index",
+            "控制变异幅度，数值越大通常越偏向小幅变异。",
+        ),
     ]
     grid = QGridLayout()
     grid.setHorizontalSpacing(24)
@@ -125,7 +171,8 @@ def build_settings(owner, layout):
     owner.auto_stop_check.setToolTip(
         "自动停止（Automatic Stop）\n"
         "勾选后按收敛判据提前结束，不必跑满「代数」；不勾选则执行设定的固定代数。\n"
-        "判据：连续若干代最优目标值的改进都小于容差即停止；多目标用帕累托前沿超体积衡量。")
+        "判据：连续若干代最优目标值的改进都小于容差即停止；多目标用帕累托前沿超体积衡量。"
+    )
     owner.auto_stop_check.setAccessibleDescription(owner.auto_stop_check.toolTip())
     stop_layout.addWidget(owner.auto_stop_check)
     stop_layout.addStretch()
@@ -134,10 +181,22 @@ def build_settings(owner, layout):
     owner.tolerance_spin = numeric_input(float, 0.01, 10, 0.1, decimals=2)
     stop_fields = QHBoxLayout()
     stop_fields.setSpacing(24)
-    stop_fields.addWidget(field("停滞代数", owner.stall_gen_spin, "Stall Generations",
-                                "连续多少代没有实质改进就停止；数值越大越保守，必须小于总代数。"))
-    stop_fields.addWidget(field("相对容差（%）", owner.tolerance_spin, "Relative Tolerance",
-                                "改进量相对当前最优值的百分比小于该值即视为没有改进。"))
+    stop_fields.addWidget(
+        field(
+            "停滞代数",
+            owner.stall_gen_spin,
+            "Stall Generations",
+            "连续多少代没有实质改进就停止；数值越大越保守，必须小于总代数。",
+        )
+    )
+    stop_fields.addWidget(
+        field(
+            "相对容差（%）",
+            owner.tolerance_spin,
+            "Relative Tolerance",
+            "改进量相对当前最优值的百分比小于该值即视为没有改进。",
+        )
+    )
     stop_fields.addStretch()
     genetic.addLayout(stop_fields)
     owner.auto_stop_check.toggled.connect(owner._on_auto_stop)

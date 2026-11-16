@@ -1,5 +1,7 @@
-"""Present existing analysis results as reusable overview sections (no computation)."""
+"""方案与分析结果的摘要组织。"""
+
 import math
+
 from backend.services.data_service import data_overview
 
 
@@ -20,7 +22,13 @@ def named(item):
 
 
 def section(title, headers=(), rows=(), message="", missing_reasons=None):
-    return dict(title=title, headers=headers, rows=rows, message=message, missing_reasons=missing_reasons or {})
+    return dict(
+        title=title,
+        headers=headers,
+        rows=rows,
+        message=message,
+        missing_reasons=missing_reasons or {},
+    )
 
 
 def _model_results(project, labels):
@@ -43,20 +51,37 @@ def _taguchi_results(project, labels):
     for name, item in result.get("response_analysis", {}).items():
         best = item.get("best_levels", {})
         if best:
-            sections.append(section(f"候选水平组合 · {labels.get(name, name)}", ["控制因子", "候选水平"],
-                [[units.get(factor, factor), level] for factor, level in best.items()],
-                "候选组合基于水平主效应，需要确认试验；不同响应的推荐分别显示。"))
+            sections.append(
+                section(
+                    f"候选水平组合 · {labels.get(name, name)}",
+                    ["控制因子", "候选水平"],
+                    [[units.get(factor, factor), level] for factor, level in best.items()],
+                    "候选组合基于水平主效应，需要确认试验；不同响应的推荐分别显示。",
+                )
+            )
         matched = [run for run in item.get("runs", []) if best and run["settings"] == best]
         metric = "信噪比（dB）" if item.get("has_replication") else "均值指标"
         if matched:
             rows = [[run["mean"], run["std"], run["metric"]] for run in matched]
-            sections.append(section(f"候选组合的已试验统计 · {labels.get(name, name)}",
-                ["均值", "标准差", metric], rows, "均值与标准差单位同响应。"))
+            sections.append(
+                section(
+                    f"候选组合的已试验统计 · {labels.get(name, name)}",
+                    ["均值", "标准差", metric],
+                    rows,
+                    "均值与标准差单位同响应。",
+                )
+            )
         else:
-            sections.append(section(f"试验组统计 · {labels.get(name, name)}",
-                ["内表组", "均值", "标准差", metric],
-                [[r["inner"], r["mean"], r["std"], r["metric"]] for r in item.get("runs", [])],
-                "候选组合尚未试验，表中列出已有试验组。" if best else "约束响应仅描述观测结果，不推荐最优水平。"))
+            sections.append(
+                section(
+                    f"试验组统计 · {labels.get(name, name)}",
+                    ["内表组", "均值", "标准差", metric],
+                    [[r["inner"], r["mean"], r["std"], r["metric"]] for r in item.get("runs", [])],
+                    "候选组合尚未试验，表中列出已有试验组。"
+                    if best
+                    else "约束响应仅描述观测结果，不推荐最优水平。",
+                )
+            )
         if not item.get("has_replication"):
             sections[-1]["message"] += " 没有外表或重复观测，仅作均值分析，不能评估稳健性。"
     errors = result.get("errors", {})
@@ -81,19 +106,40 @@ def overview(project):
     elif not ready:
         status, next_step = "等待响应数据", "下一步：到「数据管理」填入或导入完整的有效响应数据。"
     elif errors:
-        status, next_step = "部分响应分析失败" if successes else "分析失败", "请查看下方各响应的具体原因。"
+        status, next_step = (
+            "部分响应分析失败" if successes else "分析失败",
+            "请查看下方各响应的具体原因。",
+        )
     elif successes:
         status, next_step = "分析已完成", "当前数据与分析结果已就绪。"
     else:
         action = "计算田口信噪比" if "田口" in method else "代理模型构建"
         status, next_step = "等待分析", f"下一步：使用页面上方「{action}」。"
     if not sections:
-        sections = [section("分析结果", message="尚未执行分析。" if ready else "响应数据就绪后显示当前方案的分析结果。")]
-    information = dataset['information']
-    if project.task_type != 'taguchi' and '田口' not in method:
-        model = project.surrogate_config.get('model') or ('RSM' if any(key in method for key in ('响应面', '响应曲面')) else method.rsplit('·', 1)[-1].strip())
-        model_name = {'RSM': '二次响应面模型', 'Kriging': '克里金模型',
-                      'SVR': '支持向量回归模型', 'ANN': '神经网络模型'}.get(model, '未选择')
-        information = [('当前模型', model_name), ('试验次数', f'{len(project.doe_matrix)} 次')]
-    return dict(information=information, readiness=readiness, status=status,
-                next_step=next_step, sections=sections)
+        sections = [
+            section(
+                "分析结果",
+                message="尚未执行分析。" if ready else "响应数据就绪后显示当前方案的分析结果。",
+            )
+        ]
+    information = dataset["information"]
+    if project.task_type != "taguchi" and "田口" not in method:
+        model = project.surrogate_config.get("model") or (
+            "RSM"
+            if any(key in method for key in ("响应面", "响应曲面"))
+            else method.rsplit("·", 1)[-1].strip()
+        )
+        model_name = {
+            "RSM": "二次响应面模型",
+            "Kriging": "克里金模型",
+            "SVR": "支持向量回归模型",
+            "ANN": "神经网络模型",
+        }.get(model, "未选择")
+        information = [("当前模型", model_name), ("试验次数", f"{len(project.doe_matrix)} 次")]
+    return dict(
+        information=information,
+        readiness=readiness,
+        status=status,
+        next_step=next_step,
+        sections=sections,
+    )

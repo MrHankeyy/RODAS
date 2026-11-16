@@ -1,10 +1,22 @@
-"""Single current-result report; no operation archive UI."""
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QTextBrowser, QLineEdit, QFileDialog
-from backend.reporting import report_engine as reports
+"""当前结果报告的预览与导出。"""
+
+from PyQt6.QtWidgets import (
+    QFileDialog,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QTextBrowser,
+    QVBoxLayout,
+    QWidget,
+)
+
 from backend.infrastructure import file_io
-from frontend.notifications import Notice
+from backend.reporting import report_engine as reports
 from backend.services.project_service import ProjectService
+from frontend.notifications import Notice
 from frontend.workspace import dialog_path
+
 
 class AnalysisPage(QWidget):
     def __init__(self, project_data):
@@ -13,10 +25,7 @@ class AnalysisPage(QWidget):
         self.report = None
         self.report_html = ""
         layout = QVBoxLayout(self)
-        title = QLabel("设计结果报告")
-        title.setStyleSheet("font-size:22px;font-weight:600;color:#17385e;padding:8px;")
-        title.hide()
-        layout.setContentsMargins(16,12,16,12)
+        layout.setContentsMargins(16, 12, 16, 12)
         self.status_label = QLabel("完成一次分析或优化后，在这里预览并导出当前结果。")
         self.status_label.setProperty("role", "muted")
         layout.addWidget(self.status_label)
@@ -27,11 +36,18 @@ class AnalysisPage(QWidget):
             field.setPlaceholderText(label + "（选填）")
             self.fields[key] = field
             bar.addWidget(field)
-        for label, slot in [("更新预览", self.run_analysis), ("导出 PDF", self.export_pdf), ("导出 HTML", self.export_html)]:
+        for label, slot in [
+            ("更新预览", self.run_analysis),
+            ("导出 PDF", self.export_pdf),
+            ("导出 HTML", self.export_html),
+        ]:
             button = QPushButton(label)
-            button.clicked.connect((lambda: self.run_analysis(commit=True)) if label == '更新预览' else slot)
+            button.clicked.connect(
+                (lambda: self.run_analysis(commit=True)) if label == "更新预览" else slot
+            )
             if label == "导出 PDF":
                 from frontend.theme import primary
+
                 primary(button)
             bar.addWidget(button)
         layout.addLayout(bar)
@@ -49,19 +65,19 @@ class AnalysisPage(QWidget):
             service = ProjectService.for_project(self.project_data)
             if commit:
                 service.update_report_metadata(
-                    {key: widget.text().strip() for key, widget in self.fields.items()})
+                    {key: widget.text().strip() for key, widget in self.fields.items()}
+                )
             data = reports.bundle(self.project_data)
             if not any(data["results"].values()):
                 self.preview.setPlainText(
-                    "暂无当前结果。请先完成田口分析或模型优化。"
-                    "输入改变后需要重新计算。")
+                    "暂无当前结果。请先完成田口分析或模型优化。输入改变后需要重新计算。"
+                )
                 self.status_label.setText("等待当前输入的分析结果")
                 return
             self.report = reports.build_current_report(data)
             self.report_html = reports.render_html(self.report)
             self.preview.setHtml(self.report_html)
-            self.status_label.setText(
-                "当前计算结果 · 再次计算后替换本报告 · 不保存操作履历")
+            self.status_label.setText("当前计算结果 · 再次计算后替换本报告 · 不保存操作履历")
         except Exception as exc:
             self.preview.setPlainText("报告生成失败：" + str(exc))
             Notice.warning(self, "报告生成失败", str(exc))
@@ -78,8 +94,11 @@ class AnalysisPage(QWidget):
             Notice.warning(self, "暂无报告", "请先完成当前输入的分析或优化。")
             return
         path, _ = QFileDialog.getSaveFileName(
-            self, "导出当前结果", dialog_path(self, "设计结果报告." + kind),
-            kind.upper() + " (*." + kind + ")")
+            self,
+            "导出当前结果",
+            dialog_path(self, "设计结果报告." + kind),
+            kind.upper() + " (*." + kind + ")",
+        )
         if not path:
             return
         try:

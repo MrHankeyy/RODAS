@@ -1,16 +1,23 @@
 """Inline, reusable model and experiment configuration components."""
-from PyQt6.QtWidgets import (
-    QVBoxLayout, QHBoxLayout, QLabel, QGroupBox,
-    QComboBox, QAbstractSpinBox, QTableWidget,
-    QTableWidgetItem, QHeaderView, QWidget
-)
+
 from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtWidgets import (
+    QAbstractSpinBox,
+    QComboBox,
+    QGroupBox,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QTableWidget,
+    QTableWidgetItem,
+    QVBoxLayout,
+    QWidget,
+)
 
 from backend.engines.doe import factor_limits
 from backend.services.design_service import MODEL_DESIGNS
-from frontend.numeric_inputs import numeric_input, commit_numeric_inputs
+from frontend.numeric_inputs import commit_numeric_inputs, numeric_input
 from frontend.terminology import add_combo_item, name, tooltip
-
 
 MODEL_TITLES = {
     "RSM": name("quadratic_response_surface"),
@@ -19,19 +26,26 @@ MODEL_TITLES = {
     "ANN": name("bpnn"),
 }
 MODEL_TERM_KEYS = {
-    "RSM": "quadratic_response_surface", "Kriging": "kriging",
-    "SVR": "svr", "ANN": "bpnn",
+    "RSM": "quadratic_response_surface",
+    "Kriging": "kriging",
+    "SVR": "svr",
+    "ANN": "bpnn",
 }
 DESIGN_TERM_KEYS = {
-    "CCD": "ccd", "BBD": "bbd",
-    "Latin Hypercube (LHS)": "lhs", "最优 LHS": "maximin_lhs",
-    "低差异序列 SOBOL": "sobol", "均匀网格抽样": "uniform_grid",
-    "稀疏配点法": "low_dimensional_combination", "随机抽样": "random_sampling",
+    "CCD": "ccd",
+    "BBD": "bbd",
+    "Latin Hypercube (LHS)": "lhs",
+    "最优 LHS": "maximin_lhs",
+    "低差异序列 SOBOL": "sobol",
+    "均匀网格抽样": "uniform_grid",
+    "稀疏配点法": "low_dimensional_combination",
+    "随机抽样": "random_sampling",
 }
 
 
 class ModelConfiguration(QWidget):
     """Shared inline DOE editor with model-specific parameter controls."""
+
     changed = pyqtSignal()
 
     def __init__(self, model_key, factors, parent=None, config=None):
@@ -76,7 +90,7 @@ class ModelConfiguration(QWidget):
         self.alpha_mode_combo.addItem("可旋转", "rotatable")
         self.alpha_mode_combo.addItem("自定义 α", "custom")
         row.addWidget(self.alpha_mode_combo)
-        self.alpha_spin = numeric_input(float, .5, 5, 1, decimals=3)
+        self.alpha_spin = numeric_input(float, 0.5, 5, 1, decimals=3)
         row.addWidget(self.alpha_spin)
         row.addWidget(QLabel("中心点数量："))
         self.centers_spin = numeric_input(int, 0, 20, 3)
@@ -109,8 +123,11 @@ class ModelConfiguration(QWidget):
         self.bounds_table.itemChanged.connect(lambda *_args: self.changed.emit())
 
     def set_factors(self, factors):
-        old = {f.name: [self.bounds_table.item(i, col).text() for col in (1, 2)]
-               for i, f in enumerate(self.factors) if i < self.bounds_table.rowCount()}
+        old = {
+            f.name: [self.bounds_table.item(i, col).text() for col in (1, 2)]
+            for i, f in enumerate(self.factors)
+            if i < self.bounds_table.rowCount()
+        }
         defaults = getattr(self, "_range_defaults", {})
         self.factors = list(factors)
         self.bounds_table.blockSignals(True)
@@ -124,7 +141,9 @@ class ModelConfiguration(QWidget):
                 pass
             name = f"{factor.name}（{factor.unit}）" if factor.unit else factor.name
             self.bounds_table.setItem(i, 0, QTableWidgetItem(name))
-            self.bounds_table.item(i, 0).setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
+            self.bounds_table.item(i, 0).setFlags(
+                Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
+            )
             for col, value in enumerate(values, 1):
                 self.bounds_table.setItem(i, col, QTableWidgetItem(str(value)))
         self.bounds_table.blockSignals(False)
@@ -132,9 +151,11 @@ class ModelConfiguration(QWidget):
         self._range_defaults = {f.name: factor_limits(f) for f in self.factors}
 
     def _fit_bounds_table(self):
-        height = (self.bounds_table.horizontalHeader().sizeHint().height()
-                  + sum(self.bounds_table.rowHeight(i) for i in range(self.bounds_table.rowCount()))
-                  + 2 * self.bounds_table.frameWidth())
+        height = (
+            self.bounds_table.horizontalHeader().sizeHint().height()
+            + sum(self.bounds_table.rowHeight(i) for i in range(self.bounds_table.rowCount()))
+            + 2 * self.bounds_table.frameWidth()
+        )
         self.bounds_table.setFixedHeight(min(145, height))
 
     def _on_design_changed(self, *_args):
@@ -144,12 +165,21 @@ class ModelConfiguration(QWidget):
         self.bounds_table.setHorizontalHeaderLabels(["模型输入（单位）", *limits])
         for column, text in enumerate(limits, 1):
             self.bounds_table.horizontalHeaderItem(column).setToolTip(
-                text+'\n'+('对应编码−1/+1；中心复合设计α>1时，轴点可超出此范围。' if structured else '用于生成模型训练样本的实际输入范围。'))
+                text
+                + "\n"
+                + (
+                    "对应编码−1/+1；中心复合设计α>1时，轴点可超出此范围。"
+                    if structured
+                    else "用于生成模型训练样本的实际输入范围。"
+                )
+            )
         self.structured.setVisible(structured)
         self.sample_label.setVisible(not structured)
         self.sample_count_spin.setVisible(not structured)
         self.alpha_mode_combo.setEnabled(design == "CCD")
-        self.alpha_spin.setEnabled(design == "CCD" and self.alpha_mode_combo.currentData() == "custom")
+        self.alpha_spin.setEnabled(
+            design == "CCD" and self.alpha_mode_combo.currentData() == "custom"
+        )
 
     def _build_model_group(self):
         group = QGroupBox("模型设置")
@@ -168,17 +198,21 @@ class ModelConfiguration(QWidget):
             row = QHBoxLayout()
             row.addWidget(QLabel("相关函数："))
             self.corr_combo = QComboBox()
-            for term, value in (("gaussian_correlation", "Gaussian（高斯）"),
-                                ("exponential_correlation", "指数 Exponential"),
-                                ("matern_32_correlation", "Matern 3/2")):
+            for term, value in (
+                ("gaussian_correlation", "Gaussian（高斯）"),
+                ("exponential_correlation", "指数 Exponential"),
+                ("matern_32_correlation", "Matern 3/2"),
+            ):
                 add_combo_item(self.corr_combo, term, value)
             row.addWidget(self.corr_combo)
             row.addSpacing(20)
             row.addWidget(QLabel("回归函数（趋势项）："))
             self.regress_combo = QComboBox()
-            for term, value in (("ordinary_trend", "常数（Ordinary）"),
-                                ("linear_trend", "一次趋势"),
-                                ("quadratic_trend", "二次趋势")):
+            for term, value in (
+                ("ordinary_trend", "常数（Ordinary）"),
+                ("linear_trend", "一次趋势"),
+                ("quadratic_trend", "二次趋势"),
+            ):
                 add_combo_item(self.regress_combo, term, value)
             row.addWidget(self.regress_combo)
             row.addStretch()
@@ -187,9 +221,11 @@ class ModelConfiguration(QWidget):
             row = QHBoxLayout()
             row.addWidget(QLabel("核函数："))
             self.kernel_combo = QComboBox()
-            for term, value in (("rbf_kernel", "RBF 核"),
-                                ("polynomial_kernel", "多项式核"),
-                                ("sigmoid_kernel", "Sigmoid 核")):
+            for term, value in (
+                ("rbf_kernel", "RBF 核"),
+                ("polynomial_kernel", "多项式核"),
+                ("sigmoid_kernel", "Sigmoid 核"),
+            ):
                 add_combo_item(self.kernel_combo, term, value)
             row.addWidget(self.kernel_combo)
             row.addSpacing(20)
@@ -201,7 +237,9 @@ class ModelConfiguration(QWidget):
             layout.addLayout(row)
             self.kernel_combo.currentTextChanged.connect(
                 lambda _t: self.poly_degree_spin.setEnabled(
-                    self.kernel_combo.currentData() == "多项式核"))
+                    self.kernel_combo.currentData() == "多项式核"
+                )
+            )
 
             grid = QVBoxLayout()
             c_row = QHBoxLayout()
@@ -230,8 +268,10 @@ class ModelConfiguration(QWidget):
             g_row.addStretch()
             grid.addLayout(g_row)
             layout.addLayout(grid)
-            group.setToolTip("C 与 γ 按给定范围和步长网格寻优，ε-SVR 误差带取 0.05。"
-                             "依赖加载、训练或预测失败时明确报错，不更换模型。")
+            group.setToolTip(
+                "C 与 γ 按给定范围和步长网格寻优，ε-SVR 误差带取 0.05。"
+                "依赖加载、训练或预测失败时明确报错，不更换模型。"
+            )
 
         else:  # ANN
             row = QHBoxLayout()
@@ -275,9 +315,11 @@ class ModelConfiguration(QWidget):
             row2 = QHBoxLayout()
             row2.addWidget(QLabel("激活函数："))
             self.act_combo = QComboBox()
-            for term, value in (("logistic_sigmoid", "sigmoid"),
-                                ("hyperbolic_tangent", "tanh"),
-                                ("relu", "relu")):
+            for term, value in (
+                ("logistic_sigmoid", "sigmoid"),
+                ("hyperbolic_tangent", "tanh"),
+                ("relu", "relu"),
+            ):
                 add_combo_item(self.act_combo, term, value)
             row2.addWidget(self.act_combo)
             row2.addSpacing(20)
@@ -311,8 +353,10 @@ class ModelConfiguration(QWidget):
             if index < 0:
                 index = combo.findText(str(value))
             if index < 0:
-                index = next((i for i in range(combo.count())
-                              if combo.itemText(i).startswith(str(value))), -1)
+                index = next(
+                    (i for i in range(combo.count()) if combo.itemText(i).startswith(str(value))),
+                    -1,
+                )
             if index >= 0:
                 combo.setCurrentIndex(index)
 
@@ -341,21 +385,30 @@ class ModelConfiguration(QWidget):
             restore_combo(self.kernel_combo, params.get("kernel"))
             for name in ("poly_degree", "c_min", "c_max", "c_step", "g_min", "g_max", "g_step"):
                 if name in params:
-                    control = self.poly_degree_spin if name == "poly_degree" else getattr(self, name)
+                    control = (
+                        self.poly_degree_spin if name == "poly_degree" else getattr(self, name)
+                    )
                     control.setValue(params[name])
         elif self.model_key == "ANN":
-            for name, control in (("hidden_layers", self.hidden_layers_spin),
-                                  ("hidden_nodes", self.hidden_nodes_spin),
-                                  ("learning_rate", self.lr_spin), ("epochs", self.epoch_spin)):
+            for name, control in (
+                ("hidden_layers", self.hidden_layers_spin),
+                ("hidden_nodes", self.hidden_nodes_spin),
+                ("learning_rate", self.lr_spin),
+                ("epochs", self.epoch_spin),
+            ):
                 if name in params:
                     control.setValue(params[name])
             restore_combo(self.act_combo, params.get("activation"))
             search = params.get("node_search")
             if search:
-                for control, value in zip((self.node_min_spin, self.node_max_spin, self.node_step_spin), search):
+                for control, value in zip(
+                    (self.node_min_spin, self.node_max_spin, self.node_step_spin), search
+                ):
                     control.setValue(value)
-            restore_combo(self.net_mode_combo, params.get("net_mode") or
-                          ("自动寻优" if search else "手动设置"))
+            restore_combo(
+                self.net_mode_combo,
+                params.get("net_mode") or ("自动寻优" if search else "手动设置"),
+            )
 
     def _bounds(self):
         result = {}
@@ -379,15 +432,21 @@ class ModelConfiguration(QWidget):
             model_cfg = {
                 "kernel": self.kernel_combo.currentData(),
                 "poly_degree": self.poly_degree_spin.value(),
-                "c_min": self.c_min.value(), "c_max": self.c_max.value(),
-                "c_step": self.c_step.value(), "g_min": self.g_min.value(),
-                "g_max": self.g_max.value(), "g_step": self.g_step.value(),
+                "c_min": self.c_min.value(),
+                "c_max": self.c_max.value(),
+                "c_step": self.c_step.value(),
+                "g_min": self.g_min.value(),
+                "g_max": self.g_max.value(),
+                "g_step": self.g_step.value(),
             }
         elif self.model_key == "ANN":
             node_search = None
             if self.net_mode_combo.currentText() == "自动寻优":
-                node_search = [self.node_min_spin.value(), self.node_max_spin.value(),
-                               self.node_step_spin.value()]
+                node_search = [
+                    self.node_min_spin.value(),
+                    self.node_max_spin.value(),
+                    self.node_step_spin.value(),
+                ]
             model_cfg = {
                 "hidden_layers": self.hidden_layers_spin.value(),
                 "hidden_nodes": self.hidden_nodes_spin.value(),
@@ -403,8 +462,10 @@ class ModelConfiguration(QWidget):
             "sample_count": self.sample_count_spin.value(),
             "doe_method": self.doe_method_combo.currentData(),
             "bounds": self._bounds(),
-            "alpha_mode": self.alpha_mode_combo.currentData(), "alpha": self.alpha_spin.value(),
-            "centers": self.centers_spin.value(), "replicates": self.repeats_spin.value(),
-            "seed": self.seed_spin.value(), "randomize": self.order_combo.currentIndex() == 0,
+            "alpha_mode": self.alpha_mode_combo.currentData(),
+            "alpha": self.alpha_spin.value(),
+            "centers": self.centers_spin.value(),
+            "replicates": self.repeats_spin.value(),
+            "seed": self.seed_spin.value(),
+            "randomize": self.order_combo.currentIndex() == 0,
         }
-
