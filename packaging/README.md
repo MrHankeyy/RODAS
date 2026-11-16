@@ -37,7 +37,7 @@ dist/
       demos/
       tcl86t.dll, tk86t.dll, _tcl_data/, _tk_data/   # 启动画面依赖
       ...运行依赖...
-  RODAS-Setup-0.2.exe
+  RODAS-Setup-V1.0.exe
 ```
 
 ## 启动画面（Splash）
@@ -79,7 +79,7 @@ dist/
 - 本地工作区的 `../demos/demo_*` 中 CSV、任务文件及 Markdown 说明会收集到 `_internal/demos/`；不收集虚拟环境、Git 记录、测试、临时脚本或已有输出目录。
 - 打开任务仍使用软件内的「文件→读取任务」。当前启动入口尚未增加任务文件参数处理，文件关联将在后续安装阶段单独处理。
 - 验证 Logo、SVG 箭头、DEMO3 分析与 DEMO1 建模优化，并测试任务保存恢复、图表及 PDF 导出。窗口版下崩溃不再打印 traceback，排查问题时可临时改回 `console=True` 重新打包。
-- 分发时不再需要整个 `dist/RODAS` 目录，只发 `dist/RODAS-Setup-0.2.exe` 一个文件即可。
+- 分发时不再需要整个 `dist/RODAS` 目录，只发 `dist/RODAS-Setup-V1.0.exe` 一个文件即可。
 
 ## 制作 Windows 安装包（Inno Setup 6）
 
@@ -101,10 +101,13 @@ powershell -ExecutionPolicy Bypass -File .\packaging\build_installer.ps1 -Rebuil
 powershell -ExecutionPolicy Bypass -File .\packaging\build_installer.ps1 -IsccPath 'D:\Software\Inno Setup 6\ISCC.exe'
 ```
 
-产物：`dist/RODAS-Setup-0.2.exe`。LZMA2 压缩约 270 MB / 2183 个文件的目录包，成品约 75 MB，分发时只需这一个文件。
+产物：`dist/RODAS-Setup-V1.0.exe`。LZMA2 压缩约 270 MB / 2183 个文件的目录包，成品约 76 MB，分发时只需这一个文件。
 
-- `RODAS.iss` 把整个 `dist/RODAS` 安装到 `{commonpf64}\RODAS`（`x64compatible`，需管理员权限），创建开始菜单项、可选桌面快捷方式、卸载项，卸载信息自动登记到「应用和功能」。`RODAS.ico` 由 `icon.png` 通过 Pillow 生成 16–256 六种尺寸。
+- **版本号是写死的**，不在源码里：`RODAS.iss` 的 `#define MyAppVersion "1.0"`（决定安装包元数据与输出文件名）、`build_installer.ps1` 末尾的产物检查路径、`make_splash.py` 里启动画面上的版本字样（已统一为 V1.0，改后需重新生成 PNG 并重跑 PyInstaller——splash 图嵌在 exe 里）。发新版本时这三处要手动同步。
+- **中文安装界面**：`[Languages]` 使用 `packaging/ChineseSimplified.isl`（Inno Setup 6.3+ 官方语言文件，UTF-8 无 BOM，与 6.7.3 内置语言文件编码惯例一致；6.7.3 发行版的 `Languages/` 目录仍不自带，故随仓库携带）。`RODAS.iss` 本身必须保存为 **UTF-8 BOM**，中文文案才能被 ISCC 正确读取。
+- **命名口径（2026-11-16 更新）**：中文名称统一为「基于不确定性量化的复杂工程结构鲁棒优化设计平台」，覆盖安装向导、快捷方式、卸载项、主窗口标题、欢迎页大标题（`frontend/pages/welcome_page.py` 的 `CHINESE_NAME`，标题字号自适应、无需手调）与启动画面主标题（字号 16）；**安装目录与安装包文件名用英文 `RODAS`**（`{commonpf64}\RODAS`、`RODAS-Setup-V1.0.exe`）；启动画面版本字样为 `RODAS · V1.0`。
+- `RODAS.iss` 把整个 `dist/RODAS` 安装到 `{commonpf64}\RODAS`（`x64compatible`，需管理员权限），创建开始菜单项、可选桌面快捷方式、卸载项，卸载信息自动登记到「应用和功能」。`AppId` 与旧版 0.2 相同，覆盖安装/升级走同一卸载项。`RODAS.ico` 由 `icon.png` 通过 Pillow 生成 16–256 六种尺寸。
 - `build_installer.ps1` 按以下顺序定位 `ISCC.exe`：`-IsccPath` 参数 → 环境变量 `RODAS_ISCC` → PATH → 注册表卸载项的 `InstallLocation`（覆盖自定义安装路径）→ 常见默认路径（含 Inno Setup 7）。找不到时明确报错，不会静默跳过。`-Rebuild` 时若 `RODAS-splash.png` 缺失会自动调用 `make_splash.py` 重新生成。
-- 脚本内界面文案暂用英文，规避 Inno Setup 对 `.iss` 的 ANSI / UTF-8 编码差异。**官方 6.7.3 发行版的 `Languages/` 目录不自带 `ChineseSimplified.isl`**，要中文界面需自备该文件放到 `packaging/`，取消 `[Languages]` 里中文行的注释，并将脚本另存为 UTF-8 BOM 编码后改写界面字符串。
+- ~~脚本内界面文案暂用英文~~ 已改为全中文界面（2026-11-12）：`[Languages]` 指向随仓库的 `ChineseSimplified.isl`，`.iss` 为 UTF-8 BOM。
 - `.rodas` 文件关联段落已写在 `RODAS.iss` 末尾（默认注释）。启用前必须先让 `main.py` 支持从 `sys.argv[1]` 读取任务文件路径，否则双击任务文件只会打开空界面。
 - 程序导出文件均通过 `QFileDialog` 由用户选择路径，不写安装目录，因此装到 `Program Files` 不会遇到写权限问题。

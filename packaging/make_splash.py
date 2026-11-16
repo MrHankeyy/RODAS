@@ -87,7 +87,7 @@ def main():
     d.rectangle((180 * S, 0, W * S, 3 * S), fill='#E8EEF3')
 
     # Welcome line.
-    d.text((40 * S, 34 * S), '欢迎使用 RODAS   /   v0.2',
+    d.text((40 * S, 34 * S), '欢迎使用 RODAS   /   V1.0',
            font=font('msyh.ttc', 12), fill=FAINT)
 
     # Approved brand artwork, cropped exactly like WelcomePage.brand_pixmap().
@@ -98,8 +98,8 @@ def main():
     img.paste(artwork, (40 * S, 60 * S), artwork)
 
     # Chinese title + tagline.
-    d.text((40 * S, 160 * S), '面向飞行器结构的鲁棒性优化设计平台',
-           font=font('msyhbd.ttc', 19), fill=NAVY)
+    d.text((40 * S, 160 * S), '基于不确定性量化的复杂工程结构鲁棒优化设计平台',
+           font=font('msyhbd.ttc', 16), fill=NAVY)
     d.text((40 * S, 198 * S), '从试验与数据出发，探索更稳健的结构设计。',
            font=font('msyh.ttc', 12), fill=MUTED)
 
@@ -112,7 +112,7 @@ def main():
     # The left half of the status row is intentionally left blank: the live
     # status text is drawn at runtime by pyi_splash.update_text() with
     # text_pos=(40, 298) in RODAS.spec. The right half carries the version.
-    version = 'RODAS  ·  v0.2'
+    version = 'RODAS  ·  V1.0'
     vf = font('segoeui.ttf', 11)
     tw = d.textlength(version, font=vf)
     d.text((680 * S - tw, 278 * S), version, font=vf, fill=FAINT)

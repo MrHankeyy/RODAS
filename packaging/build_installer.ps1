@@ -21,22 +21,36 @@ $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $py = Join-Path (Split-Path -Parent $root) 'RODAS-build-env\Scripts\python.exe'
 
+function Invoke-Native {
+    # Run a native command; fold its stderr into plain text lines so that
+    # $ErrorActionPreference='Stop' (or outer stream redirection) does not
+    # turn stderr chatter into a terminating NativeCommandError (PS 5.1).
+    param([scriptblock]$Cmd)
+    $prev = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        $out = & $Cmd 2>&1 | ForEach-Object { if ($_ -is [System.Management.Automation.ErrorRecord]) { $_.Exception.Message } else { $_ } }
+        $out | ForEach-Object { Write-Host $_ }
+        return $LASTEXITCODE
+    }
+    finally { $ErrorActionPreference = $prev }
+}
+
 if ($Rebuild) {
     if (-not (Test-Path $py)) { throw "Build Python not found: $py" }
 
     # Regenerate the splash artwork if it is missing (e.g. fresh checkout).
     $splashPng = Join-Path $PSScriptRoot 'RODAS-splash.png'
     if (-not (Test-Path $splashPng)) {
-        & $py (Join-Path $PSScriptRoot 'make_splash.py')
-        if ($LASTEXITCODE -ne 0) { throw 'Splash image generation failed' }
+        [void](Invoke-Native { & $py (Join-Path $PSScriptRoot 'make_splash.py') })
     }
 
     $env:PATH = ($env:PATH -split ';' | Where-Object { $_ -notlike '*Anaconda*' }) -join ';'
     Push-Location $root
     try {
         # -y removes the previous dist\RODAS; --clean alone does NOT clear it.
-        & $py -m PyInstaller --clean -y --distpath .\dist --workpath .\build .\packaging\RODAS.spec
-        if ($LASTEXITCODE -ne 0) { throw 'PyInstaller build failed' }
+        $rc = Invoke-Native { & $py -m PyInstaller --clean -y --distpath .\dist --workpath .\build .\packaging\RODAS.spec }
+        if ($rc -ne 0) { throw "PyInstaller build failed (exit $rc)" }
     }
     finally { Pop-Location }
 }
@@ -95,10 +109,10 @@ if (-not $iscc) {
 Write-Host "ISCC: $iscc"
 
 $iss = Join-Path $PSScriptRoot 'RODAS.iss'
-& $iscc $iss
-if ($LASTEXITCODE -ne 0) { throw 'ISCC compile failed' }
+$rc = Invoke-Native { & $iscc $iss }
+if ($rc -ne 0) { throw "ISCC compile failed (exit $rc)" }
 
-$out = Join-Path $root 'dist\RODAS-Setup-0.2.exe'
+$out = Join-Path $root 'dist\RODAS-Setup-V1.0.exe'
 if (Test-Path $out) {
     $size = [math]::Round((Get-Item $out).Length / 1MB, 1)
     Write-Host "Installer ready: $out ($size MB)"
