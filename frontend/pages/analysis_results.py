@@ -18,7 +18,6 @@ from PyQt6.QtWidgets import (
 )
 from scipy import stats
 
-from backend.core.factors import factor_limits
 from backend.reporting.math_format import Math, formula_html, polynomial
 from frontend.pages.result_overview import SummaryTable, label
 from frontend.pages.result_summary import display, named
@@ -81,6 +80,7 @@ class AnalysisResults(QWidget):
             toolbar.addWidget(export)
         export_table = QPushButton("导出系数 CSV" if kind == "model" else "导出当前统计 CSV")
         export_table.clicked.connect(self.export_csv)
+        self.export_table = export_table
         toolbar.addWidget(export_table)
         layout.addLayout(toolbar)
         scroll = QScrollArea()
@@ -161,6 +161,7 @@ class AnalysisResults(QWidget):
                 self.validation(name, proxy, diagnostic)
             else:
                 self.model(name, model, proxy, diagnostic)
+        self.export_table.setEnabled(bool(self.result_tables))
         self.column.addStretch()
 
     def significance(self, proxy, values, reasons):
@@ -168,8 +169,8 @@ class AnalysisResults(QWidget):
             self.section(
                 "当前模型不适用此检验",
                 message=(
-                    "克里金模型、支持向量回归模型和神经网络模型的预测器不直接套用多项式回归方差分析或失拟检验。"
-                    "请在「验证与残差」查看测试集验证结果。"
+                    "当前模型的预测性仅能通过测试集验证与残差分析进行评价。"
+                    "请前往「验证与残差」查看验证指标和诊断图。"
                 ),
             )
             return
@@ -386,32 +387,16 @@ class AnalysisResults(QWidget):
         canvas.draw_idle()
 
     def model(self, name, model, proxy, diagnostic):
-        inputs = self.context["inputs"]
         if proxy:
-            model_type = model.get("model_type")
-            model_term = {"Kriging": "kriging", "SVR": "svr", "ANN": "bpnn"}.get(model_type)
             self.section(
-                "已训练预测器",
-                ["项目", "内容"],
-                [
-                    ["模型类型", term_name(model_term) if model_term else "代理模型"],
-                    ["输出响应", self.response.currentText()],
-                    ["输入变量", "、".join(item.name for item in inputs)],
-                    ["后续优化", "直接调用当前模型的预测器"],
-                    ["不确定性传播", "数值梯度与对角海森矩阵近似"],
-                ],
-                "该模型不提供二次多项式回归方程。",
-            )
-            bounds = self.context["_project"].surrogate_config.get("bounds") or {}
-            self.section(
-                "模型输入",
-                ["因子", "抽样下限", "抽样上限", "单位"],
-                [
-                    [item.name, *(bounds.get(item.name) or factor_limits(item)), item.unit]
-                    for item in inputs
-                ],
+                "当前模型不适用回归系数检验",
+                message=(
+                    "当前模型的预测性仅能通过测试集验证与残差分析进行评价。"
+                    "请前往「验证与残差」查看验证指标和诊断图。"
+                ),
             )
             return
+        inputs = self.context["inputs"]
         names = self.context["names"]
         terms, pieces, coding = polynomial(name, model, names)
         box = self.section("拟合方程 · 编码变量")
