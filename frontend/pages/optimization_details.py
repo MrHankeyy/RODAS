@@ -344,10 +344,9 @@ class VariabilityVerification(SchemeDetail):
         )
         table = SummaryTable(
             ["来源", f"方差（{unit}²）" if unit else "方差", "份额 %"],
-            [[r["name"], r["variance"], r["share"]] for r in rows],
+            [[r["name"], r["variance"], ""] for r in rows],
         )
         for i, row in enumerate(rows):
-            table.item(i, 2).setForeground(QColor(Qt.GlobalColor.transparent))
             if row["name"] == "模型残差":
                 table.item(i, 0).setToolTip(
                     "模型残差（Model Residual）\n观测值与拟合值之间的残差方差估计，包含试验随机误差及可能的模型失拟。"
