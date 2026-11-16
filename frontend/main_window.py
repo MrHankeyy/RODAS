@@ -8,6 +8,7 @@ from PyQt6.QtWidgets import (
     QMainWindow,
     QPushButton,
     QScrollArea,
+    QSizePolicy,
     QSplitter,
     QStackedWidget,
     QStatusBar,
@@ -136,6 +137,8 @@ class MainWindow(QMainWindow):
 
     def _build_main_workspace(self):
         self.stacked_widget = QStackedWidget()
+        self.stacked_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Ignored)
+        self.stacked_widget.setMinimumHeight(200)
         self.page_MOD = ModelingPage(self.project_data)
         self.page_MOD.load_project_data()
         self.page_CFG = ConfigurationPage(self.project_data)
