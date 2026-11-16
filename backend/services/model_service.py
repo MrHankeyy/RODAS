@@ -124,7 +124,9 @@ def build_surrogate_context(project, surrogate_result=None):
             "predicted": raw_values or [0.0, 1.0],
             "rmse": rmse,
             "residual_std": 0.0,
-            "finite_difference_step": 1e-3,
+            "finite_difference_step": [
+                1e-3 * (highs[name] - lows[name]) for name in names
+            ],
         }
     if errors or not models:
         return None, errors or ["代理模型尚未训练成功，请先检查响应数据和模型设置。"]

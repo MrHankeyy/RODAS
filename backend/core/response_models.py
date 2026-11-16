@@ -156,13 +156,15 @@ def model_grad_x(model, x_raw):
         return np.asarray(model["grad_fn"](np.asarray(x_raw, float)), float)
     if "predict_fn" in model:
         x = np.asarray(x_raw, float)
-        step = float(model.get("finite_difference_step", 1e-4))
+        step = np.broadcast_to(
+            np.asarray(model.get("finite_difference_step", 1e-4), float), x.shape
+        )
         grad = np.zeros(len(x))
         for i in range(len(x)):
             delta = np.zeros(len(x))
-            delta[i] = step
+            delta[i] = step[i]
             grad[i] = (model["predict_fn"](x + delta) - model["predict_fn"](x - delta)) / (
-                2.0 * step
+                2.0 * step[i]
             )
         return grad
     z = (np.asarray(x_raw, float) - model["center"]) / model["half"]
@@ -175,15 +177,17 @@ def model_hess_diag_x(model, x_raw):
         return np.asarray(model["hess_diag_fn"](np.asarray(x_raw, float)), float)
     if "predict_fn" in model:
         x = np.asarray(x_raw, float)
-        step = float(model.get("finite_difference_step", 1e-4))
+        step = np.broadcast_to(
+            np.asarray(model.get("finite_difference_step", 1e-4), float), x.shape
+        )
         center = model["predict_fn"](x)
         hess = np.zeros(len(x))
         for i in range(len(x)):
             delta = np.zeros(len(x))
-            delta[i] = step
+            delta[i] = step[i]
             hess[i] = (
                 model["predict_fn"](x + delta) - 2.0 * center + model["predict_fn"](x - delta)
-            ) / step**2
+            ) / step[i] ** 2
         return hess
     z = (np.asarray(x_raw, float) - model["center"]) / model["half"]
     hz = _quad_hess_diag(model["terms"], model["coef"], z)
