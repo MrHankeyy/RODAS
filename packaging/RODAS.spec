@@ -12,7 +12,7 @@ from backend.domain.application import TASK_SUFFIX
 datas = [(str(root / 'assets'), 'assets')]
 for folder in sorted((root.parent / 'demos').glob('demo_*')):
     for item in sorted(folder.iterdir()):
-        if item.is_file() and item.suffix.lower() in ('.csv', '.rodas', TASK_SUFFIX, '.md'):
+        if item.is_file() and item.suffix.lower() in ('.csv', TASK_SUFFIX, '.md'):
             datas.append((str(item), f'demos/{folder.name}'))
 
 qt_bin = Path(PyQt6.__file__).parent / 'Qt6' / 'bin'

@@ -81,7 +81,7 @@ class TaskActions:
             )
             if not path:
                 return False
-            if not path.endswith(TASK_SUFFIX):
+            if not path.lower().endswith(TASK_SUFFIX):
                 path += TASK_SUFFIX
         try:
             digest = task_storage.save_task(self.window.project_data, path)
