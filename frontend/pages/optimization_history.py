@@ -1,4 +1,3 @@
-"""优化历程：逐代展示鲁棒优化的目标值与可行解变化，只读取后端记录。"""
 
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
@@ -21,7 +20,6 @@ EMPTY_MESSAGE = "尚无优化历程。执行鲁棒优化后，这里按代显示
 
 
 class OptimizationHistory(QWidget):
-    """Per-generation convergence record; never recomputes the optimization."""
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -58,7 +56,6 @@ class OptimizationHistory(QWidget):
         column.addWidget(self.table)
         self.clear()
 
-    # ------------------------------------------------------------------ data
     def clear(self):
         self.history, self.objectives = [], []
         self.summary.setText("")
@@ -84,7 +81,6 @@ class OptimizationHistory(QWidget):
         self._render_table()
         self._render_figure()
 
-    # ------------------------------------------------------------------ view
     def _empty_figure(self):
         self.figure.clear()
         axes = self.figure.add_subplot(111)

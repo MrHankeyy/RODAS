@@ -1,4 +1,3 @@
-"""Saved-data checks and descriptive statistics in one analysis page."""
 
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import (

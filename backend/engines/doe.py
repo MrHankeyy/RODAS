@@ -1,4 +1,3 @@
-"""供业务服务与界面调用的算法接口。"""
 
 from backend.core.doe import (
     _gf_oa_columns,

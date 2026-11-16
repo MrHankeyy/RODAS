@@ -1,4 +1,3 @@
-"""田口设计的损失、信噪比与因子效应分析。"""
 
 import math
 import statistics
@@ -46,7 +45,6 @@ def _taguchi_ids(matrix, meta):
     n_inner, n_outer = meta["inner_runs"], meta["outer_runs"]
     repeats = meta.get("replicates", 1)
     groups = meta.get("groups", [])
-    # Prefer persistent row identifiers so sorting / CSV round trips do not change groups.
     if all("内表组号" in row and "外表组号" in row for row in matrix):
         if any(
             not finite(row[key]).is_integer() for row in matrix for key in ("内表组号", "外表组号")
@@ -240,7 +238,6 @@ def taguchi(project):
 
 
 def taguchi_observations(project, response, inner):
-    """Read actual observations for one inner run; never synthesize confirmation data."""
     meta = project.design_params.get("meta") or project.taguchi_result
     noise = list(meta.get("noise_levels", {}))
     selected = [

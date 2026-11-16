@@ -1,4 +1,3 @@
-"""Matplotlib rendering helpers for the optimization page."""
 
 
 def pareto(figure, canvas, robust):

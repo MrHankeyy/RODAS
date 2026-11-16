@@ -1,4 +1,3 @@
-"""模型数值状态、批量预测与任务恢复。"""
 
 from dataclasses import dataclass
 

@@ -1,4 +1,3 @@
-"""拉丁超立方、低差异序列与规则网格采样。"""
 
 from __future__ import annotations
 
@@ -16,7 +15,6 @@ def _latin_hypercube(n_points, dimensions, rng):
 
 
 def _maximin_lhs(n_points, dimensions, rng, candidates=12):
-    """用小规模候选搜索提高 LHS 的空间分散性，避免依赖 scipy。"""
     best = None
     best_score = -1.0
     for _ in range(candidates):
@@ -36,7 +34,6 @@ def _maximin_lhs(n_points, dimensions, rng, candidates=12):
 
 
 def _sobol(n_points, dimensions):
-    """Generate real Sobol points only; report errors without substituting a sequence."""
     stage = "依赖加载"
     try:
         from scipy.stats import qmc
@@ -48,7 +45,6 @@ def _sobol(n_points, dimensions):
 
 
 def build_samples(factors, n_points: int, method: str, seed: int):
-    """代理模型试验样本（LHS、最优 LHS、Sobol、网格、稀疏网格或随机）。"""
     rng = random.Random(seed)
     k = len(factors)
     rows = []
@@ -81,7 +77,6 @@ def build_samples(factors, n_points: int, method: str, seed: int):
                 {name: lo + point[i] * (hi - lo) for i, (name, lo, hi, _) in enumerate(factors)}
             )
     elif method == "稀疏配点法":
-        # 每次只激活少量维度，覆盖中心、轴向及低阶组合点。
         center = [0.5] * k
         unit_points = [center]
         for i in range(k):
@@ -102,7 +97,7 @@ def build_samples(factors, n_points: int, method: str, seed: int):
             rows.append(
                 {name: lo + point[i] * (hi - lo) for i, (name, lo, hi, _) in enumerate(factors)}
             )
-    else:  # 随机抽样
+    else:
         for _ in range(n_points):
             rows.append({name: lo + rng.random() * (hi - lo) for name, lo, hi, _ in factors})
     rng.shuffle(rows)

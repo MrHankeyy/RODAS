@@ -1,4 +1,3 @@
-"""Shared response semantics for editors, results and reports."""
 
 
 def limit_name(kind):

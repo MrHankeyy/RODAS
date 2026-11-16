@@ -1,8 +1,6 @@
-"""Central user-facing terminology and tooltip formatting."""
 
 from PyQt6.QtCore import Qt
 
-# key: (Chinese display name, English full name, optional abbreviation)
 TERMS = {
     "task_robust": (
         "基于代理模型的鲁棒优化设计",
@@ -84,7 +82,6 @@ TERMS = {
 }
 
 
-# Chinese display name: (English name, abbreviation or symbol, short explanation)
 STATISTICS = {
     "模型类型": ("Model Type", "", "当前已训练模型的类型"),
     "训练样本数": ("Training Sample Size", "", "参与当前模型训练的数据条数"),
@@ -256,7 +253,6 @@ def tooltip(key):
 
 
 def apply(widget, key):
-    """Set a widget's visible Chinese name and bilingual term tooltip."""
     widget.setText(name(key))
     widget.setToolTip(tooltip(key))
     widget.setAccessibleDescription(tooltip(key))
@@ -264,7 +260,6 @@ def apply(widget, key):
 
 
 def add_combo_item(combo, key, data=None):
-    """Add a Chinese-only combo item while retaining an independent internal value."""
     combo.addItem(name(key), data)
     index = combo.count() - 1
     combo.setItemData(index, tooltip(key), Qt.ItemDataRole.ToolTipRole)
@@ -297,7 +292,6 @@ HEADER_TERMS = {
 
 
 def apply_header_tooltips(table):
-    """Attach the approved bilingual expansion to known Chinese table headers."""
     for column in range(table.columnCount()):
         item = table.horizontalHeaderItem(column)
         key = HEADER_TERMS.get(item.text()) if item else None

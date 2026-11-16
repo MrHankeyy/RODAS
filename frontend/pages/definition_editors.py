@@ -1,4 +1,3 @@
-"""Shared compact tables and conditional fields for business definitions."""
 
 import math
 
@@ -66,7 +65,6 @@ def number(control, label):
 
 
 def ratio_number(control, label):
-    """参数值：普通数字按原单位，带 % 的按比例返回 (数值, 原文)。"""
     text = control.text().strip()
     if text.endswith("%"):
         try:
@@ -311,7 +309,6 @@ class FactorEditor(QWidget):
             variance = sigma * sigma
             if not math.isfinite(variance):
                 raise ValueError(f"{name}：均匀分布{parameter}范围过大，无法换算有限方差。")
-            # Task files and propagation retain their existing mean/variance convention.
             current = (self.uniform_lower.text().strip(), self.uniform_upper.text().strip())
             param1, param2 = (
                 self.uniform_original[2:]
@@ -325,7 +322,6 @@ class FactorEditor(QWidget):
                 raise ValueError(f"{name}：{parameter}标准差不能为负数。")
             param1 = self.mean.text().strip()
             if text.endswith("%"):
-                # 百分数标准差按当前均值换算，保留原文以便复现。
                 param2 = text
             else:
                 variance = p2 * p2

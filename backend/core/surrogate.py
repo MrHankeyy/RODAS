@@ -1,4 +1,3 @@
-"""克里金、支持向量回归与神经网络模型训练。"""
 
 from __future__ import annotations
 
@@ -48,7 +47,6 @@ def train_kriging(Xtr, ytr, Xte, correlation="Gaussian", trend="常数"):
         r_inv_f = np.linalg.solve(R, Ftr)
         beta = np.linalg.solve(Ftr.T @ r_inv_f, Ftr.T @ r_inv_y)
         res = ytr - Ftr @ beta
-        # 集中似然同时估计过程方差，避免响应量纲左右相关长度选择。
         variance = max(float(res @ np.linalg.solve(R, res)) / n, 1e-30)
         log_like = -np.sum(np.log(np.diag(L))) - 0.5 * n * math.log(variance)
         if best is None or log_like > best[0]:
@@ -88,7 +86,6 @@ def train_svr(
     g_max=10.0,
     g_step=1.0,
 ):
-    """Train real SVR only; report dependency, fitting and prediction errors."""
     Xtr = np.asarray(Xtr, float)
     Xte = np.asarray(Xte, float)
     ytr = np.asarray(ytr, float)
@@ -174,7 +171,6 @@ def train_ann(
     epochs=300,
     node_search=None,
 ):
-    """训练指定层数的 MLP；节点寻优仅使用训练集内部的验证样本。"""
     stage = "依赖加载"
     try:
         from sklearn.neural_network import MLPRegressor
@@ -269,12 +265,10 @@ def train_ann(
 def train_surrogate(
     x_rows, response_values, test_ratio=0.2, seed=2026, model="Kriging", model_params=None
 ):
-    """训练单个响应的代理模型，返回评估指标（训练/测试误差、耗时等）。"""
     model_params = model_params or {}
-    # 参数可直接提供，也可按模型名称分组。
     model_key = {"Kriging": "kriging", "SVR": "svr"}.get(model, "ann")
     params = dict(model_params.get(model_key, model_params))
-    params.pop("net_mode", None)  # 对话框选项，不是训练器参数。
+    params.pop("net_mode", None)
     if model not in ("Kriging", "SVR", "ANN"):
         return {"error": f"不支持的代理模型：{model}"}
     try:

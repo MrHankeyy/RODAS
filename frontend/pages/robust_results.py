@@ -1,4 +1,3 @@
-"""鲁棒优化方案总览与详情页联动。"""
 
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QColor

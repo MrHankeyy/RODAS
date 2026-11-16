@@ -1,4 +1,3 @@
-"""Application-scoped, non-modal operation feedback."""
 
 from PyQt6.QtCore import QObject, pyqtSignal
 

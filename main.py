@@ -1,8 +1,3 @@
-"""RODAS application entry point.
-
-The heavy UI import is deliberately deferred into main() so the bootloader
-splash screen can report progress while matplotlib / numpy / pandas load.
-"""
 import sys
 
 from PyQt6.QtCore import QLibraryInfo, QTranslator
@@ -11,7 +6,6 @@ from PyQt6.QtWidgets import QApplication
 from backend.domain.application import APPLICATION_NAME, APPLICATION_VERSION
 
 def _splash_status(message):
-    """Update the bootloader splash text; a no-op when running from source."""
     try:
         import pyi_splash
         if pyi_splash.is_alive():
@@ -21,7 +15,6 @@ def _splash_status(message):
 
 
 def _splash_close():
-    """Dismiss the splash once the real window is on screen."""
     try:
         import pyi_splash
         if pyi_splash.is_alive():
@@ -31,7 +24,6 @@ def _splash_close():
 
 
 def install_chinese_qt_text(app):
-    """让 Qt 自带的确定/取消、另存等标准按钮显示中文。"""
     translator = QTranslator(app)
     if translator.load(
         "qtbase_zh_CN", QLibraryInfo.path(QLibraryInfo.LibraryPath.TranslationsPath)
@@ -54,7 +46,6 @@ def main():
     window = MainWindow()
     window.showMaximized()
 
-    # Let Qt paint the main window before the always-on-top splash goes away.
     app.processEvents()
     _splash_close()
     sys.exit(app.exec())

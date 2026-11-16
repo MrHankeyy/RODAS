@@ -1,4 +1,3 @@
-"""当前设计结果的报告组织与 HTML 渲染。"""
 
 import base64
 import hashlib
@@ -201,7 +200,6 @@ def text(value):
 
 
 def build_current_report(data):
-    """使用当前结果生成报告，不重新训练或保留操作履历。"""
     source = data["input"]
     metadata = data.get("metadata", {})
     res = data.get("results", {})
@@ -645,7 +643,6 @@ def render_html(report, section_ids=None):
                     chunks.append("<p>无可用记录。</p>")
                     continue
                 keys = list(dict.fromkeys(k for row in rows for k in row))
-                # Long statistical tables are split vertically into field groups, keeping the first identifier.
                 groups = (
                     [keys]
                     if len(keys) <= 8

@@ -1,4 +1,3 @@
-"""模型优化与田口试验的方案配置。"""
 
 from copy import deepcopy
 
@@ -32,7 +31,6 @@ from frontend.theme import ResultsWorkspace, ResultTabs
 
 
 class ModelStack(QStackedWidget):
-    """Only the active editor determines the height of the model configuration."""
 
     def __init__(self):
         super().__init__()

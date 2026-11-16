@@ -1,4 +1,3 @@
-"""Reusable table widgets shared by workflow pages."""
 
 from PyQt6 import QtGui
 from PyQt6.QtCore import QEvent, QObject, Qt, QTimer
@@ -6,7 +5,6 @@ from PyQt6.QtWidgets import QApplication, QHeaderView, QTableWidget, QTableWidge
 
 
 class BalancedColumnsTable(QTableWidget):
-    """Share spare viewport width while preserving each column's usable minimum."""
 
     def __init__(self, minimum_widths, fixed_columns=()):
         super().__init__(0, len(minimum_widths))
@@ -43,7 +41,6 @@ class BalancedColumnsTable(QTableWidget):
 
 
 class ContentColumnBalancer(QObject):
-    """Preserve measured content widths and share spare space across columns."""
 
     def __init__(self, table):
         super().__init__(table)
@@ -77,7 +74,6 @@ class ContentColumnBalancer(QObject):
 
 
 class ExcelLikeTableWidget(QTableWidget):
-    """支持从 Excel/CSV 范围复制、粘贴以及批量删除的增强表格。"""
 
     def keyPressEvent(self, event):
         if event.matches(QtGui.QKeySequence.StandardKey.Copy):
@@ -133,7 +129,6 @@ class ExcelLikeTableWidget(QTableWidget):
 
 
 def fill_records(table, rows, *, statistic_columns=(), missing_reasons=None):
-    """Fill a read-only result table with mathematical display support."""
     from frontend.math_widgets import decorate_item, install_delegate
     from frontend.terminology import apply_header_tooltips, statistic_name, statistic_tooltip
 

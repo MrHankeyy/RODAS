@@ -1,4 +1,3 @@
-"""Native, application-wide task menus and the task-file lifecycle."""
 
 from pathlib import Path
 
@@ -12,7 +11,6 @@ from frontend.notifications import Notice
 
 
 def ask_save_choice(parent, title, text):
-    """保存提示的三个按钮固定用中文，不依赖 Qt 语言包是否安装。"""
     box = QMessageBox(parent)
     box.setWindowTitle(title)
     box.setIcon(QMessageBox.Icon.Question)

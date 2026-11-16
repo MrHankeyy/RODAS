@@ -1,4 +1,3 @@
-"""项目输入提交、结果发布与失效管理。"""
 
 import json
 import math
@@ -29,7 +28,6 @@ def _run_id_key(row):
 
 
 def with_run_ids(rows):
-    """首行即表头；缺试验序号列或单元格为空时按行序编号，不强制文件携带该列。"""
     if not rows:
         return rows
     numbered = []
@@ -42,7 +40,6 @@ def with_run_ids(rows):
 
 
 def set_operation_sink(callback):
-    """UI installs its notification adapter; headless calls remain Qt-free."""
     global _operation_sink
     _operation_sink = callback
 
@@ -76,13 +73,11 @@ class ProjectService:
         return project._project_service
 
     def input_snapshot(self):
-        """Copy inputs only; no predictors, UI objects or live service references."""
         from backend.domain.models import ProjectData
 
         return ProjectData(**{key: deepcopy(getattr(self._project, key)) for key in INPUT_FIELDS})
 
     def input_signature(self):
-        """Return the current serialized input identity for async result checks."""
         return _input_signature(self._project)
 
     def ensure_current(self):
@@ -99,7 +94,6 @@ class ProjectService:
         self.model_cache.clear()
 
     def _commit_inputs(self, **values):
-        # Build copies before changing anything, so invalid input cannot partly commit.
         prepared = {key: deepcopy(value) for key, value in values.items()}
         for key, value in prepared.items():
             setattr(self._project, key, value)

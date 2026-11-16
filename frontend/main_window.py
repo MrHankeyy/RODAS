@@ -151,7 +151,6 @@ class MainWindow(QMainWindow):
             scroll.setWidgetResizable(True)
             scroll.setWidget(page)
             self.stacked_widget.addWidget(scroll)
-        # 开始页放在功能页之后，功能导航使用固定的 0～4 索引。
         self.welcome_page = WelcomePage()
         self.welcome_page.directory_requested.connect(self.choose_working_directory)
         self.welcome_index = self.stacked_widget.addWidget(self.welcome_page)

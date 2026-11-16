@@ -1,4 +1,3 @@
-"""模型诊断、统计分析与结果快照。"""
 
 import hashlib
 from dataclasses import asdict
@@ -71,7 +70,6 @@ def evaluate_point(context, values, k_design=DEFAULT_K_DESIGN, k_constraint=DEFA
 
 
 def optimization_schemes(context, result):
-    """Inspect actual optimized designs without fitting or generating new candidates."""
     best = result.get("best")
     if not best:
         return [], -1
@@ -97,5 +95,4 @@ def optimization_schemes(context, result):
 
 
 def scheme_variance(context, result, point):
-    """Local variance decomposition at the viewed design, using the run's settings."""
     return optimizer.tolerance_contribution(context, result["k_design"], point)[1]

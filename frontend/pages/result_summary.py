@@ -1,4 +1,3 @@
-"""方案与分析结果的摘要组织。"""
 
 import math
 
@@ -90,7 +89,6 @@ def _taguchi_results(project, labels):
 
 
 def overview(project):
-    """Return method-independent information, readiness and result sections."""
     method = project.design_method or ""
     responses = [r for r in project.responses if r.name]
     labels = {r.name: named(r) for r in responses}

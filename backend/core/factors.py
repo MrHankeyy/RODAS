@@ -1,4 +1,3 @@
-"""因子范围、中心值与不确定性参数换算。"""
 
 from __future__ import annotations
 
@@ -13,7 +12,6 @@ def _num(value, default=0.0):
 
 
 def ratio_value(value):
-    """'5%' / '-5%' 返回 0.05 / -0.05；非百分数返回 None。"""
     text = str(value or "").strip()
     if not text.endswith("%"):
         return None
@@ -24,7 +22,6 @@ def ratio_value(value):
 
 
 def delta_value(factor, value, base):
-    """偏差参数换算成数值：百分数按基准值（当前设计值或均值）换算。"""
     ratio = ratio_value(value)
     if ratio is None:
         return _num(value)
@@ -32,7 +29,6 @@ def delta_value(factor, value, base):
 
 
 def factor_limits(factor):
-    """返回 (下限, 上限)，保证 low<=high。"""
     if factor.nominal_lower != "" and factor.nominal_upper != "":
         return float(factor.nominal_lower), float(factor.nominal_upper)
     lo = _num(getattr(factor, "param1", None))
@@ -53,7 +49,6 @@ def factor_limits(factor):
 
 
 def factor_center(factor, point=None, include_deviation=True):
-    """Keep nominal search values distinct from the center of additive deviations."""
     if factor.source == "环境" and not factor.nominal_lower:
         return (
             _num(factor.param1)
@@ -75,12 +70,10 @@ def factor_center(factor, point=None, include_deviation=True):
 
 
 def model_factors(project):
-    """Both design variables and actual environmental inputs join the model."""
     return [f for f in project.factors if f.name and not f.is_fixed]
 
 
 def simple_factors(factors, exclude_fixed=True):
-    """转成 [(名称, 下限, 上限, 固定值|None), ...] 便于构造器统一处理。"""
     out = []
     for f in factors:
         if not (getattr(f, "name", "") or "").strip():
@@ -94,7 +87,6 @@ def simple_factors(factors, exclude_fixed=True):
 
 
 def to_actual(code, low, high):
-    """把编码值 -1/0/+1/α 映射到实际取值（0=中值）。"""
     return round((low + high) / 2.0 + code * (high - low) / 2.0, 8)
 
 

@@ -1,4 +1,3 @@
-"""供业务服务与界面调用的算法接口。"""
 
 from backend.core import factors as de
 from backend.core.design_evaluation import (

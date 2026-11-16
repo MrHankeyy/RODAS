@@ -1,4 +1,3 @@
-"""遗传优化、帕累托排序与收敛判断。"""
 
 from __future__ import annotations
 
@@ -111,7 +110,6 @@ def _polynomial_mutation(x, eta, pm, lo, hi, rng):
 
 
 def _generation_record(generation, population, assess, evaluated_count):
-    """Summarise one generation: per-objective best/mean over feasible members."""
     values = [assess(v) for v in population]
     feasible = [obj for obj, info in values if info.get("r", {}).get("infeas", 0) <= 1e-8]
     usable = feasible or [obj for obj, _info in values]
@@ -135,7 +133,6 @@ def _generation_record(generation, population, assess, evaluated_count):
 
 
 def _reference_point(usable):
-    """固定参考点：首代目标值域外扩一成，用于逐代超体积比较。"""
     columns = list(zip(*usable))
     return tuple(
         max(column) + max(0.1 * (max(column) - min(column)), 0.05) for column in columns[:2]
@@ -143,7 +140,6 @@ def _reference_point(usable):
 
 
 def _hypervolume(front, reference):
-    """二维最小化超体积：前沿点相对参考点支配的面积。"""
     points = sorted(
         (float(f1), float(f2)) for f1, f2 in front if f1 < reference[0] and f2 < reference[1]
     )
@@ -156,7 +152,6 @@ def _hypervolume(front, reference):
 
 
 def _stall_rule(mode, window, tolerance):
-    """连续 window 代改进不足 tolerance 时返回 True；多目标看超体积。"""
 
     def reached(history):
         if len(history) <= window:
@@ -193,7 +188,6 @@ def nsga2(
     should_stop=None,
     track_hypervolume=False,
 ):
-    """Elitist NSGA-II with feasibility-first survival and tournament selection."""
     if pop < 2 or gen < 1:
         raise ValueError("种群至少为 2，迭代代数至少为 1。")
     if len(lo) == 0 or len(lo) != len(hi):
@@ -275,7 +269,6 @@ def nsga2(
 
 
 def _pareto(sorted_pairs):
-    """从 [(vec, objs, info)] 中筛出非支配解并排序。"""
     filtered = []
     seen = set()
     for item in sorted_pairs:
@@ -301,7 +294,6 @@ def _knee_point(front):
     best, score = None, float("inf")
     for item, o1, o2 in zip(front, f1, f2):
         s = (o1 - m1) / span1 + (o2 - m2) / span2
-        # 两个极端点的归一化和均为 1；平分时优先稳定性，不能由前沿排序决定。
         if s < score - 1e-12 or (abs(s - score) <= 1e-12 and (best is None or o2 < best[1][1])):
             score, best = s, item
     return best
@@ -327,7 +319,6 @@ def robust_optimize(
     tolerance=0.001,
     enforce_objective_limits=False,
 ):
-    """执行鲁棒优化，返回结果 dict。"""
     if mode not in ("multi", "weighted", "constraint"):
         raise ValueError("未知鲁棒优化策略")
     if auto_stop:
@@ -371,7 +362,6 @@ def robust_optimize(
     dnames = [f.name for f in dinputs]
     lo = [de.factor_limits(f)[0] for f in dinputs]
     hi = [de.factor_limits(f)[1] for f in dinputs]
-    # 响应角色来自业务建模，不能因选择 NSGA-II / 加权模式而把约束变成目标。
     use_cons = any(response_uses_limits(context, resp) for resp in project_responses(context))
 
     def evaluate(vec):
@@ -382,8 +372,6 @@ def robust_optimize(
         if mode == "weighted":
             obj = [weight * r["obj"][0] + (1.0 - weight) * r["obj"][1]]
         elif mode == "constraint":
-            # Keep improving the mean even beyond the sampled response range;
-            # clipped desirability would create false equal-optimum plateaus.
             means = {item["name"]: item["mu"] for item in r["objectives"]}
             losses = []
             for response in project_responses(context):
@@ -425,11 +413,9 @@ def robust_optimize(
         obj, info = evaluate(vec)
         pairs.append((vec, obj, info))
     feasible = [t for t in pairs if t[2]["r"]["infeas"] <= 1e-8]
-    # 最终推荐与前沿优先使用可行解，不能让低目标值抵消约束违反。
     candidates = feasible or pairs
     front_full = _pareto(feasible)
 
-    # 选择推荐最优解
     if mode == "weighted":
         best = min(candidates, key=lambda t: t[1][0])
     elif mode == "constraint":
@@ -542,7 +528,6 @@ def robust_optimize(
 
 
 def _history_labels(mode):
-    """目标名称按策略排列，供优化历程图表与报告使用。"""
     return {
         "multi": ["望性损失", "归一化标准差"],
         "weighted": ["加权目标和"],

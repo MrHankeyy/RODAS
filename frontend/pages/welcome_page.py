@@ -1,4 +1,3 @@
-"""开始页导航、品牌信息与响应面绘制。"""
 
 from math import exp
 from pathlib import Path
@@ -74,7 +73,6 @@ def brand_icon():
 
 
 class ResponseSurface(QWidget):
-    """Decorative geometry, never presented as an actual optimization result."""
 
     def __init__(self):
         super().__init__()
@@ -114,7 +112,6 @@ class ResponseSurface(QWidget):
         scale = min(self.width() / 600, self.height() / 410)
         painter.translate((self.width() - 600 * scale) / 2, (self.height() - 410 * scale) / 2)
         painter.scale(scale, scale)
-        # A sparse drafting grid gives the scene scale without competing with controls.
         painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(QColor("#cbdfea"))
         for x in range(36, 580, 24):
@@ -130,7 +127,6 @@ class ResponseSurface(QWidget):
         painter.setBrush(Qt.BrushStyle.NoBrush)
         painter.drawEllipse(QRectF(76, 159, 447, 179))
         painter.drawEllipse(QRectF(55, 146, 489, 205))
-        # Filled strips under the wireframe provide a quiet sense of volume.
         for j in range(22):
             y0, y1 = -1 + j / 11, -1 + (j + 1) / 11
             polygon = QPolygonF(
@@ -242,7 +238,6 @@ class NewTaskCard(QStackedWidget):
 
 
 class WelcomeIdentity(QWidget):
-    """随名称区域的可用空间调整标识、标题与说明的比例。"""
 
     def __init__(self):
         super().__init__()
@@ -452,7 +447,6 @@ class WelcomePage(QWidget):
         )
         self.content.setFixedWidth(max(0, self.width() - horizontal_margin * 2))
         self.content_layout.setSpacing(spacing)
-        # Reserve the action row and captions before allocating the hero's height.
         available = self.height() - vertical_margin * 2 - card_height - spacing * 3 - 50
         self.hero.setFixedHeight(max(292, min(round(self.height() * 0.62), available)))
         self.hero_layout.setContentsMargins(

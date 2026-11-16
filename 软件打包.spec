@@ -1,4 +1,3 @@
-# Shared directory bundle configuration, including splash and DLL isolation.
 from pathlib import Path
 
 SPECPATH = str(Path(SPECPATH) / "packaging")

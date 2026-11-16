@@ -1,4 +1,3 @@
-"""生成源代码提交包，不包含本地测试、缓存和开发记录。"""
 
 import hashlib
 import json

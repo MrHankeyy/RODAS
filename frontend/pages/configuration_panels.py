@@ -1,4 +1,3 @@
-"""Option panel builders for the design configuration page."""
 
 from PyQt6.QtWidgets import (
     QComboBox,

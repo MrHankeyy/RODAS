@@ -1,4 +1,3 @@
-"""优化计算、统计分析与结果恢复的界面流程。"""
 
 import logging
 
@@ -211,7 +210,6 @@ class OptimizationController:
         )
 
     def restore_results(self):
-        """Repopulate saved views using restored predictors; never fit a model."""
         page = self.page
         project = page.project_data
         snapshot = project.workbench_result

@@ -1,4 +1,3 @@
-"""任务文件读写及模型数值状态校验。"""
 
 import json
 import math
@@ -123,7 +122,6 @@ def load_task(path):
             ):
                 raise ValueError("任务文件结构异常或过大。")
             manifest = json.loads(archive.read("task.json"))
-            # 旧格式标识仅用于读取已有任务。
             if manifest.get("format") not in ("设计任务", "RODAS") or manifest.get(
                 "version"
             ) not in (1, 2):
@@ -177,7 +175,6 @@ def load_task(path):
         ):
             raise ValueError("任务输入版本校验失败。")
         service.model_cache = data["models"]
-        # Validate model dimensions in raw input order, without training anything.
         count = len(model_factors(project))
         for result in project.surrogate_result.get("responses", {}).values():
             predictor = result.get("predict_fn")

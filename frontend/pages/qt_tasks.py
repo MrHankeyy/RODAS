@@ -1,4 +1,3 @@
-"""后台优化线程及进度、结果信号。"""
 
 from PyQt6.QtCore import QThread, pyqtSignal
 

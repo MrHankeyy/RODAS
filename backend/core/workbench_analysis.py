@@ -1,4 +1,3 @@
-"""工作台统计量与模型诊断数据。"""
 
 import math
 
@@ -51,7 +50,6 @@ def descriptive(project):
 
 
 def descriptive_missing_reasons(rows):
-    """Explain missing descriptive values without altering their computation."""
     result = []
     columns = set().union(*(row.keys() for row in rows)) if rows else set()
     for row in rows:

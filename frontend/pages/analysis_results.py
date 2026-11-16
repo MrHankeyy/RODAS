@@ -1,4 +1,3 @@
-"""Response-specific analysis views using the shared read-only result components."""
 
 import math
 
@@ -29,7 +28,6 @@ from frontend.terminology import statistic_name, tooltip
 
 
 class DiagnosticCanvas(FigureCanvas):
-    """Use a native delayed tooltip for the subplot under the pointer."""
 
     def __init__(self, figure):
         super().__init__(figure)
@@ -49,7 +47,6 @@ class DiagnosticCanvas(FigureCanvas):
 
 
 class AnalysisResults(QWidget):
-    """Shared response selector and sections; rendering never fits a model."""
 
     TITLES = {"significance": "统计检验", "validation": "验证与残差", "model": "模型与系数"}
 

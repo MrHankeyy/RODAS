@@ -1,4 +1,3 @@
-"""试验方案生成、校验与提交。"""
 
 import math
 import random
@@ -97,7 +96,6 @@ MODEL_DESIGNS = {
 
 
 def model_plan(project, method, config, preview=False):
-    """Generate the original DOE choices supported by the selected model."""
     config = deepcopy(config)
     _require_design_factors(_design_factors(project))
     factors = [

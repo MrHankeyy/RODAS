@@ -1,4 +1,3 @@
-"""Qt adapters for the shared offline math renderer."""
 
 from PyQt6.QtCore import QSize, Qt
 from PyQt6.QtGui import QTextDocument
@@ -54,7 +53,6 @@ def install_delegate(widget):
 
 
 class MathDelegate(QStyledItemDelegate):
-    """Render formulas while preserving the item's plain data for copy/export."""
 
     def document(self, option, index):
         document = QTextDocument()

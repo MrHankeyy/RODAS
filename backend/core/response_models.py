@@ -1,4 +1,3 @@
-"""二次响应模型拟合、预测与导数计算。"""
 
 from __future__ import annotations
 
@@ -10,7 +9,6 @@ from . import factors as de
 
 
 def _design_matrix(X):
-    """二次模型设计阵：1 + 线性 + 平方 + 两两交互。"""
     n, k = X.shape
     cols = [np.ones(n)]
     labels = ["常数项"]
@@ -27,7 +25,6 @@ def _design_matrix(X):
 
 
 def _design_terms(k):
-    """返回二次模型项与名称。"""
     terms = [("const", None, None)]
     names = ["常数"]
     for i in range(k):
@@ -57,7 +54,6 @@ def _design_row(z, terms):
 
 
 def _quad_hess_diag(terms, coef, z):
-    """二次模型对角二阶导（对 z）。"""
     out = np.zeros(len(z))
     for (kind, i, _j), c in zip(terms, coef):
         if kind == "quad":
@@ -66,7 +62,6 @@ def _quad_hess_diag(terms, coef, z):
 
 
 def _quad_grad(terms, coef, z):
-    """二次模型梯度（对 z）。"""
     g = np.zeros(len(z))
     for (kind, i, j), c in zip(terms, coef):
         if kind == "linear":
@@ -80,7 +75,6 @@ def _quad_grad(terms, coef, z):
 
 
 def _fit_model(X, y, full_quadratic=False):
-    """拟合 X(输入，原始值) -> y，转为编码 z∈[-1,1] 的二次模型。返回模型 dict。"""
     X = np.asarray(X, float)
     y = np.asarray(y, float)
     n, k = X.shape
@@ -90,7 +84,6 @@ def _fit_model(X, y, full_quadratic=False):
     span[span == 0] = 1.0
     center = (lo + hi) / 2.0
     Z = (X - center) / span
-    # 两水平数据（±1）中 x² 与常数共线，仅当因子有≥3个不同值才保留平方项
     distinct = [np.unique(X[:, j]).size for j in range(k)]
     terms = [("const", None, None)]
     names = ["常数"]
@@ -107,7 +100,6 @@ def _fit_model(X, y, full_quadratic=False):
     A = np.column_stack([_design_row(z, terms) for z in Z]).T
     nterms = len(terms)
     if n < nterms and not full_quadratic:
-        # 点数不足时降为线性模型
         keep = [i for i, (kind, *_r) in enumerate(terms) if kind in ("const", "linear")]
         terms = [terms[i] for i in keep]
         names = [names[i] for i in keep]
@@ -160,7 +152,6 @@ def model_predict(model, x_raw):
 
 
 def model_grad_x(model, x_raw):
-    """梯度 wrt 原始单位 x。"""
     if "grad_fn" in model:
         return np.asarray(model["grad_fn"](np.asarray(x_raw, float)), float)
     if "predict_fn" in model:
@@ -196,7 +187,6 @@ def model_hess_diag_x(model, x_raw):
         return hess
     z = (np.asarray(x_raw, float) - model["center"]) / model["half"]
     hz = _quad_hess_diag(model["terms"], model["coef"], z)
-    # 对 z 的二阶导转换：∂²f/∂x² = (1/h²)·∂²f/∂z²
     return hz / (model["half"] ** 2)
 
 
@@ -217,7 +207,6 @@ def model_equation(model):
 
 
 def build_models(project):
-    """训练每个响应的二次模型（输入为所有非固定因子）。返回 (context, errors)。"""
     matrix = project.doe_matrix or []
     if not matrix:
         return None, ["尚无试验设计数据，请先在【方案配置】生成方案。"]
@@ -230,7 +219,6 @@ def build_models(project):
     names = [f.name for f in inputs]
     if not names:
         return None, ["没有可建模的输入因子。"]
-    # 只使用试验数据表中实际存在的输入列
     keys = set(matrix[0].keys())
     if is_rsm and any(n not in keys for n in names):
         return None, ["试验数据表缺少模型输入列，不能删去输入后继续拟合。"]

@@ -1,11 +1,3 @@
-"""优化设计页面：把方案配置生成的设计在填入响应数据后做后端分析并展示。
-
-支持的结果视图：
-- 方案设计摘要与设计诊断；
-- 响应面（二次模型拟合、拟合优度、优选设置）；
-- 田口设计（均值响应表、信噪比表、稳健最优水平组合）；
-- 代理模型训练（Kriging / SVR / BPANN 的误差与耗时）。
-"""
 
 from __future__ import annotations
 
@@ -45,7 +37,6 @@ class OptimizationPage(QWidget):
         self.controller = OptimizationController(self)
         self.init_ui()
 
-    # ------------------------------------------------------------------ UI
     def init_ui(self):
         return optimization_panels.build(self)
 
@@ -59,7 +50,6 @@ class OptimizationPage(QWidget):
             self.status_label.setText("优化参数已改变；已有优化结果属于先前设置，请重新执行。")
 
     def _update_method_actions(self):
-        """按方案类型切换主动作，避免把田口误导成鲁棒优化。"""
         if hasattr(self, "strategy_group"):
             self._update_uncertainty_tooltip()
             self._update_mutation_probability()
@@ -92,7 +82,6 @@ class OptimizationPage(QWidget):
         )
 
     def _run_primary_action(self):
-        """顶部主按钮：田口走专用分析，其余方案走鲁棒优化。"""
         method = self._method()
         if "田口" in method:
             self.run_optimization()
@@ -191,7 +180,6 @@ class OptimizationPage(QWidget):
             self.mutation_spin.setValue(1.0 / max(count, 1))
 
     def _on_auto_stop(self, enabled):
-        """收敛判据只在勾选时生效；未勾选则按固定代数跑满。"""
         for control in (self.stall_gen_spin, self.tolerance_spin):
             control.setEnabled(bool(enabled))
 
@@ -235,12 +223,10 @@ class OptimizationPage(QWidget):
     def _method(self):
         return self.project_data.design_method or ""
 
-    # ------------------------------------------------------------- 视图调度
     def _refresh_view(self):
         self._update_method_actions()
         self.overview.set_project(self.project_data)
 
-    # ------------------------------------------------------------- 后端执行
     def run_optimization(self):
         return self.controller.run_optimization()
 
@@ -258,7 +244,6 @@ class OptimizationPage(QWidget):
         self._on_robust_mode(self.robust_mode_combo.currentText())
         self.taguchi_panel.set_result(self.project_data.taguchi_result)
 
-    # ------------------------------------------------------------- 响应面
     def _run_rsm(self):
         context = model_service.build_rsm_context(self.project_data)
         self._oe_context = context
@@ -273,7 +258,6 @@ class OptimizationPage(QWidget):
         self.project_service.publish_results(rsm_result=result)
         return result
 
-    # ------------------------------------------------------------- 田口分析
     def _run_taguchi(self):
         service = self.project_service
         result = da.taguchi(self.project_data)
@@ -285,7 +269,6 @@ class OptimizationPage(QWidget):
             {"results": {"taguchi": result}},
         )
 
-    # ------------------------------------------------------------- 代理模型
     def _surrogate_signature(self):
         return model_service.surrogate_signature(self.project_data)
 
@@ -324,10 +307,8 @@ class OptimizationPage(QWidget):
         return result
 
     def _build_surrogate_context(self):
-        """把已训练的代理预测器接入鲁棒优化上下文。"""
         return model_service.build_surrogate_context(self.project_data)
 
-    # ============================================================ 工作台
     def _analysis_settings(self):
         return {
             "enforce_objective_limits": self.objective_limits_check.isChecked(),

@@ -16,32 +16,31 @@ def factor_title(source, task_type="robust"):
 @dataclass
 class ResponseItem:
     name: str = ""
-    kind: str = "目标"  # 目标 / 约束 / 目标+约束
-    feature: str = "望小"  # 望大 / 望小 / 望目
-    lower: str = ""  # 望目时: 目标性能区间或约束区间下界
-    upper: str = ""  # 望目时: 目标性能区间或约束区间上界
-    robust_limit: str = ""  # 目标鲁棒性阈值/约束阈值：望大为下限，望小为上限；不是标准差上限
+    kind: str = "目标"
+    feature: str = "望小"
+    lower: str = ""
+    upper: str = ""
+    robust_limit: str = ""
     unit: str = ""
-    target: str = ""  # 田口望目响应的目标值，与规格限分开
+    target: str = ""
 
 
 @dataclass
 class FactorItem:
     name: str = ""
-    source: str = "设计"  # 设计 / 环境
-    uncertainty: str = "区间"  # 区间 或 概率
-    distribution: str = "无"  # 正态分布, 均匀分布, 等
-    param1: str = ""  # 设计：偏差下界/均值；环境：实际下界/均值
-    param2: str = ""  # 设计：偏差上界/方差；环境：实际上界/方差
-    fixed_value: str = ""  # 仅兼容已有任务；新编辑器不提供固定值
-    is_fixed: bool = False  # 仅兼容旧任务的模型维度
+    source: str = "设计"
+    uncertainty: str = "区间"
+    distribution: str = "无"
+    param1: str = ""
+    param2: str = ""
+    fixed_value: str = ""
+    is_fixed: bool = False
     unit: str = ""
-    nominal_lower: str = ""  # 设计的独立名义范围；环境留空
-    nominal_upper: str = ""  # 环境旧任务可带名义范围，提交后转为实际取值参数
+    nominal_lower: str = ""
+    nominal_upper: str = ""
 
 
 def factor_definition(factor):
-    """Keep legacy input signatures stable when loading archives without nominal bounds."""
     values = asdict(factor)
     if not factor.nominal_lower and not factor.nominal_upper:
         values.pop("nominal_lower")
@@ -54,19 +53,16 @@ class ProjectData:
     responses: list[ResponseItem] = field(default_factory=list)
     factors: list[FactorItem] = field(default_factory=list)
 
-    # 方案配置与DOE数据
     design_method: str = ""
     design_params: dict = field(default_factory=dict)
-    doe_matrix: list[dict] = field(default_factory=list)  # 存储生成的DOE表格数据与测试结果
+    doe_matrix: list[dict] = field(default_factory=list)
 
-    # 真实分析结果（田口）
     taguchi_result: dict = field(default_factory=dict)
 
-    # 响应面 / 代理模型分析结果
     rsm_result: dict = field(default_factory=dict)
-    surrogate_config: dict = field(default_factory=dict)  # 方案配置中选择的代理模型参数
-    surrogate_result: dict = field(default_factory=dict)  # 后端训练/评估结果
-    workbench_result: dict = field(default_factory=dict)  # 可序列化的工作台分析快照
+    surrogate_config: dict = field(default_factory=dict)
+    surrogate_result: dict = field(default_factory=dict)
+    workbench_result: dict = field(default_factory=dict)
     report_metadata: dict = field(default_factory=dict)
     report_history: list[dict] = field(default_factory=list)
-    task_type: str = ""  # 创建任务时选择的主线；尚未生成试验方案
+    task_type: str = ""

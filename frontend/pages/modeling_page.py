@@ -1,4 +1,3 @@
-"""响应、设计变量与不确定性参数的定义和提交。"""
 
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget

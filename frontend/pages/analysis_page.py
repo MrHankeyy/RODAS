@@ -1,4 +1,3 @@
-"""当前结果报告的预览与导出。"""
 
 from PyQt6.QtWidgets import (
     QFileDialog,

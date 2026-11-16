@@ -64,7 +64,6 @@ class DataManagementPage(QWidget):
         main_layout.setSpacing(10)
         main_layout.setContentsMargins(16, 12, 16, 12)
 
-        # ========= 顶部控制栏 =========
         ctrl_layout = QHBoxLayout()
         self.entry_heading = QLabel("数据录入")
         self.entry_heading.setProperty("role", "heading")
@@ -87,7 +86,6 @@ class DataManagementPage(QWidget):
         ctrl_layout.addWidget(self.import_btn)
         main_layout.addLayout(ctrl_layout)
 
-        # ========= 数据表格区 =========
         table_group = QGroupBox()
         table_layout = QVBoxLayout()
 
@@ -99,7 +97,6 @@ class DataManagementPage(QWidget):
         table_group.setLayout(table_layout)
         main_layout.addWidget(table_group, 1)
 
-        # ========= 底部按钮区 =========
         btn_layout = QHBoxLayout()
 
         self.save_btn = QPushButton("保存响应数据")
@@ -168,7 +165,6 @@ class DataManagementPage(QWidget):
             )
             return
 
-        # Include response columns even when an imported row is missing them.
         columns = list(
             dict.fromkeys(
                 [key for row in matrix for key in row]
@@ -194,8 +190,6 @@ class DataManagementPage(QWidget):
                         Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
                     )
 
-                # 如果是因子列或者是ID，设为只读并标背色；
-                # 如果是响应列，允许编辑以便填入结果
                 if (
                     col_name in factors
                     or col_name == RUN_ID
@@ -217,7 +211,6 @@ class DataManagementPage(QWidget):
         self._refresh_views()
 
     def save_results(self):
-        """Validate and atomically publish response values through ProjectService."""
         if self.table.rowCount() == 0:
             return
         columns = [
@@ -264,7 +257,6 @@ class DataManagementPage(QWidget):
             Notice.critical(self, "错误", f"导出失败: {exc}")
 
     def import_from_csv(self):
-        """导入外部算好的表格 (如流体仿真自动生成的带结果列的文件)"""
         file_path, _ = QFileDialog.getOpenFileName(
             self, "导入试验数据表", dialog_path(self), file_io.TABLE_FILTER
         )

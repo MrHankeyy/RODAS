@@ -1,4 +1,3 @@
-"""Reusable Qt overview: information, readiness and result tables."""
 
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import (
@@ -28,7 +27,6 @@ def label(text="", role=None):
 
 
 class SummaryTable(QTableWidget):
-    """Read-only summary table that grows with its rows inside the page scroll area."""
 
     def __init__(self, headers, rows, parent=None, *, missing_reasons=None, formatter=display):
         super().__init__(len(rows), len(headers), parent)
@@ -56,7 +54,6 @@ class SummaryTable(QTableWidget):
 
 
 class ResultOverview(QScrollArea):
-    """One view shared by Taguchi, RSM and every surrogate model."""
 
     data_requested = pyqtSignal()
 

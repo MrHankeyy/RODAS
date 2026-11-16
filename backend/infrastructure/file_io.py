@@ -1,4 +1,3 @@
-"""试验表格、统计数据与报告文件读写。"""
 
 import csv
 import json
@@ -23,7 +22,6 @@ def table_suffix(path):
 
 
 def _cell_text(value):
-    """Render a spreadsheet cell as the text the table widget displays."""
     if value is None:
         return ""
     if isinstance(value, float) and value.is_integer():
@@ -32,7 +30,6 @@ def _cell_text(value):
 
 
 def _records_from_grid(grid):
-    """First non-empty row is the header; blank rows and unnamed columns are dropped."""
     rows = [list(row) for row in grid]
     first = next(
         (index for index, row in enumerate(rows) if any(_cell_text(cell) for cell in row)), None
@@ -71,7 +68,6 @@ def _read_excel_grid(path):
 
 
 def read_table_records(path, encoding=None):
-    """Read a header-row table from CSV, XLSX or XLS without requiring any specific column."""
     if table_suffix(path) in EXCEL_SUFFIXES:
         return _records_from_grid(_read_excel_grid(path))
     candidates = (encoding,) if encoding else READ_ENCODINGS
@@ -113,7 +109,6 @@ def _write_excel(path, headers, rows):
 
 
 def write_table(path, headers, rows):
-    """Write a header row plus data rows; the suffix decides CSV or Excel."""
     if table_suffix(path) in EXCEL_SUFFIXES:
         _write_excel(path, headers, rows)
     else:
@@ -121,7 +116,6 @@ def write_table(path, headers, rows):
 
 
 def write_table_records(path, rows):
-    """Write record dicts (first row defines the columns) as CSV or Excel."""
     if not rows:
         raise ValueError("没有可导出的数据")
     headers = list(rows[0])
@@ -138,7 +132,6 @@ def write_json(path, value, encoding="utf-8"):
 
 
 def export_pdf(html_text, path):
-    """Write selectable report text through the existing Qt PDF backend."""
     from PyQt6.QtCore import QMarginsF, QRectF, QSizeF, Qt
     from PyQt6.QtGui import (
         QAbstractTextDocumentLayout,

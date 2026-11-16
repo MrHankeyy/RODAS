@@ -1,4 +1,3 @@
-"""响应面试验与田口正交试验的构造。"""
 
 from __future__ import annotations
 
@@ -18,10 +17,8 @@ _PB_CORES = {
 
 
 def _gf_oa_columns(prime: int, dim: int):
-    """GF(prime)^dim 的全部非零线性型列，返回 (列数, 每列级别列表 0..p-1)。"""
     rows = list(itertools.product(range(prime), repeat=dim))
     coeffs = [c for c in itertools.product(range(prime), repeat=dim) if any(c)]
-    # 首非零元素规范为 1，消除成比例的重复列
     norm = []
     for c in coeffs:
         i = next(i for i, v in enumerate(c) if v)
@@ -35,7 +32,6 @@ def _gf_oa_columns(prime: int, dim: int):
 
 
 def _oa_levels(label: str):
-    """返回标准 L 表的 (标签, 水平数, 行数, 列级别矩阵)。"""
     mapping = {
         "L4": (2, 2),
         "L8": (2, 3),
@@ -53,22 +49,21 @@ def _oa_levels(label: str):
 
 
 def _pb_matrix(n: int):
-    """Plackett-Burman n×（n-1）正交矩阵（±1）。"""
     core = [1 if ch == "+" else -1 for ch in _PB_CORES[n]]
     rows = []
     for shift in range(n - 1):
         rows.append([core[(i - shift) % (n - 1)] for i in range(n - 1)])
-    rows.append([-1] * (n - 1))  # 最后一行全低
+    rows.append([-1] * (n - 1))
     return rows
 
 
 def ccd_runs(k: int, alpha: float, centers: int):
     rows = []
     cube = int(2**k)
-    for i in range(cube):  # 立方点 ±1
+    for i in range(cube):
         row = [1 if (i >> j) & 1 else -1 for j in range(k)]
         rows.append(row)
-    for j in range(k):  # 轴点
+    for j in range(k):
         for sign in (1, -1):
             row = [0.0] * k
             row[j] = sign * alpha
@@ -80,7 +75,7 @@ def ccd_runs(k: int, alpha: float, centers: int):
 
 def bbd_runs(k: int, centers: int):
     rows = []
-    for i, j in itertools.combinations(range(k), 2):  # 每对因子 4 个点
+    for i, j in itertools.combinations(range(k), 2):
         for xi in (-1, 1):
             for xj in (-1, 1):
                 row = [0.0] * k
@@ -106,7 +101,6 @@ def build_response_surface(
     seed: int = 0,
     randomize: bool = True,
 ):
-    """构造 CCD 或 BBD。rsm_type: 'CCD'/'BBD'。"""
     if centers < 0 or replicates < 1:
         raise ValueError("中心点数不能为负，重复次数至少为 1")
     fixed_factors = [f for f in factors if f[3] is not None]
@@ -171,7 +165,6 @@ def build_response_surface(
 
 
 def taguchi_arrays(label: str, k_needed: int):
-    """按标签返回级别矩阵（行×k 个因子）并校验容量。"""
     label = label.replace(" ", "")
     if label.startswith("L12"):
         n, levels, columns = 12, 2, _pb_matrix(12)
@@ -207,7 +200,6 @@ def build_taguchi(
     replicates: int = 1,
     randomize: bool = True,
 ):
-    """田口设计：内表(控制因子) × 外表(噪声因子) 叉积。返回行与分组信息。"""
     fixed = {f[0]: f[3] for f in control_factors + noise_factors if f[3] is not None}
     control_factors = [f for f in control_factors if f[3] is None]
     noise_factors = [f for f in noise_factors if f[3] is None]

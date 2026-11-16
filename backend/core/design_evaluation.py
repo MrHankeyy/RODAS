@@ -1,4 +1,3 @@
-"""响应矩估计、目标评价与性能约束核验。"""
 
 from __future__ import annotations
 
@@ -10,13 +9,11 @@ from . import factors as de
 from .factors import _isfinite
 from .response_models import model_grad_x, model_hess_diag_x, model_predict
 
-# width/(2k) equals the standard deviation of a uniform interval at k=√3.
 DEFAULT_K_DESIGN = math.sqrt(3.0)
 DEFAULT_K_CONSTRAINT = 1.0
 
 
 def _sigma_of_factor(f, k_design, point=None):
-    """因子不确定性标准差；百分数参数按当前设计值（概率按当前均值）换算。"""
     lo, hi = de.factor_limits(f)
     if f.uncertainty == "概率":
         ratio = de.ratio_value(f.param2)
@@ -27,17 +24,14 @@ def _sigma_of_factor(f, k_design, point=None):
         except (TypeError, ValueError):
             return (hi - lo) / 6.0
     if f.source == "环境" or f.nominal_lower != "":
-        # Existing moment approximation: actual environmental width or design deviation width.
         base = de.factor_center(f, point, include_deviation=False)
         low = de.delta_value(f, f.param1, base)
         high = de.delta_value(f, f.param2, base)
         return (high - low) / (2.0 * max(1.0, k_design))
-    # For actual environmental intervals (and legacy design ranges), half-width = k·σ.
     return (hi - lo) / (2.0 * max(1.0, k_design))
 
 
 def robust_moments(model, x_design, context, k_design, include_residual=True):
-    """在设计点 x_design(设计因子名->值) 处计算任一响应的均值 μ 与标准差 σ。"""
     inputs = context["inputs"]
     x = [de.factor_center(f, x_design if f.source == "设计" else None) for f in inputs]
     x = np.array(x, float)
@@ -48,7 +42,6 @@ def robust_moments(model, x_design, context, k_design, include_residual=True):
     for f, idx in zip(inputs, range(len(inputs))):
         sigma.append(_sigma_of_factor(f, k_design, x_design))
     sigma = np.array(sigma, float)
-    # 一阶 + 二阶矩修正
     curvature = 0.5 * float(np.sum((hess * sigma**2)))
     mu_mean = mu + curvature
     var1 = float(np.sum((grad * sigma) ** 2))
@@ -59,7 +52,6 @@ def robust_moments(model, x_design, context, k_design, include_residual=True):
 
 
 def _response_ref(resp):
-    """返回响应参考界限 (上限/目标)。"""
     if resp.feature == "望目":
         try:
             return float(resp.lower), float(resp.upper)
@@ -72,7 +64,6 @@ def _response_ref(resp):
 
 
 def _desirability(resp, mu, data_min, data_max):
-    """期望值转换为 0~1 的望性值 d（越大越好）。"""
     if resp.feature == "望大":
         ref = _response_ref(resp)
         lo = ref if ref is not None else min(data_min, mu)
@@ -101,7 +92,6 @@ def _desirability(resp, mu, data_min, data_max):
 
 
 def _constraint_limits(resp):
-    """约束型响应的界限信息：(类型, 界限)。"""
     if resp.feature == "望小":
         ref = _response_ref(resp)
         return ("upper", ref) if ref is not None else ("upper", None)
@@ -116,7 +106,6 @@ def _constraint_limits(resp):
 
 
 def _response_scale(model):
-    """按响应数据幅度归一化，不让拟合精度改变优化目标的权重。"""
     values = [float(v) for v in model.get("predicted", []) if _isfinite(v)]
     if not values:
         return 1.0
@@ -125,7 +114,6 @@ def _response_scale(model):
 
 
 def response_uses_limits(context, response):
-    """Keep the optimization role separate from optional performance constraints."""
     if self_is_constraint(response):
         return True
     if not context.get("enforce_objective_limits", False):
@@ -154,7 +142,6 @@ def evaluate_design(
     k_constraint=DEFAULT_K_CONSTRAINT,
     resp_stds=None,
 ):
-    """设计点评估。返回 dict{obj, mean_perf, std_norm, infeas, details}。"""
     models = context["models"]
     resp_objs, resp_cons, details = [], [], []
     data_min, data_max = {}, {}
@@ -178,7 +165,6 @@ def evaluate_design(
         d = _desirability(resp, mu, data_min[resp.name], data_max[resp.name])
         scale = _response_scale(m)
         std_n = sigma / max(scale, 1e-12)
-        # 是否约束
         is_cons = self_is_constraint(resp)
         if response_uses_limits(context, resp):
             if use_constraints:
@@ -212,7 +198,6 @@ def evaluate_design(
             std_sum += std_n
             wsum += 1.0
     if not resp_objs:
-        # 全为约束时，用第一个响应的 σ 作为目标并保持可行
         perf_sum = 1.0
         std_sum = (
             sum(c["sigma"] / max(_response_scale(models[c["name"]]), 1e-12) for c in resp_cons)
@@ -222,7 +207,6 @@ def evaluate_design(
         wsum = len(resp_cons) or 1
     mean_perf = perf_sum / max(wsum, 1)
     std_norm = std_sum / max(wsum, 1)
-    # 目标（最小化）
     obj = [1.0 - mean_perf, std_norm]
     if infeas > 0:
         obj = [v + 100.0 * infeas for v in obj]
@@ -243,8 +227,6 @@ def project_responses(context):
 
 
 def self_is_constraint(resp):
-    # 响应角色由定义决定；目标性能阈值是否作为独立约束由
-    # enforce_objective_limits 控制，不改变目标响应的角色。
     return "约束" in getattr(resp, "kind", "")
 
 

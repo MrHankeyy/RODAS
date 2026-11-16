@@ -1,4 +1,3 @@
-"""拟合检验、交叉验证、残差与方差贡献分析。"""
 
 from __future__ import annotations
 
@@ -87,7 +86,6 @@ def anova_and_lof(context, project):
             )
             continue
         n = m["n"]
-        # 从残差计算
         y = [
             float(row[resp_name])
             for row in matrix
@@ -114,7 +112,6 @@ def anova_and_lof(context, project):
             lines[-1] = (
                 f"  回归：决定系数={m['r2']}，均方根误差={m['rmse']}；残差自由度不足或误差为零，F/p 不可估计。"
             )
-        # 失拟：从重复设计点估计纯误差
         pure_ss, pure_df = 0, 0
         point_groups = {}
         for row in matrix:
@@ -160,7 +157,6 @@ def anova_and_lof(context, project):
 
 
 def validation_results(context):
-    """Compute validation once; keep numeric results separate from report text."""
     if not context or not context["models"]:
         return {}
     results = {}
@@ -318,7 +314,6 @@ def tolerance_contribution(context, k_design, point=None):
         "包含一阶及对角曲率项，与当前优化器近似一致；不含混合二阶项，不代表全局重要性。",
     ]
     detail = {}
-    # 参考点：各设计因子取中心
     x_nom = {}
     x_raw = []
     for f in inputs:
@@ -370,7 +365,6 @@ def model_extraction(context):
             )
             continue
         names = context["names"]
-        # 用实际的因子名替换 x_i 命名
         term_names = []
         for label in m["names"]:
             if label == "常数":

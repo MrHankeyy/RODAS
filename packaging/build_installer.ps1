@@ -1,17 +1,3 @@
-<#
-Build the RODAS Windows installer from the PyInstaller directory bundle.
-
-Usage (from the RODAS project root):
-  powershell -ExecutionPolicy Bypass -File .\packaging\build_installer.ps1
-  powershell -ExecutionPolicy Bypass -File .\packaging\build_installer.ps1 -Rebuild
-  powershell -ExecutionPolicy Bypass -File .\packaging\build_installer.ps1 -IsccPath 'D:\Software\Inno Setup 6\ISCC.exe'
-
--Rebuild regenerates the splash PNG if missing, clears Anaconda from PATH,
-re-runs PyInstaller with --clean -y, then compiles the installer.
-Omit it to reuse the already verified dist\RODAS.
--IsccPath / $env:RODAS_ISCC override compiler discovery when Inno Setup is in a
-non-default location.
-#>
 param(
     [switch]$Rebuild,
     [string]$IsccPath
@@ -29,9 +15,6 @@ if ($LASTEXITCODE -ne 0) { throw 'Cannot read application metadata.' }
 $application = $metadata | ConvertFrom-Json
 
 function Invoke-Native {
-    # Run a native command; fold its stderr into plain text lines so that
-    # $ErrorActionPreference='Stop' (or outer stream redirection) does not
-    # turn stderr chatter into a terminating NativeCommandError (PS 5.1).
     param([scriptblock]$Cmd)
     $prev = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
@@ -46,14 +29,12 @@ function Invoke-Native {
 if ($Rebuild) {
     if (-not (Test-Path $py)) { throw "Build Python not found: $py" }
 
-    # Refresh the splash and icon using current assets, title and version.
     $rc = Invoke-Native { & $py (Join-Path $PSScriptRoot 'make_splash.py') }
     if ($rc -ne 0) { throw "Brand asset generation failed (exit $rc)" }
 
     $env:PATH = ($env:PATH -split ';' | Where-Object { $_ -notlike '*Anaconda*' }) -join ';'
     Push-Location $root
     try {
-        # -y removes the previous dist\RODAS; --clean alone does NOT clear it.
         $rc = Invoke-Native { & $py -m PyInstaller --clean -y --distpath .\dist --workpath .\build .\packaging\RODAS.spec }
         if ($rc -ne 0) { throw "PyInstaller build failed (exit $rc)" }
     }
@@ -75,7 +56,6 @@ function Find-Iscc {
     $fromPath = Get-Command iscc -ErrorAction SilentlyContinue
     if ($fromPath) { return $fromPath.Source }
 
-    # Registry InstallLocation covers custom install folders (e.g. D:\Software\Inno Setup 6).
     $roots = @(
         'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*',
         'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*',

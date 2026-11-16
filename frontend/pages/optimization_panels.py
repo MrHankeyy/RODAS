@@ -1,4 +1,3 @@
-"""UI construction for OptimizationPage."""
 
 from PyQt6.QtWidgets import (
     QFrame,
@@ -22,7 +21,6 @@ def build(owner):
     main_layout.setContentsMargins(12, 12, 12, 12)
     main_layout.setSpacing(12)
 
-    # 顶部：状态 + 主执行按钮
     top = QHBoxLayout()
     owner.primary_actions = top
     owner.status_label = QLabel("尚未运行鲁棒优化设计")

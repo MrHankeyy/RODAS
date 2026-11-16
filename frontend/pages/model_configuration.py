@@ -1,4 +1,3 @@
-"""Inline, reusable model and experiment configuration components."""
 
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import (
@@ -44,7 +43,6 @@ DESIGN_TERM_KEYS = {
 
 
 class ModelConfiguration(QWidget):
-    """Shared inline DOE editor with model-specific parameter controls."""
 
     changed = pyqtSignal()
 
@@ -273,7 +271,7 @@ class ModelConfiguration(QWidget):
                 "依赖加载、训练或预测失败时明确报错，不更换模型。"
             )
 
-        else:  # ANN
+        else:
             row = QHBoxLayout()
             row.addWidget(QLabel("网络参数设置方法："))
             self.net_mode_combo = QComboBox()
@@ -340,9 +338,7 @@ class ModelConfiguration(QWidget):
         self.manual_widget.setVisible(manual)
         self.auto_widget.setVisible(not manual)
 
-    # ------------------------------------------------------------------ 数据
     def _load_config(self, config):
-        """Restore saved settings without changing the caller's configuration."""
         if not config or config.get("model") != self.model_key:
             return
 

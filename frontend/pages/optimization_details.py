@@ -1,4 +1,3 @@
-"""优化方案的参数、响应、方差贡献与约束核验。"""
 
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
