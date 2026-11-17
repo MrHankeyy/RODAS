@@ -30,7 +30,7 @@ def main():
     manifest = {
         p.relative_to(ROOT).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest() for p in paths
     }
-    target = ROOT.parent / "RODAS_v1.0_源代码提交包.zip"
+    target = ROOT.parent / "ROD_v1.0_源代码提交包.zip"
     with zipfile.ZipFile(target, "w", zipfile.ZIP_DEFLATED) as archive:
         for path in paths:
             archive.write(path, path.relative_to(ROOT))

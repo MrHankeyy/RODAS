@@ -41,8 +41,8 @@ if ($Rebuild) {
     finally { Pop-Location }
 }
 
-$bundle = Join-Path $root 'dist\RODAS'
-if (-not (Test-Path (Join-Path $bundle 'RODAS.exe'))) {
+$bundle = Join-Path $root 'dist\ROD'
+if (-not (Test-Path (Join-Path $bundle 'ROD.exe'))) {
     throw "Bundle not found: $bundle. Run PyInstaller first, or use -Rebuild."
 }
 
@@ -97,7 +97,7 @@ $iss = Join-Path $PSScriptRoot 'RODAS.iss'
 $rc = Invoke-Native { & $iscc "/DMyAppName=$($application.name)" "/DMyAppVersion=$($application.version)" $iss }
 if ($rc -ne 0) { throw "ISCC compile failed (exit $rc)" }
 
-$out = Join-Path $root "dist\RODAS-Setup-V$($application.version).exe"
+$out = Join-Path $root "dist\ROD-Setup-V$($application.version).exe"
 if (Test-Path $out) {
     $size = [math]::Round((Get-Item $out).Length / 1MB, 1)
     Write-Host "Installer ready: $out ($size MB)"

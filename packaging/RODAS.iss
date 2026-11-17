@@ -6,7 +6,7 @@
 #define MyAppVersion "1.0"
 #endif
 #define MyAppPublisher MyAppName
-#define MyAppExeName "RODAS.exe"
+#define MyAppExeName "ROD.exe"
 
 [Setup]
 AppId={{2472AF40-89E1-4664-861D-41FE37029080}}
@@ -14,12 +14,12 @@ AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppVerName={#MyAppName} V{#MyAppVersion}
 AppPublisher={#MyAppPublisher}
-DefaultDirName={commonpf64}\RODAS
+DefaultDirName={commonpf64}\ROD
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
 AllowNoIcons=yes
 OutputDir=..\dist
-OutputBaseFilename=RODAS-Setup-V{#MyAppVersion}
+OutputBaseFilename=ROD-Setup-V{#MyAppVersion}
 SetupIconFile={#SourcePath}\RODAS.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
 Compression=lzma2
@@ -36,7 +36,7 @@ Name: "chinesesimplified"; MessagesFile: "{#SourcePath}\ChineseSimplified.isl"
 Name: "desktopicon"; Description: "创建桌面快捷方式(&D)"; GroupDescription: "附加任务："; Flags: unchecked
 
 [Files]
-Source: "..\dist\RODAS\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\dist\ROD\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"

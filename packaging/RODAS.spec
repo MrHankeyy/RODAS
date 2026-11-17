@@ -38,7 +38,7 @@ splash = Splash(
     text_size=-13,
     text_font='SimHei',
     text_color='#365D80',
-    text_default='正在启动 RODAS…',
+    text_default='正在启动 ROD…',
     max_img_size=(760, 480),
     always_on_top=True,
 )
@@ -50,9 +50,9 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name='RODAS',
+    name='ROD',
     console=False,
     icon=str(root / 'packaging' / 'RODAS.ico'),
     upx=False,
 )
-COLLECT(exe, a.binaries, a.datas, splash.binaries, name='RODAS', upx=False)
+COLLECT(exe, a.binaries, a.datas, splash.binaries, name='ROD', upx=False)
